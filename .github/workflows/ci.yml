@@ -1,0 +1,44 @@
+# CI de Smelter — rojo bloquea merge.
+# Patrón tomado de bitbreaker01/sigil: build barato en Linux; los tests net462
+# EJECUTAN solo en Windows (el sandbox de Dataverse es .NET Framework — en Linux
+# compilan vía reference assemblies pero no corren sin Mono).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: "10.0.x" # alineado con global.json — mismo compilador local y en CI
+
+jobs:
+  # Compilación completa en Linux: rápida y barata. Valida tipos/firmas de todo el sln.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Build (Release)
+        run: dotnet build Smelter.sln -c Release
+
+  # Tests net462: ejecutan SOLO en Windows (runtime .NET Framework del runner).
+  tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Tests (net462)
+        run: dotnet test Smelter.sln -c Release
