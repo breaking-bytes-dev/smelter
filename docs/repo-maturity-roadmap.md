@@ -23,11 +23,11 @@
 
 ## Plan por fases
 
-### Fase 0 — Git y GitHub (URGENTE, sin esto no existe nada)
-- [ ] Higiene: mover `Smelter_*.csv` a `tests/data/` (o `samples/`); agregar `tmp/`, `scratch/`, `bin/`, `obj/` al `.gitignore`.
-- [ ] **Primer commit** de todo el repo (código + docs + openspec).
-- [ ] Crear el repo en GitHub (`bitbreaker01/smelter`) y push.
-- [ ] README raíz al estilo Sigil: descripción + diagrama de estructura + "Por dónde empezar" + tabla de componentes.
+### Fase 0 — Git y GitHub ✅ (completada 2026-07-24)
+- [x] Higiene: `Smelter_*.csv` → `tests/data/`; `tmp/`, `scratch/`, `.atl/` al `.gitignore`.
+- [x] **Primer commit** (`cfcabc9`) de todo el repo (código + docs + openspec).
+- [x] Repo creado: `bitbreaker01/smelter` (**privado** — el README dice Proprietary; pasarlo a público es 1 click si se decide) + push a `main`.
+- [x] README raíz al estilo Sigil (reescrito a la realidad v2: CSV-only, chunked, 4 Custom APIs, MDA) + CHANGELOG actualizado (Keep a Changelog, estado real).
 
 ### Fase 1 — CI (mata el gate eterno de "corré dotnet test en Windows")
 - [ ] `.github/workflows/ci.yml`:
