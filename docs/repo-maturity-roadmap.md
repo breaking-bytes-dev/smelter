@@ -29,12 +29,10 @@
 - [x] Repo creado: `bitbreaker01/smelter` (**privado** — el README dice Proprietary; pasarlo a público es 1 click si se decide) + push a `main`.
 - [x] README raíz al estilo Sigil (reescrito a la realidad v2: CSV-only, chunked, 4 Custom APIs, MDA) + CHANGELOG actualizado (Keep a Changelog, estado real).
 
-### Fase 1 — CI (mata el gate eterno de "corré dotnet test en Windows")
-- [ ] `.github/workflows/ci.yml`:
-  - Job `build` (ubuntu): `dotnet build Smelter.sln` — rápido, valida compilación.
-  - Job `tests` (**windows-latest**): `dotnet test Smelter.sln -c Release` — los ~60 tests net462 POR FIN ejecutan en CI.
-  - `concurrency` + trigger en PR y push a main. Rojo bloquea merge.
-- [ ] `global.json` para fijar la versión del SDK (mismo compilador local y CI).
+### Fase 1 — CI ✅ (completada 2026-07-24)
+- [x] `.github/workflows/ci.yml`: job `build` (ubuntu) + job `tests` (**windows-latest**), concurrency, triggers PR/push/manual.
+- [x] `global.json` (SDK 10.0.202, rollForward latestFeature).
+- [x] **Primer run verde: 119/119 tests pasaron** — primera ejecución real de toda la suite en la historia del proyecto (antes solo compilaba; el gate manual queda eliminado).
 
 ### Fase 2 — ALM de solución en dos niveles (el patrón estrella de Sigil)
 - [ ] Carpeta `solutions/` con su README (qué es managed vs unmanaged, dónde viven los zips → Releases).
