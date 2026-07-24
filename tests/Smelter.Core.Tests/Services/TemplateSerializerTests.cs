@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using FluentAssertions;
-using Microsoft.Xrm.Sdk;
 using Smelter.Plugins.Models;
 using Smelter.Plugins.Services;
 using Xunit;
@@ -74,7 +73,7 @@ namespace Smelter.Plugins.Tests.Services
         public void Deserialize_MalformedJson_Throws()
         {
             System.Action act = () => _sut.Deserialize("{ this is not json");
-            act.Should().Throw<InvalidPluginExecutionException>();
+            act.Should().Throw<TemplateFormatException>();
         }
 
         [Fact]
@@ -85,7 +84,7 @@ namespace Smelter.Plugins.Tests.Services
             var json = _sut.Serialize(dto);
 
             System.Action act = () => _sut.Deserialize(json);
-            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*2.0*");
+            act.Should().Throw<TemplateFormatException>().WithMessage("*2.0*");
         }
 
         [Fact]
@@ -96,7 +95,7 @@ namespace Smelter.Plugins.Tests.Services
             var json = _sut.Serialize(dto);
 
             System.Action act = () => _sut.Deserialize(json);
-            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*tm-no-existe*");
+            act.Should().Throw<TemplateFormatException>().WithMessage("*tm-no-existe*");
         }
     }
 }

@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Json;
 using System.Text;
-using Microsoft.Xrm.Sdk;
 using Smelter.Plugins.Models;
 
 namespace Smelter.Plugins.Services
@@ -17,7 +16,7 @@ namespace Smelter.Plugins.Services
     public interface ITemplateSerializer
     {
         string Serialize(TemplateExportDto dto);
-        /// <summary>Parse + validate. Throws InvalidPluginExecutionException on malformed/unsupported/invalid.</summary>
+        /// <summary>Parse + validate. Throws TemplateFormatException on malformed/unsupported/invalid.</summary>
         TemplateExportDto Deserialize(string json);
     }
 
@@ -50,7 +49,7 @@ namespace Smelter.Plugins.Services
         public TemplateExportDto Deserialize(string json)
         {
             if (string.IsNullOrWhiteSpace(json))
-                throw new InvalidPluginExecutionException("Template JSON is empty.");
+                throw new TemplateFormatException("Template JSON is empty.");
 
             TemplateExportDto dto;
             try
@@ -63,7 +62,7 @@ namespace Smelter.Plugins.Services
             }
             catch (Exception ex)
             {
-                throw new InvalidPluginExecutionException("Template JSON is malformed: " + ex.Message);
+                throw new TemplateFormatException("Template JSON is malformed: " + ex.Message);
             }
 
             Validate(dto);
@@ -73,16 +72,16 @@ namespace Smelter.Plugins.Services
         /// <summary>
         /// Validates the deserialized DTO for structural integrity: checks that the template
         /// node is present, the format version is supported, and that every relationship
-        /// references a known table mapping Ref. Throws <see cref="InvalidPluginExecutionException"/>
+        /// references a known table mapping Ref. Throws <see cref="TemplateFormatException"/>
         /// on any violation so the error surfaces cleanly in the Power Automate run history.
         /// </summary>
         private static void Validate(TemplateExportDto dto)
         {
             if (dto == null || dto.Template == null)
-                throw new InvalidPluginExecutionException("Template JSON is invalid (missing template).");
+                throw new TemplateFormatException("Template JSON is invalid (missing template).");
 
             if (ParseMajor(dto.FormatVersion) > ParseMajor(SupportedFormatVersion))
-                throw new InvalidPluginExecutionException(
+                throw new TemplateFormatException(
                     $"Unsupported formatVersion '{dto.FormatVersion}'. Expected {SupportedFormatVersion} or lower.");
 
             var refs = new HashSet<string>(
@@ -93,10 +92,10 @@ namespace Smelter.Plugins.Services
             foreach (var rel in dto.RelationshipMappings ?? new List<RelationshipMappingDto>())
             {
                 if (!refs.Contains(rel.ParentRef))
-                    throw new InvalidPluginExecutionException(
+                    throw new TemplateFormatException(
                         $"Relationship references unknown parentRef '{rel.ParentRef}'.");
                 if (!refs.Contains(rel.ChildRef))
-                    throw new InvalidPluginExecutionException(
+                    throw new TemplateFormatException(
                         $"Relationship references unknown childRef '{rel.ChildRef}'.");
             }
         }

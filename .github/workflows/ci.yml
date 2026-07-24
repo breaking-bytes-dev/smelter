@@ -32,13 +32,24 @@ jobs:
       - name: Build (Release)
         run: dotnet build Smelter.sln -c Release
 
-  # Tests net462: ejecutan SOLO en Windows (runtime .NET Framework del runner).
-  tests:
+  # Núcleo puro (net8): parser CSV, transform DSL, DAG, serialización — corre en Linux, rápido y barato.
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Tests del núcleo puro (net8)
+        run: dotnet test tests/Smelter.Core.Tests -c Release
+
+  # Orquestación con SDK (net462): ejecutan SOLO en Windows (runtime .NET Framework del runner).
+  plugins:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      - name: Tests (net462)
-        run: dotnet test Smelter.sln -c Release
+      - name: Tests de orquestación (net462)
+        run: dotnet test tests/Smelter.Plugins.Tests -c Release

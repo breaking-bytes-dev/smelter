@@ -79,7 +79,17 @@ namespace Smelter.Plugins
         /// </exception>
         public ImportResult Run(string json)
         {
-            var dto = _serializer.Deserialize(json); // validates; throws on invalid
+            TemplateExportDto dto;
+            try
+            {
+                dto = _serializer.Deserialize(json); // validates; throws on invalid
+            }
+            catch (TemplateFormatException ex)
+            {
+                // El core es puro (sin SDK); acá traducimos su excepción al tipo que Dataverse /
+                // Power Automate muestran correctamente al usuario.
+                throw new InvalidPluginExecutionException(ex.Message);
+            }
             return _importer.Import(dto);
         }
     }

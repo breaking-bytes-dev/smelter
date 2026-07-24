@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.0: consumible por el plugin net462 Y testeable con net8 en Linux (CI barato). -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <!-- Los namespaces se mantienen Smelter.Plugins.* a propósito: split de assembly sin churn de usings. -->
+    <RootNamespace>Smelter.Plugins</RootNamespace>
+    <AssemblyName>Smelter.Core</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <Description>Smelter — núcleo puro (parser CSV, transform DSL, DAG, serialización de templates). Sin dependencias del SDK de Dataverse.</Description>
+    <Company>SANIC</Company>
+    <Product>Smelter</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="30.0.1" />
+  </ItemGroup>
+
+</Project>

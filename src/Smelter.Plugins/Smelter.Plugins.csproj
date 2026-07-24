@@ -19,7 +19,12 @@
     <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.56" PrivateAssets="All" />
     <PackageReference Include="Microsoft.PowerApps.MSBuild.Plugin" Version="1.*" PrivateAssets="All" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.*" PrivateAssets="All" />
-    <PackageReference Include="CsvHelper" Version="30.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Núcleo puro (netstandard2.0): parser CSV, transform DSL, DAG, serialización de templates.
+         CsvHelper llega transitivamente desde el Core. -->
+    <ProjectReference Include="..\Smelter.Core\Smelter.Core.csproj" />
   </ItemGroup>
 
 </Project>
