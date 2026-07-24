@@ -1,0 +1,58 @@
+schema: spec-driven
+
+context: |
+  Tech stack: C# .NET Framework 4.6.2 (net462) — Dataverse plugin assembly (sandbox).
+  Key deps: Microsoft.CrmSdk.CoreAssemblies 9.0.2.56, Microsoft.PowerApps.MSBuild.Plugin,
+            CsvHelper 30.0.1, ExcelDataReader 3.7.0.
+  Architecture: async IPlugin (ImportProcessorPlugin) + service layer (NormalizationEngine,
+                DedupService, DependencyResolver, TransformEngine, TypeCoercer, BatchProcessor,
+                ProgressReporter). Canvas App creates ImportJob → plugin processes.
+  Testing: xUnit 2.9 + NSubstitute (mock IOrganizationService) + FluentAssertions; ClosedXML for Excel fixtures.
+  Style: no linter/editorconfig; Nullable disabled; LangVersion latest.
+
+strict_tdd: true
+
+testing:
+  strict_tdd: enabled
+  detected: 2026-06-02
+  test_runner:
+    command: dotnet test
+    framework: xUnit 2.9.0
+  layers:
+    unit: { available: true, tool: "xUnit + NSubstitute + FluentAssertions" }
+    integration: { available: false, tool: null }
+    e2e: { available: false, tool: null }
+  coverage:
+    available: false
+    command: null
+  quality:
+    linter: { available: false, command: null }
+    type_checker: { available: true, command: "dotnet build" }
+    formatter: { available: true, command: "dotnet format" }
+  notes: |
+    Existing tests cover small services only (CsvParser, ExcelParser, TypeCoercer,
+    DependencyResolver, TransformEngine, DedupService). No tests for NormalizationEngine,
+    BatchProcessor, ProgressReporter, or the plugin itself — integration gaps.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+  apply:
+    - Follow existing code patterns and conventions
+    - Load relevant coding skills for the project stack (dataverse-*, csharp-refactoring)
+  verify:
+    - Run tests if test infrastructure exists (dotnet test)
+    - Compare implementation against every spec scenario
+  archive:
+    - Warn before merging destructive deltas (large removals)

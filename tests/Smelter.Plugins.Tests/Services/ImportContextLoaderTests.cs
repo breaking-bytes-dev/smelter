@@ -1,0 +1,119 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using FluentAssertions;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
+using NSubstitute;
+using Smelter.Plugins.Models;
+using Smelter.Plugins.Services;
+using Xunit;
+
+namespace Smelter.Plugins.Tests.Services
+{
+    public class ImportContextLoaderTests
+    {
+        private const string RelTable = "sanic_tbl_smlt_relationshipmapping";
+
+        private static Entity RelEntity(Guid parentTm, Guid childTm, int type = 0, string lookup = "parentid")
+        {
+            var e = new Entity(RelTable, Guid.NewGuid());
+            e["sanic_smlt_rm_name"] = "rel";
+            e["sanic_smlt_rm_parenttablemappingid"] = new EntityReference("sanic_tbl_smlt_tablemapping", parentTm);
+            e["sanic_smlt_rm_childtablemappingid"] = new EntityReference("sanic_tbl_smlt_tablemapping", childTm);
+            e["sanic_smlt_rm_relationshiptype"] = new OptionSetValue(type);
+            e["sanic_smlt_rm_lookupcolumnonchild"] = lookup;
+            e["sanic_smlt_rm_parentdedupcolumns"] = "code";
+            return e;
+        }
+
+        [Fact]
+        public void LoadRelationshipMappings_MapsEntitiesToConfigs()
+        {
+            var service = Substitute.For<IOrganizationService>();
+            var parentId = Guid.NewGuid();
+            var childId = Guid.NewGuid();
+            var ec = new EntityCollection();
+            ec.Entities.Add(RelEntity(parentId, childId, 0, "sanic_countryid"));
+            service.RetrieveMultiple(Arg.Any<QueryExpression>()).Returns(ec);
+
+            var loader = new ImportContextLoader(service);
+            var rels = loader.LoadRelationshipMappings(Guid.NewGuid());
+
+            rels.Should().ContainSingle();
+            rels[0].ParentTableMappingId.Should().Be(parentId);
+            rels[0].ChildTableMappingId.Should().Be(childId);
+            rels[0].LookupColumnOnChild.Should().Be("sanic_countryid");
+            rels[0].ParentDedupColumns.Should().Be("code");
+            rels[0].IsOneToMany.Should().BeTrue();
+        }
+
+        [Fact]
+        public void LoadRelationshipMappings_FiltersByTemplateId()
+        {
+            var service = Substitute.For<IOrganizationService>();
+            QueryExpression captured = null;
+            var templateId = Guid.NewGuid();
+            service.RetrieveMultiple(Arg.Do<QueryExpression>(q => captured = q)).Returns(new EntityCollection());
+
+            new ImportContextLoader(service).LoadRelationshipMappings(templateId);
+
+            captured.EntityName.Should().Be(RelTable);
+            captured.Criteria.Conditions.Should().Contain(c =>
+                c.AttributeName == "sanic_smlt_rm_importtemplateid"
+                && c.Operator == ConditionOperator.Equal
+                && c.Values.Contains(templateId));
+        }
+
+        [Fact]
+        public void LoadRelationshipMappings_NoneConfigured_ReturnsEmpty()
+        {
+            var service = Substitute.For<IOrganizationService>();
+            service.RetrieveMultiple(Arg.Any<QueryExpression>()).Returns(new EntityCollection());
+
+            new ImportContextLoader(service).LoadRelationshipMappings(Guid.NewGuid())
+                .Should().BeEmpty();
+        }
+
+        /// <summary>
+        /// Regression guard for bug #1: relationships were never loaded, so the resolver never
+        /// received edges and the DAG was inert. This proves loaded relationships now reach the resolver.
+        /// </summary>
+        [Fact]
+        public void LoadedRelationships_FedToResolver_OrderParentBeforeChild()
+        {
+            var parent = new TableMappingConfig { Id = Guid.NewGuid(), Name = "Country", TargetTable = "country" };
+            var child = new TableMappingConfig { Id = Guid.NewGuid(), Name = "City", TargetTable = "city" };
+
+            var service = Substitute.For<IOrganizationService>();
+            var ec = new EntityCollection();
+            ec.Entities.Add(RelEntity(parent.Id, child.Id, 0, "sanic_countryid"));
+            service.RetrieveMultiple(Arg.Any<QueryExpression>()).Returns(ec);
+
+            var rels = new ImportContextLoader(service).LoadRelationshipMappings(Guid.NewGuid());
+            var ordered = DependencyResolver.Resolve(new List<TableMappingConfig> { child, parent }, rels);
+
+            ordered.IndexOf(parent).Should().BeLessThan(ordered.IndexOf(child),
+                "loaded relationships must drive the topological order (bug #1 fixed)");
+        }
+
+        /// <summary>
+        /// Regression: LoadTemplateConfig recibe un TEMPLATE id y va directo al template.
+        /// NO debe hacer Retrieve de importjob con ese id (causa de "importjob ... Does Not Exist").
+        /// </summary>
+        [Fact]
+        public void LoadTemplateConfig_RetrievesTemplateDirectly_DoesNotProbeImportJob()
+        {
+            var service = Substitute.For<IOrganizationService>();
+            var templateId = Guid.NewGuid();
+            var template = new Entity("sanic_tbl_smlt_importtemplate", templateId);
+            template["sanic_smlt_it_name"] = "T";
+            service.Retrieve("sanic_tbl_smlt_importtemplate", templateId, Arg.Any<ColumnSet>()).Returns(template);
+
+            var config = new ImportContextLoader(service).LoadTemplateConfig(templateId);
+
+            config.Id.Should().Be(templateId);
+            service.DidNotReceive().Retrieve("sanic_tbl_smlt_importjob", templateId, Arg.Any<ColumnSet>());
+        }
+    }
+}

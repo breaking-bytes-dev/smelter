@@ -1,0 +1,54 @@
+[← Volver al índice de documentación](../../README.md)
+
+# Import Template — `sanic_tbl_smlt_importtemplate`
+
+Entidad raíz de configuración de Smelter. Cada template define el formato del archivo fuente CSV y actúa
+como padre de todos los mappings de configuración.
+
+## Relaciones
+
+| Dirección | Tabla relacionada | Tipo | Columna FK |
+|-----------|------------------|------|------------|
+| Padre de | [Table Mapping](table-mapping.md) | 1:N | `sanic_smlt_tm_importtemplateid` |
+| Padre de | [Relationship Mapping](relationship-mapping.md) | 1:N | `sanic_smlt_rm_importtemplateid` |
+| Padre de | [Import Job](import-job.md) | 1:N | `sanic_smlt_ij_importtemplateid` |
+
+La relación con Import Job tiene **Cascade Share = All** y **Cascade Reparent = All**, de modo que los
+jobs creados bajo un template compartido heredan el acceso vía POA (Principal Object Access) sin código
+adicional.
+
+## Columnas
+
+| Columna | Tipo | Requerido | Descripción |
+|---------|------|-----------|-------------|
+| `sanic_smlt_it_importtemplateid` | GUID (PK) | Auto | Clave primaria |
+| `sanic_smlt_it_name` | String(200) | Sí | Nombre del template |
+| `sanic_smlt_it_description` | Multiline | No | Descripción libre |
+| `sanic_smlt_it_sourcetype` | OptionSet | Sí | Tipo de archivo fuente |
+| `sanic_smlt_it_hasheaderrow` | Boolean | Sí | ¿Primera fila es encabezado? (default: Sí) |
+| `sanic_smlt_it_delimiter` | String(5) | No | Separador de columnas CSV (default: `,`) |
+| `sanic_smlt_it_chunksize` | Whole Number | No | Filas por invocación de `ProcessChunk`. 0 = usar el default del sistema (1000). Rango válido: 100–10000. Calibrar según el costo total de upserts por fila. |
+| `sanic_smlt_it_status` | OptionSet | Sí | Estado del template |
+
+## OptionSets
+
+### `sanic_smlt_it_sourcetype`
+
+| Valor | Label |
+|-------|-------|
+| 0 | CSV |
+
+> Solo CSV está soportado en v2. El valor Excel (1) existía en versiones anteriores y fue eliminado del motor.
+
+### `sanic_smlt_it_status`
+
+| Valor | Label |
+|-------|-------|
+| 0 | Draft |
+| 1 | Active |
+| 2 | Archived |
+
+## Volver a
+
+- [Data Model](../data-model.md)
+- [Architecture](../../01-overview/architecture.md)
