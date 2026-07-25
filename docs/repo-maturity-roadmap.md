@@ -45,10 +45,11 @@
 - [ ] `tools/Smelter.Deploy/`: consola C# con `ServiceClient` que (1) sube/actualiza el plugin package, (2) crea/actualiza las 4 Custom APIs con sus request/response properties EXACTOS. Idempotente.
 - [ ] Elimina de raíz los dolores conocidos: DLL viejo, versión que rompe plugin types, parámetros case-sensitive mal tipeados en el portal.
 
-### Fase 4 — Núcleo puro net8 (tests en Linux)
-- [ ] Extraer la lógica PURA a `src/Smelter.Core/` multi-target (`net8.0;net462`): CsvParser, TransformEngine, TypeCoercer, DependencyResolver, TemplateSerializer, modelos sin SDK.
-- [ ] `Smelter.Core.Tests` (net8) corre en ubuntu (rápido/barato); `Smelter.Plugins.Tests` (net462, orquestación con SDK) queda en windows-latest.
-- [ ] Beneficio: feedback de tests en segundos en cualquier máquina (incluida esta), sin Mono.
+### Fase 4 — Núcleo puro (tests en Linux) ✅ (completada 2026-07-24)
+- [x] `src/Smelter.Core/` (**netstandard2.0** — consumible por net462 y testeable en net8; más simple que multi-target). Movidos: CsvParser+ICsvReader, TransformEngine, DependencyResolver, TemplateSerializer y todos los modelos puros. Namespaces `Smelter.Plugins.*` conservados (split de assembly sin churn).
+- [x] `TemplateSerializer` ahora lanza `TemplateFormatException` (core puro); `ImportTemplateHandler` la traduce a `InvalidPluginExecutionException` (contrato externo intacto).
+- [x] `Smelter.Core.Tests` (net8): **49 tests corren en Linux en <1 s** (local y CI/ubuntu). `Smelter.Plugins.Tests` (70 tests net462) queda en windows-latest. CI verde: 119/119.
+- [x] ⚠️ Corrección al plan: **`TypeCoercer` NO se movió** — no es puro (devuelve `Money`/`OptionSetValue` del SDK). Queda en Plugins.
 
 ### Fase 5 — Contratos doc↔test (el toque fino de Sigil)
 - [ ] `docs/02-solution-reference/` ya documenta OptionSets (status, categorías de error, data types). Agregar **tests de contrato** que corroboren esos catálogos contra los enums del código (`ErrorCategory`, `ImportJobStatus`, `ImportLogStatus`, `ColumnDataType`) — si alguien cambia un valor, el test lo delata.
