@@ -34,12 +34,12 @@
 - [x] `global.json` (SDK 10.0.202, rollForward latestFeature).
 - [x] **Primer run verde: 119/119 tests pasaron** — primera ejecución real de toda la suite en la historia del proyecto (antes solo compilaba; el gate manual queda eliminado).
 
-### Fase 2 — ALM de solución en dos niveles (el patrón estrella de Sigil)
-- [ ] Carpeta `solutions/` con su README (qué es managed vs unmanaged, dónde viven los zips → Releases).
-- [ ] Workflow `solution-sync.yml`: al publicar un Release → `pac solution unpack` + prune + commit de la metadata **no-código** en `solutions/unpacked/` (tablas, forms, vistas, roles, Custom APIs — diffeable).
-- [ ] Workflow `solution-release.yml` (manual, un botón): Service Principal exporta managed+unmanaged de Dev con `pac`, crea el GitHub Release con los zips, tag `sol-vX.Y.Z.B`, y dispara `solution-sync`.
-- [x] Secrets: se usan los **organization secrets** de `breaking-bytes-dev` (compartidos entre repos, visibilidad `selected` — smelter ya agregado y verificado): `DATAVERSE_URL`, `PP_CLIENT_ID`, `PP_TENANT_ID`, `PP_CLIENT_SECRET`.
-- [ ] CHANGELOG real: formato Keep a Changelog, secciones Added/Changed/Fixed, versiones linkeadas a los Releases. Primer release: el estado actual (motor v2 + export/import + security).
+### Fase 2 — ALM de solución en dos niveles ✅ (completada 2026-07-25)
+- [x] `solutions/README.md` (managed vs unmanaged, zips → Releases, cómo publicar una versión).
+- [x] `solution-sync.yml`: descarga el zip unmanaged del Release → `pac solution unpack` + prune (dll/nupkg) + commit de la metadata no-código en `solutions/unpacked/` (**111 archivos diffeables**: 6 tablas, forms, vistas, la MDA, sitemap…). Triggers: `workflow_call` + `release published` + manual.
+- [x] `solution-release.yml` (un botón): SP exporta managed+unmanaged con `pac`, crea el Release `sol-vX.Y.Z.B` y llama a sync por `workflow_call` (los releases creados con GITHUB_TOKEN no disparan eventos — anti-recursión).
+- [x] Secrets: ⚠️ lección — **org secrets NO llegan a repos privados en plan Free** (doc oficial; el endpoint de config los lista pero el runner no los inyecta → llegan vacíos). Decisión: **secrets a nivel repo** (mismos nombres `DATAVERSE_URL`/`PP_*`, cargados con `gh secret set` por repo).
+- [x] **Primer release publicado: [`sol-v1.0.0.0`](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.0.0.0)** (managed + unmanaged, ~317 KB c/u) + CHANGELOG linkeado.
 
 ### Fase 3 — Deploy por SDK (adiós PRT manual)
 - [ ] `tools/Smelter.Deploy/`: consola C# con `ServiceClient` que (1) sube/actualiza el plugin package, (2) crea/actualiza las 4 Custom APIs con sus request/response properties EXACTOS. Idempotente.

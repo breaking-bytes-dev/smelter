@@ -6,7 +6,10 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
-Estado inicial del repositorio en git — incluye todo el desarrollo previo al primer commit:
+## [[1.0.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.0.0.0)] — 2026-07-25
+
+🎉 **Primer release de la solución** (`smlt_core_smelter`, managed + unmanaged, exportada de Dev por
+el workflow `solution-release`). Incluye todo el desarrollo previo al primer commit:
 
 ### Added
 - **Motor de import v2 (chunked, CSV-only)**: Custom APIs `sanic_PrepareImport` (valida headers, cuenta
