@@ -17,8 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Los tests de contrato corroboran la ApiSpec contra la metadata de solutions/unpacked/. -->
+    <!-- Los tests de contrato corroboran la ApiSpec contra la metadata de solutions/unpacked/;
+         Smelter.Verify usa los uniquenames de la ApiSpec como fuente única. -->
     <InternalsVisibleTo Include="Smelter.Contract.Tests" />
+    <InternalsVisibleTo Include="Smelter.Verify" />
   </ItemGroup>
 
 </Project>

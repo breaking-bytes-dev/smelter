@@ -1,0 +1,33 @@
+# Smoke test E2E del backend desplegado en Dev (tools/Smelter.Verify) — un botón.
+# Importa un template (vía Custom API), corre un import de 5 filas contra `contact`,
+# verifica resultados + idempotencia, y limpia. Verde = el runtime desplegado funciona.
+name: backend-verify
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-verify
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: "10.0.x"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Smoke test contra Dev
+        env:
+          DATAVERSE_URL: ${{ secrets.DATAVERSE_URL }}
+          PP_CLIENT_ID: ${{ secrets.PP_CLIENT_ID }}
+          PP_CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+        run: dotnet run --project tools/Smelter.Verify -c Release

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Smelter.Verify</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.2.26" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core: para construir el JSON del template con el MISMO serializer del producto (dogfooding). -->
+    <ProjectReference Include="..\..\src\Smelter.Core\Smelter.Core.csproj" />
+    <!-- Deploy: fuente única de los uniquenames de las Custom APIs (ApiSpec). -->
+    <ProjectReference Include="..\Smelter.Deploy\Smelter.Deploy.csproj" />
+  </ItemGroup>
+
+</Project>
