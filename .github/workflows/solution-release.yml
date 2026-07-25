@@ -1,0 +1,84 @@
+# ALM de la solución — NIVEL 2 (un botón). Patrón tomado de bitbreaker01/sigil.
+#
+# Manual (vos):      Actions → Run workflow → versión (ej. 1.0.0.1).
+# Automático (esto): con el Service Principal EXPORTA managed+unmanaged de Dev, crea el Release
+#                    (tag sol-v<version>) con los dos zips, y llama al Nivel 1 (solution-sync)
+#                    para el unpack + commit de la metadata.
+#
+# Secrets (organization secrets de breaking-bytes-dev): DATAVERSE_URL, PP_CLIENT_ID,
+# PP_TENANT_ID, PP_CLIENT_SECRET. El SP debe poder exportar la solución en Dev.
+name: solution-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión de la solución (ej. 1.0.0.1) — el tag será sol-v<version>"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: solution-release
+  cancel-in-progress: false
+
+env:
+  SOLUTION_NAME: smlt_core_smelter
+
+jobs:
+  export-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8 (runtime del pac CLI)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Instalar Power Platform CLI (pac)
+        run: |
+          dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Autenticar el Service Principal a Dev
+        env:
+          URL: ${{ secrets.DATAVERSE_URL }}
+          APPID: ${{ secrets.PP_CLIENT_ID }}
+          SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+          TENANT: ${{ secrets.PP_TENANT_ID }}
+        run: pac auth create --url "$URL" --applicationId "$APPID" --clientSecret "$SECRET" --tenant "$TENANT"
+
+      # Best effort: fija la versión de la solución en Dev para que el zip coincida con el tag.
+      # Si el SP no tiene permiso de escritura sobre la solución, seguimos igual (solo exportamos).
+      - name: Fijar la versión de la solución en Dev (best effort)
+        continue-on-error: true
+        run: pac solution online-version --solution-name "$SOLUTION_NAME" --solution-version "${{ inputs.version }}"
+
+      - name: Exportar managed + unmanaged
+        run: |
+          mkdir -p out
+          pac solution export --name "$SOLUTION_NAME" --path "out/${SOLUTION_NAME}_managed.zip" --managed --overwrite
+          pac solution export --name "$SOLUTION_NAME" --path "out/${SOLUTION_NAME}_unmanaged.zip" --overwrite
+          ls -la out/
+
+      - name: Crear el GitHub Release (tag sol-v<version>)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "sol-v${{ inputs.version }}" \
+            "out/${SOLUTION_NAME}_managed.zip" \
+            "out/${SOLUTION_NAME}_unmanaged.zip" \
+            --title "Solución Smelter v${{ inputs.version }}" \
+            --notes "Export de \`$SOLUTION_NAME\` v${{ inputs.version }} desde Dev (managed + unmanaged). Detalle en CHANGELOG.md."
+
+  # Nivel 1 por workflow_call: los releases creados con GITHUB_TOKEN NO disparan el evento
+  # 'release published' (anti-recursión de GitHub), así que lo llamamos explícitamente.
+  sync:
+    needs: export-and-release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/solution-sync.yml
+    with:
+      tag: sol-v${{ inputs.version }}

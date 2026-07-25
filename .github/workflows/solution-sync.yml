@@ -1,0 +1,82 @@
+# ALM de la solución — NIVEL 1: versionar la metadata NO-código en solutions/unpacked/.
+# Se dispara: (a) por workflow_call desde solution-release, (b) al publicar un Release a mano,
+# (c) manualmente con el tag. Descarga el zip unmanaged del Release, lo desempaqueta con pac,
+# poda los binarios (el código vive en src/) y commitea el diff.
+name: solution-sync
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag del release (ej. sol-v1.0.0.1)"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: solution-sync
+  cancel-in-progress: false
+
+jobs:
+  unpack-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Resolver el tag (input o evento de release)
+        id: tag
+        env:
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          TAG="${INPUT_TAG:-$EVENT_TAG}"
+          if [ -z "$TAG" ]; then echo "No hay tag." >&2; exit 1; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Setup .NET 8 (runtime del pac CLI)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Instalar Power Platform CLI (pac)
+        run: |
+          dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Descargar el zip unmanaged del Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/sol
+          gh release download "${{ steps.tag.outputs.tag }}" --pattern "*_unmanaged.zip" --dir /tmp/sol
+
+      - name: Unpack de la solución (metadata diffeable)
+        run: |
+          rm -rf solutions/unpacked
+          pac solution unpack --zipfile /tmp/sol/*_unmanaged.zip --folder solutions/unpacked \
+            --packagetype Unmanaged --allowDelete
+
+      - name: Prune — fuera binarios (dll/nupkg), el código ya vive en src/
+        run: find solutions/unpacked -type f \( -name '*.dll' -o -name '*.nupkg' \) -print -delete
+
+      - name: Commit del diff de metadata (si lo hay)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add solutions/unpacked
+          if git diff --cached --quiet; then
+            echo "Sin cambios de metadata."
+          else
+            git commit -m "chore(solution): sync metadata (${{ steps.tag.outputs.tag }})"
+            git push
+          fi
