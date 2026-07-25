@@ -53,9 +53,11 @@
 - [x] `Smelter.Core.Tests` (net8): **49 tests corren en Linux en <1 s** (local y CI/ubuntu). `Smelter.Plugins.Tests` (70 tests net462) queda en windows-latest. CI verde: 119/119.
 - [x] ⚠️ Corrección al plan: **`TypeCoercer` NO se movió** — no es puro (devuelve `Money`/`OptionSetValue` del SDK). Queda en Plugins.
 
-### Fase 5 — Contratos doc↔test (el toque fino de Sigil)
-- [ ] `docs/02-solution-reference/` ya documenta OptionSets (status, categorías de error, data types). Agregar **tests de contrato** que corroboren esos catálogos contra los enums del código (`ErrorCategory`, `ImportJobStatus`, `ImportLogStatus`, `ColumnDataType`) — si alguien cambia un valor, el test lo delata.
-- [ ] (Con Fase 2) los docs de tablas pueden validarse contra `solutions/unpacked/` (la metadata real).
+### Fase 5 — Tests de contrato ✅ (completada 2026-07-25, mejorada sobre el plan)
+- [x] `tests/Smelter.Contract.Tests` (net8, corre en Linux): corrobora los contratos contra la **metadata REAL** de `solutions/unpacked/` (mejor que contra docs, que pueden quedar stale):
+  - **Choices**: los 4 enums (`ImportJobStatus`, `ImportLogStatus`, `ErrorCategory`, `ColumnDataType`) == optionsets de la solución (valor estricto; label normalizado).
+  - **Custom APIs**: la `ApiSpec` de Smelter.Deploy == metadata de las 4 APIs (params/props con nombre case-sensitive, tipo y opcionalidad).
+- [x] **16/16 verdes al primer run** — confirma que la config manual del portal coincidía exacta con el código. Sumados al job `core` del CI.
 
 ## Qué NO copiar de Sigil (por ahora)
 - **Playwright E2E**: Sigil tiene frontend Code App; la MDA de Smelter no lo justifica hoy.

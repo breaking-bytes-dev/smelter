@@ -43,6 +43,9 @@ jobs:
       - name: Tests del núcleo puro (net8)
         run: dotnet test tests/Smelter.Core.Tests -c Release
 
+      - name: Tests de contrato (código ↔ metadata de la solución)
+        run: dotnet test tests/Smelter.Contract.Tests -c Release
+
   # Orquestación con SDK (net462): ejecutan SOLO en Windows (runtime .NET Framework del runner).
   plugins:
     runs-on: windows-latest

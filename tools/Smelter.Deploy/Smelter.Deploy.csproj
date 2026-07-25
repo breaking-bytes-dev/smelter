@@ -16,4 +16,9 @@
     <PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.2.26" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Los tests de contrato corroboran la ApiSpec contra la metadata de solutions/unpacked/. -->
+    <InternalsVisibleTo Include="Smelter.Contract.Tests" />
+  </ItemGroup>
+
 </Project>
