@@ -26,7 +26,7 @@
 ### Fase 0 — Git y GitHub ✅ (completada 2026-07-24)
 - [x] Higiene: `Smelter_*.csv` → `tests/data/`; `tmp/`, `scratch/`, `.atl/` al `.gitignore`.
 - [x] **Primer commit** (`cfcabc9`) de todo el repo (código + docs + openspec).
-- [x] Repo creado: `bitbreaker01/smelter` (**privado** — el README dice Proprietary; pasarlo a público es 1 click si se decide) + push a `main`.
+- [x] Repo creado privado y luego **transferido a la org: `breaking-bytes-dev/smelter`** (2026-07-24). Los org secrets (`DATAVERSE_URL`, `PP_*`) quedaron habilitados para este repo.
 - [x] README raíz al estilo Sigil (reescrito a la realidad v2: CSV-only, chunked, 4 Custom APIs, MDA) + CHANGELOG actualizado (Keep a Changelog, estado real).
 
 ### Fase 1 — CI ✅ (completada 2026-07-24)
@@ -38,7 +38,7 @@
 - [ ] Carpeta `solutions/` con su README (qué es managed vs unmanaged, dónde viven los zips → Releases).
 - [ ] Workflow `solution-sync.yml`: al publicar un Release → `pac solution unpack` + prune + commit de la metadata **no-código** en `solutions/unpacked/` (tablas, forms, vistas, roles, Custom APIs — diffeable).
 - [ ] Workflow `solution-release.yml` (manual, un botón): Service Principal exporta managed+unmanaged de Dev con `pac`, crea el GitHub Release con los zips, tag `sol-vX.Y.Z.B`, y dispara `solution-sync`.
-- [ ] Secrets del environment `dev`: `SMELTER_DATAVERSE_URL`, `SMELTER_CLIENT_ID`, `SMELTER_CLIENT_SECRET`, `SMELTER_TENANT_ID` (reusar el application user de smelter-security).
+- [x] Secrets: se usan los **organization secrets** de `breaking-bytes-dev` (compartidos entre repos, visibilidad `selected` — smelter ya agregado y verificado): `DATAVERSE_URL`, `PP_CLIENT_ID`, `PP_TENANT_ID`, `PP_CLIENT_SECRET`.
 - [ ] CHANGELOG real: formato Keep a Changelog, secciones Added/Changed/Fixed, versiones linkeadas a los Releases. Primer release: el estado actual (motor v2 + export/import + security).
 
 ### Fase 3 — Deploy por SDK (adiós PRT manual)
