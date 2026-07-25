@@ -59,9 +59,16 @@
   - **Custom APIs**: la `ApiSpec` de Smelter.Deploy == metadata de las 4 APIs (params/props con nombre case-sensitive, tipo y opcionalidad).
 - [x] **16/16 verdes al primer run** — confirma que la config manual del portal coincidía exacta con el código. Sumados al job `core` del CI.
 
+### Bonus — Smoke test E2E contra Dev ✅ (2026-07-25)
+- [x] `tools/Smelter.Verify` + workflow `backend-verify` (un botón): importa un template vía la Custom API
+  `ImportTemplate` (JSON construido con el serializer del Core — dogfooding), crea un Import Job, sube un
+  CSV de 5 filas contra `contact`, corre Prepare+ProcessChunk, verifica `Completed` 5/5, **re-corre y
+  demuestra idempotencia** (sin duplicados), y limpia. Primer run verde: valida el runtime 1.0.1 desplegado.
+  Es la versión mínima de la "conformance suite contra Dev" de Sigil.
+
 ## Qué NO copiar de Sigil (por ahora)
 - **Playwright E2E**: Sigil tiene frontend Code App; la MDA de Smelter no lo justifica hoy.
-- **Suite de conformance contra Dev**: valiosa, pero primero Fases 0–2. Candidata a roadmap posterior.
+- ~~Suite de conformance contra Dev~~ → cubierta en versión mínima por `Smelter.Verify` (ampliable).
 
 ## Dependencias
 - Fase 2 y 3 requieren el **Service Principal / application user** (ya previsto en smelter-security).
