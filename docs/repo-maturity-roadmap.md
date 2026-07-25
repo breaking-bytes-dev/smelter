@@ -41,9 +41,11 @@
 - [x] Secrets: ⚠️ lección — **org secrets NO llegan a repos privados en plan Free** (doc oficial; el endpoint de config los lista pero el runner no los inyecta → llegan vacíos). Decisión: **secrets a nivel repo** (mismos nombres `DATAVERSE_URL`/`PP_*`, cargados con `gh secret set` por repo).
 - [x] **Primer release publicado: [`sol-v1.0.0.0`](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.0.0.0)** (managed + unmanaged, ~317 KB c/u) + CHANGELOG linkeado.
 
-### Fase 3 — Deploy por SDK (adiós PRT manual)
-- [ ] `tools/Smelter.Deploy/`: consola C# con `ServiceClient` que (1) sube/actualiza el plugin package, (2) crea/actualiza las 4 Custom APIs con sus request/response properties EXACTOS. Idempotente.
-- [ ] Elimina de raíz los dolores conocidos: DLL viejo, versión que rompe plugin types, parámetros case-sensitive mal tipeados en el portal.
+### Fase 3 — Deploy por SDK ✅ (completada 2026-07-25 — adiós PRT)
+- [x] `tools/Smelter.Deploy/` (net8, patrón Sigil.Deploy): upsert del pluginpackage `sanic_Smelter.Plugins` + espera de plugintypes + upsert declarativo de las 4 Custom APIs (spec corroborada contra `solutions/unpacked/`) + `PublishAllXml`. Auth SP (env) o interactiva.
+- [x] Workflow `backend-deploy` (un botón, runner limpio → nunca nupkg stale). **Primer run verde contra Dev**: package actualizado a 1.0.1, 4 APIs matcheadas y actualizadas, sin duplicar nada.
+- [x] Hallazgos de la metadata versionada: typo conocido **`anic_capi_smelter_processchunk`** (sin "s") — documentado en la spec, NO se "corrige" (el flow lo llama así); y el nupkg local arrastraba `ExcelDataReader.dll` stale (bin incremental) — motivo extra para deployar desde CI.
+- [x] Lección de versiones: por SDK, **bumpear `<Version>` del csproj SÍ es lo correcto** (recarga el assembly sin romper plugin types) — a diferencia del flujo de import de PRT.
 
 ### Fase 4 — Núcleo puro (tests en Linux) ✅ (completada 2026-07-24)
 - [x] `src/Smelter.Core/` (**netstandard2.0** — consumible por net462 y testeable en net8; más simple que multi-target). Movidos: CsvParser+ICsvReader, TransformEngine, DependencyResolver, TemplateSerializer y todos los modelos puros. Namespaces `Smelter.Plugins.*` conservados (split de assembly sin churn).
