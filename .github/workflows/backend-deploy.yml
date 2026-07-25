@@ -1,0 +1,41 @@
+# Despliegue del backend a Dev — un botón, por SDK (tools/Smelter.Deploy, sin PRT).
+# Runner limpio = build fresco = nunca DLLs stale en el nupkg (lección de Sigil, verificada acá).
+# Secrets (repo): DATAVERSE_URL, PP_CLIENT_ID, PP_CLIENT_SECRET.
+name: backend-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_only:
+        description: "Solo subir el package (sin tocar las Custom APIs)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-deploy
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: "10.0.x" # alineado con global.json
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build del plugin package (Release, runner limpio)
+        run: dotnet build src/Smelter.Plugins -c Release
+
+      - name: Desplegar (package + Custom APIs)
+        env:
+          DATAVERSE_URL: ${{ secrets.DATAVERSE_URL }}
+          PP_CLIENT_ID: ${{ secrets.PP_CLIENT_ID }}
+          PP_CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+        run: dotnet run --project tools/Smelter.Deploy -c Release -- ${{ inputs.package_only && '--package-only' || '' }}
