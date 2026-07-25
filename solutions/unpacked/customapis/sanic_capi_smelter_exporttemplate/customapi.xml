@@ -1,0 +1,18 @@
+<customapi uniquename="sanic_capi_smelter_exporttemplate">
+  <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
+  <bindingtype>0</bindingtype>
+  <description default="Export Smelter Template">
+    <label description="Export Smelter Template" languagecode="1033" />
+  </description>
+  <displayname default="Export Smelter Template">
+    <label description="Export Smelter Template" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isfunction>0</isfunction>
+  <isprivate>0</isprivate>
+  <name>sanic_capi_smelter_exporttemplate</name>
+  <plugintypeid>
+    <plugintypeexportkey>5E5FF0083EFA2E5A14054350D58AB37327C1C4F72307BA8A7D9B108196049847</plugintypeexportkey>
+  </plugintypeid>
+  <workflowsdkstepenabled>0</workflowsdkstepenabled>
+</customapi>

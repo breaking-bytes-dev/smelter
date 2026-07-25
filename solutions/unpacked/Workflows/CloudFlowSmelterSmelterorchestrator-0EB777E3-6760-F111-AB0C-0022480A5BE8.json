@@ -1,0 +1,190 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps_1": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "sanic_conn_wfe_dataverse"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      },
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "wf_sharedcommondataserviceforapps_3bc81"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_row_is_added,_modified_or_deleted": {
+          "metadata": {
+            "operationMetadataId": "b169c6d4-ad94-47cc-bd91-e7db575e250d"
+          },
+          "type": "OpenApiConnectionWebhook",
+          "inputs": {
+            "parameters": {
+              "subscriptionRequest/message": 4,
+              "subscriptionRequest/entityname": "sanic_tbl_smlt_importjob",
+              "subscriptionRequest/scope": 4,
+              "subscriptionRequest/filterexpression": "sanic_smlt_ij_status eq 0"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "operationId": "SubscribeWebhookTrigger",
+              "connectionName": "shared_commondataserviceforapps_1"
+            }
+          }
+        }
+      },
+      "actions": {
+        "Perform_an_unbound_action_2": {
+          "runAfter": {
+            "Initialize_variable": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "7a021204-61d5-4726-8149-522468d7c5c5"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "actionName": "sanic_capi_smelter_prepareimport",
+              "item/JobId": "@triggerOutputs()?['body/sanic_tbl_smlt_importjobid']"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "operationId": "PerformUnboundAction",
+              "connectionName": "shared_commondataserviceforapps"
+            }
+          }
+        },
+        "Scope": {
+          "actions": {
+            "Do_until": {
+              "actions": {
+                "Perform_an_unbound_action": {
+                  "limit": {
+                    "timeout": "PT24H"
+                  },
+                  "metadata": {
+                    "operationMetadataId": "c632f614-4e90-495d-a22c-5dbe66ee4052"
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "actionName": "anic_capi_smelter_processchunk",
+                      "item/JobId": "@triggerOutputs()?['body/sanic_tbl_smlt_importjobid']"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                      "operationId": "PerformUnboundAction",
+                      "connectionName": "shared_commondataserviceforapps"
+                    },
+                    "retryPolicy": {
+                      "type": "exponential",
+                      "count": 4,
+                      "interval": "PT5M"
+                    }
+                  }
+                },
+                "Set_variable": {
+                  "runAfter": {
+                    "Perform_an_unbound_action": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "b2354097-7855-42a9-ac33-33828582c7ef"
+                  },
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "varHasMore",
+                    "value": "@outputs('Perform_an_unbound_action')?['body/HasMore']"
+                  }
+                }
+              },
+              "expression": "@equals(variables('varHasMore'), false)",
+              "limit": {
+                "count": 5000,
+                "timeout": "PT24H"
+              },
+              "metadata": {
+                "operationMetadataId": "f5ebf3d1-0abe-49ce-99de-88e1177723c1"
+              },
+              "type": "Until"
+            }
+          },
+          "runAfter": {
+            "Perform_an_unbound_action_2": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "8dd4672b-6196-462e-9932-553d87bd75b8"
+          },
+          "type": "Scope"
+        },
+        "Initialize_variable": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "9c3e925f-0408-45fd-a8d2-018649fc9eba"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varHasMore",
+                "type": "boolean",
+                "value": "@true"
+              }
+            ]
+          }
+        },
+        "Update_a_row": {
+          "runAfter": {
+            "Scope": [
+              "Failed"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "4cc9c9fc-750e-4429-a8dd-4aae8666153c"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "entityName": "sanic_tbl_smlt_importjobs",
+              "recordId": "@triggerOutputs()?['body/sanic_tbl_smlt_importjobid']",
+              "item/sanic_smlt_ij_status": 4
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "operationId": "UpdateOnlyRecord",
+              "connectionName": "shared_commondataserviceforapps"
+            }
+          }
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

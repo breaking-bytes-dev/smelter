@@ -1,0 +1,11 @@
+<customapiresponseproperty uniquename="TotalRows">
+  <description default="TotalRows">
+    <label description="TotalRows" languagecode="1033" />
+  </description>
+  <displayname default="TotalRows">
+    <label description="TotalRows" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <name>TotalRows</name>
+  <type>7</type>
+</customapiresponseproperty>

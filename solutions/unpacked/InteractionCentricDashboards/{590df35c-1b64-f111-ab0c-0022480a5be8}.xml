@@ -1,0 +1,145 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<InteractionCentricDashboard xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <LocalizedNames>
+    <LocalizedName description="Smelter Dashboard" languagecode="1033" />
+  </LocalizedNames>
+  <FormId>{590df35c-1b64-f111-ab0c-0022480a5be8}</FormId>
+  <IsCustomizable>1</IsCustomizable>
+  <IsDefault>0</IsDefault>
+  <FormXml>
+    <forms type="interactioncentricdashboard">
+      <form>
+        <tabs filterby="sanic_smlt_ij_endtime" timeframe="2" primaryentitylogicalname="sanic_tbl_smlt_importjob" entityview="{27B8D129-9055-4CA5-A051-961FF5D054CA}" dashboardCategory="1_1" tilespresent="false">
+          <tab showlabel="true" verticallayout="true" collapsible="true" id="{6addee43-02b9-45a5-b598-c8e6b30ca5b0}">
+            <labels>
+              <label description="Visual Filters" languagecode="1033" />
+            </labels>
+            <columns>
+              <column width="100%">
+                <sections>
+                  <section name="VisualFilters" showlabel="false" showbar="false" columns="11" id="{b7aa24f8-8dfe-4756-918d-e0acc65e77df}">
+                    <labels>
+                      <label description="Section" languagecode="1033" />
+                    </labels>
+                    <rows>
+                      <row>
+                        <cell colspan="1" rowspan="12" showlabel="false" ischartcell="true" id="{5efb29c1-39ec-41e3-b4e3-a41673a36dbd}" auto="false">
+                          <labels>
+                            <label description="TBL | SMLT | Import Job" languagecode="1033" />
+                          </labels>
+                          <control id="Component93bf33c" uniqueid="{d8454bbe-038b-6c47-144e-c9069bd8dc1e}" classid="{E7A81278-8635-4d9e-8D4D-59480B391C5B}" indicationOfSubgrid="true">
+                            <parameters>
+                              <TargetEntityType>sanic_tbl_smlt_importjob</TargetEntityType>
+                              <ChartGridMode>Chart</ChartGridMode>
+                              <EnableQuickFind>false</EnableQuickFind>
+                              <EnableViewPicker>false</EnableViewPicker>
+                              <EnableJumpBar>false</EnableJumpBar>
+                              <RecordsPerPage>10</RecordsPerPage>
+                              <HeaderColorCode />
+                              <ViewId>{27B8D129-9055-4CA5-A051-961FF5D054CA}</ViewId>
+                              <IsUserView>false</IsUserView>
+                              <ViewIds />
+                              <AutoExpand>Fixed</AutoExpand>
+                              <VisualizationId>{DC8CC371-1A64-F111-AB0C-0022480A5BE8}</VisualizationId>
+                              <IsUserChart>false</IsUserChart>
+                              <EnableChartPicker>false</EnableChartPicker>
+                              <RelationshipName />
+                            </parameters>
+                          </control>
+                        </cell>
+                        <cell colspan="1" rowspan="12" showlabel="false" ischartcell="true" id="{2d24bd46-d3b0-4601-a1c9-5bced992075f}" auto="false">
+                          <labels>
+                            <label description="TBL | SMLT | Import Job" languagecode="1033" />
+                          </labels>
+                          <control id="Componentf7a1444" uniqueid="{53b485be-b4d1-8466-23cd-726b08dce7ed}" classid="{E7A81278-8635-4d9e-8D4D-59480B391C5B}" indicationOfSubgrid="true">
+                            <parameters>
+                              <TargetEntityType>sanic_tbl_smlt_importjob</TargetEntityType>
+                              <ChartGridMode>Chart</ChartGridMode>
+                              <EnableQuickFind>false</EnableQuickFind>
+                              <EnableViewPicker>false</EnableViewPicker>
+                              <EnableJumpBar>false</EnableJumpBar>
+                              <RecordsPerPage>10</RecordsPerPage>
+                              <HeaderColorCode />
+                              <ViewId>{27B8D129-9055-4CA5-A051-961FF5D054CA}</ViewId>
+                              <IsUserView>false</IsUserView>
+                              <ViewIds />
+                              <AutoExpand>Fixed</AutoExpand>
+                              <VisualizationId>{0C1107F3-1A64-F111-AB0C-0022480A5BE8}</VisualizationId>
+                              <IsUserChart>false</IsUserChart>
+                              <EnableChartPicker>false</EnableChartPicker>
+                              <RelationshipName />
+                            </parameters>
+                          </control>
+                        </cell>
+                      </row>
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                    </rows>
+                  </section>
+                </sections>
+              </column>
+            </columns>
+          </tab>
+          <tab name="StreamsContainer" showlabel="true" verticallayout="true" collapsible="false" id="{711721dc-fc32-4a44-8bd8-857dcc5c63d2}">
+            <labels>
+              <label description="Streams" languagecode="1033" />
+            </labels>
+            <columns>
+              <column width="100%">
+                <sections>
+                  <section name="Streams" showlabel="false" showbar="false" columns="11" id="{ec45e1b6-3f12-41b7-ba9f-9f4109bacdb6}">
+                    <labels>
+                      <label description="Section" languagecode="1033" />
+                    </labels>
+                    <rows>
+                      <row>
+                        <cell colspan="2" rowspan="12" showlabel="false" isstreamcell="true" id="{eec0618b-66ad-4cd7-8f57-4790aa964071}">
+                          <labels>
+                            <label description="" languagecode="1033" />
+                          </labels>
+                          <control id="Component{8b7c25e3-6e12-b4b1-8c24-e7e8c3185186}" classid="{EE9078C8-6946-4E2C-B8F8-35E65F4BE6A8}">
+                            <parameters>
+                              <StreamObjects>
+                                <ShowAsTiles>false</ShowAsTiles>
+                                <StreamObject id="{989ca8d4-58aa-44ad-9cba-481cb6d03ed0}" type="1">
+                                  <LogicalEntityName>sanic_tbl_smlt_importjob</LogicalEntityName>
+                                  <EntityViewId>{27B8D129-9055-4CA5-A051-961FF5D054CA}</EntityViewId>
+                                </StreamObject>
+                              </StreamObjects>
+                            </parameters>
+                          </control>
+                        </cell>
+                      </row>
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                    </rows>
+                  </section>
+                </sections>
+              </column>
+            </columns>
+          </tab>
+        </tabs>
+      </form>
+    </forms>
+  </FormXml>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsTabletEnabled>0</IsTabletEnabled>
+</InteractionCentricDashboard>

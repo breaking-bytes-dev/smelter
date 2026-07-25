@@ -1,0 +1,12 @@
+<customapirequestparameter uniquename="Json">
+  <description default="Json">
+    <label description="Json" languagecode="1033" />
+  </description>
+  <displayname default="Json">
+    <label description="Json" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isoptional>0</isoptional>
+  <name>Json</name>
+  <type>10</type>
+</customapirequestparameter>

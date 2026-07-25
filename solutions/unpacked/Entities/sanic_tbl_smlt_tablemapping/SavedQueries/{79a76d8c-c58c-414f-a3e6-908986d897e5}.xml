@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>0</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>0</isdefault>
+    <savedqueryid>{79a76d8c-c58c-414f-a3e6-908986d897e5}</savedqueryid>
+    <layoutxml>
+      <grid name="resultset" jump="sanic_smlt_tm_name" select="1" icon="1" preview="1">
+        <row name="result" id="sanic_tbl_smlt_tablemappingid">
+          <cell name="sanic_smlt_tm_name" width="300" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>0</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="sanic_tbl_smlt_tablemapping">
+          <attribute name="sanic_tbl_smlt_tablemappingid" />
+          <attribute name="sanic_smlt_tm_name" />
+          <attribute name="createdon" />
+          <order attribute="sanic_smlt_tm_name" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="1" />
+          </filter>
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Inactive TBL | SMLT | Table Mappings" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>

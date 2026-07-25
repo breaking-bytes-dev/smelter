@@ -1,0 +1,12 @@
+<customapirequestparameter uniquename="ChunkSize">
+  <description default="ChunkSize">
+    <label description="ChunkSize" languagecode="1033" />
+  </description>
+  <displayname default="ChunkSize">
+    <label description="ChunkSize" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isoptional>1</isoptional>
+  <name>ChunkSize</name>
+  <type>7</type>
+</customapirequestparameter>

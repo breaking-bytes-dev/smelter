@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WebResource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <WebResourceId>{3e2c1bc4-f26e-f111-ab0e-0022480a5be8}</WebResourceId>
+  <Name>sanic_smlt_exporttemplate.js</Name>
+  <DisplayName>WebResource | SMLT | Smelter Export Template</DisplayName>
+  <WebResourceType>3</WebResourceType>
+  <IntroducedVersion>1.0.0.1</IntroducedVersion>
+  <IsEnabledForMobileClient>0</IsEnabledForMobileClient>
+  <IsAvailableForMobileOffline>0</IsAvailableForMobileOffline>
+  <IsCustomizable>1</IsCustomizable>
+  <CanBeDeleted>1</CanBeDeleted>
+  <IsHidden>0</IsHidden>
+  <FileName>/WebResources/sanic_smlt_exporttemplatejs3E2C1BC4-F26E-F111-AB0E-0022480A5BE8</FileName>
+</WebResource>

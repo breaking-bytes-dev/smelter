@@ -1,0 +1,12 @@
+<customapirequestparameter uniquename="JobId">
+  <description default="JobId">
+    <label description="JobId" languagecode="1033" />
+  </description>
+  <displayname default="JobId">
+    <label description="JobId" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isoptional>0</isoptional>
+  <name>JobId</name>
+  <type>12</type>
+</customapirequestparameter>

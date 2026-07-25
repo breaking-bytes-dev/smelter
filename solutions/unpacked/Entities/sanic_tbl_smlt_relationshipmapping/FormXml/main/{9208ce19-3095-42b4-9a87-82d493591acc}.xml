@@ -1,0 +1,148 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<forms xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <systemform>
+    <formid>{9208ce19-3095-42b4-9a87-82d493591acc}</formid>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <FormPresentation>1</FormPresentation>
+    <FormActivationState>1</FormActivationState>
+    <form headerdensity="HighWithControls">
+      <tabs>
+        <tab verticallayout="true" id="{6c51a161-0b8a-474f-bfa2-0f9e3c63c595}" IsUserDefined="1">
+          <labels>
+            <label description="General" languagecode="1033" />
+          </labels>
+          <columns>
+            <column width="100%">
+              <sections>
+                <section showlabel="false" showbar="false" IsUserDefined="0" id="{2a13c8fc-e1ee-45e4-9e61-3c75b6600642}">
+                  <labels>
+                    <label description="General" languagecode="1033" />
+                  </labels>
+                  <rows>
+                    <row>
+                      <cell id="{290f6081-cb46-47ad-9273-ad074f4fb077}">
+                        <labels>
+                          <label description="[RM] Name" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_rm_name" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_rm_name" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{d7d35f32-3ec7-4008-a358-f6d0a90ae424}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[RM] Parent Table Mapping" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_rm_parenttablemappingid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_rm_parenttablemappingid" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{92420941-b420-4049-ab77-23c1c5cace36}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[RM[ Child Table Mapping" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_rm_childtablemappingid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_rm_childtablemappingid" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{43723ddb-81cc-485d-9257-235096602e97}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[RM] Relationship Type" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_rm_relationshiptype" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_rm_relationshiptype" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{7ce9bc01-eafa-479d-90cd-d664a268f17b}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[RM] Lookup column on child" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_rm_lookupcolumnonchild" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_rm_lookupcolumnonchild" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{f2a77f58-230f-4d55-9ff4-af16e0d239e2}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[RM] Parent Dedup Columns" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_rm_parentdedupcolumns" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_rm_parentdedupcolumns" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{568a037e-dd34-45d2-bdc7-6fd9a5324392}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[RM] Intersect Table" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_rm_intersecttable" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_rm_intersecttable" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{3f0666b1-cbf2-4820-b1cf-608bb1c4e6bf}">
+                        <labels>
+                          <label description="Owner" languagecode="1033" />
+                        </labels>
+                        <control id="ownerid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="ownerid" />
+                      </cell>
+                    </row>
+                  </rows>
+                </section>
+              </sections>
+            </column>
+          </columns>
+        </tab>
+      </tabs>
+      <header id="{27b2882c-c06a-4a76-92fc-d2f44d1ba9f1}" celllabelposition="Top" columns="111" labelwidth="115" celllabelalignment="Left">
+        <rows>
+          <row>
+            <cell id="{f29c4932-7647-4cb6-96ba-5006c5456c48}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+            <cell id="{6d2ffa20-6a8c-42df-a7d0-c0f4be152bc5}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+            <cell id="{195b1cb9-3c54-404b-a6a9-dba71ddbec34}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+          </row>
+        </rows>
+      </header>
+      <footer id="{243f6982-a000-406e-9e36-6fe9b5af3134}" celllabelposition="Top" columns="111" labelwidth="115" celllabelalignment="Left">
+        <rows>
+          <row>
+            <cell id="{ef7b0e62-c113-4cf3-9e42-b09c3308a127}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+            <cell id="{fbc9f263-c2cf-4d5c-a662-b0936500c6b7}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+            <cell id="{2a6e7d68-d176-423a-8998-5d9c1cba7004}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+          </row>
+        </rows>
+      </footer>
+      <DisplayConditions Order="0" FallbackForm="true">
+        <Everyone />
+      </DisplayConditions>
+    </form>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>1</CanBeDeleted>
+    <LocalizedNames>
+      <LocalizedName description="Information" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions>
+      <Description description="A form for this entity." languagecode="1033" />
+    </Descriptions>
+  </systemform>
+</forms>

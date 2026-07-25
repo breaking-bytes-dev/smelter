@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>0</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>1</isdefault>
+    <savedqueryid>{d84ffa28-70d6-4e28-b784-02fea7ad2de9}</savedqueryid>
+    <layoutxml>
+      <grid name="sanic_tbl_smlt_importtemplates" jump="sanic_smlt_it_name" select="1" icon="1" preview="0">
+        <row name="sanic_tbl_smlt_importtemplate" id="sanic_tbl_smlt_importtemplateid">
+          <cell name="sanic_smlt_it_name" width="300" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>64</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="sanic_tbl_smlt_importtemplate">
+          <attribute name="sanic_tbl_smlt_importtemplateid" />
+          <attribute name="sanic_smlt_it_name" />
+          <attribute name="createdon" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="0" />
+          </filter>
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="TBL | SMLT | Import Template Lookup View" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>

@@ -1,0 +1,18 @@
+<customapi uniquename="sanic_capi_smelter_prepareimport">
+  <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
+  <bindingtype>0</bindingtype>
+  <description default="CAPI | Smelter | Prepare Import">
+    <label description="CAPI | Smelter | Prepare Import" languagecode="1033" />
+  </description>
+  <displayname default="CAPI | Smelter | Prepare Import">
+    <label description="CAPI | Smelter | Prepare Import" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isfunction>0</isfunction>
+  <isprivate>0</isprivate>
+  <name>CAPI | Smelter | Prepare Import</name>
+  <plugintypeid>
+    <plugintypeexportkey>375AD11C821E92AF9C0026DFFF71BD53AD86423D9A67C6B34F22EB553FE9CFB9</plugintypeexportkey>
+  </plugintypeid>
+  <workflowsdkstepenabled>0</workflowsdkstepenabled>
+</customapi>

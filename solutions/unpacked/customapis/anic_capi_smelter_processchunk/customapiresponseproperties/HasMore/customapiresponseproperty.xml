@@ -1,0 +1,11 @@
+<customapiresponseproperty uniquename="HasMore">
+  <description default="HasMore">
+    <label description="HasMore" languagecode="1033" />
+  </description>
+  <displayname default="HasMore">
+    <label description="HasMore" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <name>HasMore</name>
+  <type>0</type>
+</customapiresponseproperty>

@@ -1,0 +1,18 @@
+<customapi uniquename="sanic_capi_smelter_importtemplate">
+  <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
+  <bindingtype>0</bindingtype>
+  <description default="Import Smelter Template">
+    <label description="Import Smelter Template" languagecode="1033" />
+  </description>
+  <displayname default="Import Smelter Template">
+    <label description="Import Smelter Template" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isfunction>0</isfunction>
+  <isprivate>0</isprivate>
+  <name>sanic_capi_smelter_importtemplate</name>
+  <plugintypeid>
+    <plugintypeexportkey>2F148CB66E9FB34D127B61A5819E01278CDCFEE9F920DED1D81FF37AB6C1B6C1</plugintypeexportkey>
+  </plugintypeid>
+  <workflowsdkstepenabled>0</workflowsdkstepenabled>
+</customapi>

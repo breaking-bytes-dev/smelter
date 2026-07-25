@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AppModule>
+  <UniqueName>sanic_MDASMLTImportConfigurationdandMoni</UniqueName>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <WebResourceId>953b9fac-1e5e-e611-80d6-00155ded156f</WebResourceId>
+  <OptimizedFor></OptimizedFor>
+  <statecode>0</statecode>
+  <statuscode>1</statuscode>
+  <FormFactor>1</FormFactor>
+  <ClientType>4</ClientType>
+  <NavigationType>0</NavigationType>
+  <AppModuleComponents>
+    <AppModuleComponent type="1" schemaName="sanic_tbl_smlt_columnmapping" />
+    <AppModuleComponent type="1" schemaName="sanic_tbl_smlt_importjob" />
+    <AppModuleComponent type="1" schemaName="sanic_tbl_smlt_importjoblog" />
+    <AppModuleComponent type="1" schemaName="sanic_tbl_smlt_importtemplate" />
+    <AppModuleComponent type="1" schemaName="sanic_tbl_smlt_relationshipmapping" />
+    <AppModuleComponent type="1" schemaName="sanic_tbl_smlt_tablemapping" />
+    <AppModuleComponent type="62" schemaName="sanic_MDASMLTImportConfigurationdandMoni" />
+  </AppModuleComponents>
+  <AppModuleRoleMaps>
+    <Role id="{627090ff-40a3-4053-8790-584edc5be201}" />
+    <Role id="{119f245c-3cc8-4b62-b31c-d1a046ced15d}" />
+  </AppModuleRoleMaps>
+  <LocalizedNames>
+    <LocalizedName description="MDA - SMLT - Import Configurationd and Monitoring" languagecode="1033" />
+  </LocalizedNames>
+  <appsettings>
+    <appsetting settingdefinitionid.uniquename="AppChannel">
+      <iscustomizable>1</iscustomizable>
+      <value>1</value>
+    </appsetting>
+  </appsettings>
+</AppModule>

@@ -1,0 +1,18 @@
+<customapi uniquename="anic_capi_smelter_processchunk">
+  <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
+  <bindingtype>0</bindingtype>
+  <description default="CAPI | Smelter | Process Chunk">
+    <label description="CAPI | Smelter | Process Chunk" languagecode="1033" />
+  </description>
+  <displayname default="CAPI | Smelter | Process Chunk">
+    <label description="CAPI | Smelter | Process Chunk" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <isfunction>0</isfunction>
+  <isprivate>0</isprivate>
+  <name>CAPI | Smelter | Process Chunk</name>
+  <plugintypeid>
+    <plugintypeexportkey>B5AB541CEC384D5943153FDF4E99C1E2E37483B254B85A2328AB3E2CF7FEF1A0</plugintypeexportkey>
+  </plugintypeid>
+  <workflowsdkstepenabled>0</workflowsdkstepenabled>
+</customapi>

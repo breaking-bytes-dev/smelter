@@ -1,0 +1,1 @@
+sanic_smlt_ij_progress: =RoundDown((sanic_smlt_ij_processedrows/sanic_smlt_ij_totalrows) * 100,0)

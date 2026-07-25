@@ -1,0 +1,11 @@
+<customapiresponseproperty uniquename="ProcessedSoFar">
+  <description default="ProcessedSoFar">
+    <label description="ProcessedSoFar" languagecode="1033" />
+  </description>
+  <displayname default="ProcessedSoFar">
+    <label description="ProcessedSoFar" languagecode="1033" />
+  </displayname>
+  <iscustomizable>1</iscustomizable>
+  <name>ProcessedSoFar</name>
+  <type>7</type>
+</customapiresponseproperty>
