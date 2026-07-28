@@ -1,70 +1,88 @@
-# Design: Smelter Security (config-only)
+# Design: Smelter Security + MDA UX (v2)
 
 ## Technical Approach
 
-Seguridad 100% sobre el modelo nativo de Dataverse, **sin código**. Dos **roles** + visibilidad de templates
-por team (sharing/ownership) + **cascade sharing** en la relación Template→Import Job para que los jobs hijos
-hereden el acceso del template padre. El motor de import no se toca (corre SYSTEM). Implementa
-`smelter-access-control`.
+Todo cambio de plataforma vía SDK desde `tools/Smelter.Deploy`, extendiendo el patrón existente
+(`Catalogo` declarativo + upsert idempotente + `SolutionUniqueName` en `CreateRequest` +
+`PublishAllXmlRequest` final — ver `Program.cs`/`ApiSpec.cs`). Se agrega `SecurityProvisioner`,
+que corre roles/privilegios/cascade/app-rol/vistas/ribbon/sitemap tras el upsert de Custom APIs.
+Único cambio de código en el motor: `PrepareImportHandler` valida acceso del `InitiatingUserId`
+sobre el Template (TDD). Implementa `smelter-access-control` + `smelter-mda-ux`.
 
 ## Architecture Decisions
 
 | Decisión | Elegido | Alternativa | Rationale |
-|----------|---------|-------------|-----------|
-| Visibilidad de jobs del team | **Cascade Share/Reparent** en Template→Import Job | Plugin que reasigna el job al team (Post-Op Create) | Verificado (MS Learn): los hijos creados DESPUÉS del share heredan el acceso del padre vía POA. Nativo, cero código. El plugin era sobre-ingeniería. |
-| Visibilidad de templates | Template compartido con / owned por el team + Read Basic | Sharing 1×1 por usuario | El team agrupa operadores; el cascade necesita que el team tenga acceso al template |
-| Mappings para el Operador | Read nivel **Organización** | Read Basic / sin acceso | Config no sensible; el operador necesita leerlos; la restricción real es Template + no-write |
-| Quién restringe configurar | Ausencia de create/write/delete en el rol Operador | Lógica custom | Nativo |
-| Gating Export/Import API | No exponer el botón al Operador (default) | Execute Privilege en la Custom API | Más simple |
+|---|---|---|---|
+| Matriz de privilegios | C# `record`/`static class` en `SecuritySpec.cs`, patrón `Catalogo` de `ApiSpec.cs` | JSON embebido | Idiom ya existe en el repo; JSON exige parser/validador nuevo sin beneficio para 2 roles × 6 tablas. |
+| Alta de roles/privilegios | `role` (Create + `SolutionUniqueName`, como `CrearEnSolucion`) + `AddPrivilegesRoleRequest` (privilegios resueltos por nombre `prv{Tipo}{tabla}` vía query a `privilege`) | Editar a mano en maker portal | Nativo SDK, idempotente, reproducible en CI limpio. |
+| Idempotencia de roles | Query por `name`; si existe, re-aplica `AddPrivilegesRoleRequest` igual | Diff antes de escribir | Ya es upsert por privilegio — comparar es complejidad sin ganancia. |
+| Cascade Template→Job | `UpdateRelationshipRequest` sobre `sanic_tbl_smlt_importjob_smlt_ij_importtemplateid_sanic_tbl_smlt_importtemplate` (confirmado en `Relationships/sanic_tbl_smlt_importtemplate.xml`): Share=Cascade, Reparent=Cascade | Plugin que reasigna el job | Nativo (POA), cero código; descartado en v1 por sobre-ingeniería. |
+| Vistas + Dashboard | CRUD directo (`Create`/`UpdateRequest` sobre `savedquery` y `sitemap.sitemapxml`) | Import de solución .zip | CRUD-ables por SDK, mismo idiom que `customapi`, sin paquete extra. |
+| Botones Ejecutar/Reintentar | RibbonDiff clásico + JS (coherente con Export/Import) | Modern commands (command bar JSON) | Migraría también los botones actuales (fuera de scope). Trade-off: RibbonDiffXml no es CRUD suelto — requiere solution.zip mínimo + `ImportSolutionRequest`, igual 100% SDK. |
+| `solutions/unpacked/` | Solo lectura (`solution-sync` la escribe DESDE Dev tras un Release) | Fuente para importar | Confirmado en `SolutionMetadata.cs`/`solutions/README.md`: espejo de contrato, no origen de import. |
+| Verificación Operador sin export/import | Assert estático: privilegios del rol Operador NO incluyen Write sobre Template (`RetrieveRolePrivilegesRoleRequest`) | Login E2E con 2º usuario | CI solo tiene 1 Service Principal; provisionar un 2º usuario es alcance nuevo. Cubre el mismo riesgo sin secretos extra. |
 
-## Data Flow
+## Data Flow (deploy)
 
 ```
-Configurador comparte Template T con Team A  (relación T→Job: Share/Reparent = Cascade All)
+Program.cs (existente 1-5: package + 4 Custom APIs + PublishAllXml)
         │
-Operador O1 (miembro de Team A) crea Import Job J bajo T
-        │  cascade/reparent inheritance (POA)
-        ▼
-J hereda el acceso de T → Team A tiene acceso a J
-        ▼
-Operador O2 (miembro de Team A) ve J y sus logs   ← sin plugin, nativo
+[6] SecurityProvisioner.Run(client)
+    ├─ UpsertRoles(SecuritySpec.Roles)         → role + AddPrivilegesRoleRequest (+SolutionUniqueName)
+    ├─ SetCascade(Template→Job)                → UpdateRelationshipRequest
+    ├─ SetExecutePrivileges(Catalogo.Apis)      → update customapi.executeprivilegename
+    ├─ AssociateAppModuleRole(MDA, Configurador)→ limpia los 2 GUIDs rotos de AppModuleRoleMaps
+    ├─ UpsertViews(SavedQuery specs)            → CreateRequest/UpdateRequest("savedquery")
+    ├─ UpsertRibbon(mini-solution zip)          → ImportSolutionRequest (Ejecutar/Reintentar)
+    └─ UpsertDashboardSubArea                   → update sitemap.sitemapxml
+        │
+[7] PublishAllXmlRequest (ya existe)
 ```
 
 ## File Changes
 
 | Archivo | Acción | Descripción |
-|---------|--------|-------------|
-| (ninguno) | — | **Cambio sin código.** Todo es configuración de portal/solución. |
-| Relación Template→Import Job | Config | Share = Cascade All; Reparent = Cascade All |
-| Roles de seguridad (solución) | New (config) | Smelter Configurador, Smelter Operador |
-| Teams + sharing + membresía | New (config) | 1 team por template (o grupo); template compartido con el team; operadores miembros |
+|---|---|---|
+| `tools/Smelter.Deploy/SecuritySpec.cs` | Create | Matriz rol×tabla×privilegio×depth + specs de vistas/ribbon/sitemap |
+| `tools/Smelter.Deploy/SecurityProvisioner.cs` | Create | Lógica idempotente descripta arriba |
+| `tools/Smelter.Deploy/ApiSpec.cs` | Modify | `ExecutePrivilegeName` en `CustomApiSpec`; entrada nueva `sanic_capi_smelter_processchunk` (mismo `PluginTypeName`), `anic_...` intacta hasta confirmar el flow |
+| `tools/Smelter.Deploy/Program.cs` | Modify | Llama `SecurityProvisioner.Run` tras [5] |
+| `src/Smelter.Plugins/PrepareImportPlugin.cs` | Modify | `Run` recibe `initiatingUserId`; `IAccessChecker` (RetrievePrincipalAccessRequest) por constructor |
+| `src/Smelter.Plugins/Services/PrincipalAccessChecker.cs` | Create | Impl real de `IAccessChecker` |
+| `tests/.../PrepareImportHandlerTests.cs` | Modify | Acceso OK pasa; sin `ReadAccess` sobre Template → excepción, sin `Update` |
+| `tools/Smelter.Verify/Program.cs` | Modify | Asserts de roles/cascade/executeprivilegename |
+| Cloud Flow (`workflow`, no en `unpacked/`) | Modify (SDK) | `UpdateRequest` sobre `clientdata`: `anic_...`→`sanic_...`; deactivate/update/activate |
 
-## Interfaces / Contracts
+## Interfaces
 
-No aplica — no hay código nuevo. La relación clave: el lookup `sanic_smlt_ij_importtemplateid` (Import Job →
-Import Template) es la que lleva el cascade sharing.
+```csharp
+public interface IAccessChecker {
+    bool HasReadAccess(Guid principalId, EntityReference target);
+}
+// Run(jobId, initiatingUserId): tras LoadContext, si !HasReadAccess(initiatingUserId, templateRef)
+//   → throw InvalidPluginExecutionException
+```
 
 ## Testing Strategy
 
 | Capa | Qué | Cómo |
-|------|-----|------|
-| Manual (E2E) | Operador no puede configurar | Login como Operador → intentar crear template → bloqueado |
-| Manual (E2E) | Visibilidad de templates por team | Operador ve solo templates de sus teams |
-| Manual (E2E) | **Cascade sharing de jobs** | O1 crea un job DESPUÉS del share → O2 (mismo team) lo ve |
-| Manual (E2E) | Configurador ve todo | Login como Configurador → ve todos |
-
-No hay unit tests (no hay código). La verificación es manual en el entorno.
+|---|---|---|
+| Unit (TDD, NSubstitute) | Sin acceso → excepción, sin `Update`; con acceso → flujo actual | Mock `IAccessChecker`, `Received(0)`/retorna true |
+| Contract | `executeprivilegename` de `SecuritySpec` con formato real (`prv{Tipo}{tabla}`) | Test de string, sin llamar Dataverse |
+| E2E (`Smelter.Verify`) | Roles con privilegios de `SecuritySpec`; Cascade Share/Reparent=Cascade; `executeprivilegename` seteado en las 5 Custom APIs; Operador sin Write en Template (proxy de "no exporta") | `RetrieveRolePrivilegesRoleRequest` / `RetrieveRelationshipRequest` / `RetrieveMultiple("customapi")` |
 
 ## Migration / Rollout
 
-Sin código, sin esquema, sin migración. Pasos: (1) configurar el cascade en la relación Template→Import Job;
-(2) crear los 2 roles; (3) crear teams, compartir templates con sus teams, agregar operadores como miembros;
-(4) asignar roles. Rollback: revertir el cascade a su default, quitar roles/teams/shares. Sin la config,
-todo funciona como hoy.
+1. Deploy N: package+APIs (incl. `sanic_capi_smelter_processchunk` nueva, `anic_...` intacta) →
+   `SecurityProvisioner` → update del Cloud Flow al nuevo uniquename → `Smelter.Verify` en verde.
+2. Confirmado el flow en verde: Deploy N+1 quita `anic_...` de `Catalogo` + `DeleteRequest`
+   explícito (cleanup). Sin ventana rota: el flow ya apunta al nuevo antes de borrar el viejo.
+3. Rollback: `git revert` + redeploy — roles/cascade/vistas/ribbon son idempotentes y se
+   reconcilian solos; el rename del Cloud Flow se revierte junto con el paso 1 si no se llegó al 2.
 
 ## Open Questions
 
-- [ ] Tipo de cascade exacto (Cascade All vs Cascade Active) — confirmar en el smoke test cuál da la visibilidad esperada sin sobre-compartir.
-- [ ] ¿Gatear las Custom APIs Export/Import por Execute Privilege o basta con no dar el botón al Operador? (default: no botón).
-- [ ] Privilegios exactos del Operador para subir el archivo (File/Note) y Append/AppendTo — confirmar al construir el rol.
-- [ ] Caveat POA: a volúmenes normales de Smelter es irrelevante; documentar si el volumen de jobs crece mucho.
+- [ ] `PrivilegeDepth` del Operador sobre `ImportJob` (Create/Read/Write): ¿User o BU? — definir en
+      `SecuritySpec` según si operadores comparten Business Unit.
+- [ ] Mini-solution.zip del RibbonDiff: ¿generarlo in-memory en `SecurityProvisioner` o versionarlo
+      como asset en `tools/Smelter.Deploy/Assets/`? Definir en `sdd-tasks`.

@@ -1,38 +1,60 @@
 schema: spec-driven
 
 context: |
-  Tech stack: C# .NET Framework 4.6.2 (net462) — Dataverse plugin assembly (sandbox).
-  Key deps: Microsoft.CrmSdk.CoreAssemblies 9.0.2.56, Microsoft.PowerApps.MSBuild.Plugin,
-            CsvHelper 30.0.1, ExcelDataReader 3.7.0.
-  Architecture: async IPlugin (ImportProcessorPlugin) + service layer (NormalizationEngine,
-                DedupService, DependencyResolver, TransformEngine, TypeCoercer, BatchProcessor,
-                ProgressReporter). Canvas App creates ImportJob → plugin processes.
-  Testing: xUnit 2.9 + NSubstitute (mock IOrganizationService) + FluentAssertions; ClosedXML for Excel fixtures.
-  Style: no linter/editorconfig; Nullable disabled; LangVersion latest.
+  Tech stack: C# solución multi-proyecto (Smelter.sln, SDK 10.0.202 vía global.json).
+  Smelter.Core (netstandard2.0, testeable en Linux/net8): parser CSV, transform DSL, DAG,
+  serialización de templates — sin deps del SDK de Dataverse. Smelter.Plugins (net462): 4 Custom
+  API plugins (PrepareImport, ProcessChunk, ExportTemplate, ImportTemplate) + services
+  (NormalizationEngine, UpsertWriter, TemplateExporter/Importer, FileDownloader, ImportContextLoader).
+  tools/Smelter.Deploy y tools/Smelter.Verify (net8): deploy por SDK + smoke E2E contra Dev.
+  Key deps: Microsoft.CrmSdk.CoreAssemblies 9.0.2.56, CsvHelper 30.0.1,
+  Microsoft.PowerPlatform.Dataverse.Client 1.2.26. Solución Dataverse unpacked en solutions/unpacked/;
+  Contract.Tests valida código↔metadata contra esa solución. Testing: xUnit 2.9 + NSubstitute
+  (mock IOrganizationService) + FluentAssertions — NO FakeXrmEasy. Style: sin linter/editorconfig;
+  Nullable disabled en net462, enabled en tools/tests net8; LangVersion latest.
 
 strict_tdd: true
 
 testing:
   strict_tdd: enabled
-  detected: 2026-06-02
+  detected: 2026-07-28
   test_runner:
-    command: dotnet test
+    command: "dotnet test <proyecto> -c Release"
     framework: xUnit 2.9.0
+    note: |
+      La suite está partida en 3 proyectos con runtimes distintos. NO correr
+      `dotnet test Smelter.sln` a ciegas en Linux — Plugins.Tests aborta. Correr por proyecto:
+        - dotnet test tests/Smelter.Core.Tests -c Release      → net8, corre en Linux/CI barato.
+        - dotnet test tests/Smelter.Contract.Tests -c Release  → net8, corre en Linux/CI barato.
+        - dotnet test tests/Smelter.Plugins.Tests -c Release   → net462, requiere Windows o Mono.
+          En Linux sin Mono: "Could not find 'mono' host" (Test Run Aborted). CI corre este job
+          en windows-latest (ver .github/workflows/ci.yml).
   layers:
-    unit: { available: true, tool: "xUnit + NSubstitute + FluentAssertions" }
+    unit: { available: true, tool: "xUnit + NSubstitute + FluentAssertions (Core.Tests + Plugins.Tests)" }
+    contract: { available: true, tool: "Smelter.Contract.Tests — código↔metadata de solutions/unpacked/" }
     integration: { available: false, tool: null }
-    e2e: { available: false, tool: null }
+    e2e: { available: true, tool: "tools/Smelter.Verify — smoke test SDK contra ambiente Dev real (import de 5 filas + idempotencia); no es un framework E2E tradicional (playwright/cypress)" }
   coverage:
     available: false
     command: null
   quality:
     linter: { available: false, command: null }
-    type_checker: { available: true, command: "dotnet build" }
+    type_checker: { available: true, command: "dotnet build Smelter.sln" }
     formatter: { available: true, command: "dotnet format" }
+  verified_this_session:
+    - "dotnet test tests/Smelter.Core.Tests -c Release      → Passed: 49/49"
+    - "dotnet test tests/Smelter.Contract.Tests -c Release  → Passed: 16/16"
+    - "dotnet test tests/Smelter.Plugins.Tests -c Release   → Test Run Aborted (sin Mono, entorno Linux actual)"
   notes: |
-    Existing tests cover small services only (CsvParser, ExcelParser, TypeCoercer,
-    DependencyResolver, TransformEngine, DedupService). No tests for NormalizationEngine,
-    BatchProcessor, ProgressReporter, or the plugin itself — integration gaps.
+    Arquitectura actual (chunked orchestration, post chunked-import-redesign): 4 Custom API plugins
+    (PrepareImport, ProcessChunk, ExportTemplate, ImportTemplate) + services en Smelter.Plugins/Services.
+    Este config.yaml estaba desactualizado (versión previa del 2026-06-02 describía un diseño monolítico
+    con BatchProcessor/ProgressReporter y listaba ExcelDataReader como dep — ya removido, ver
+    docs/repo-maturity-roadmap.md línea 47 y tools/Smelter.Deploy/Program.cs). Corregido en esta
+    re-ejecución de sdd-init tras verificación directa del código.
+    Gotcha aparte (no corregido acá, fuera de scope): docs/03-developer-guide/build-and-deploy.md dice
+    "no incrementar de 1.0.0", pero Smelter.Plugins.csproj ya está en 1.0.1 (bump documentado en
+    CHANGELOG.md, deploy vía SDK recarga el assembly sin el problema de versión que describe esa doc).
 
 rules:
   proposal:
@@ -52,7 +74,7 @@ rules:
     - Follow existing code patterns and conventions
     - Load relevant coding skills for the project stack (dataverse-*, csharp-refactoring)
   verify:
-    - Run tests if test infrastructure exists (dotnet test)
+    - Run tests per project per the test_runner.note above (never blind `dotnet test Smelter.sln` on Linux)
     - Compare implementation against every spec scenario
   archive:
     - Warn before merging destructive deltas (large removals)

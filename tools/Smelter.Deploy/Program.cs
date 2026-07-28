@@ -89,6 +89,12 @@ Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del
 client.Execute(new PublishAllXmlRequest());
 Console.WriteLine("[5]   PublishAllXml OK.");
 
+// ── 6. Seguridad + UX (roles, cascade, ExecutePrivilegeName, MDA, vistas, ribbon, dashboard) ──
+SecurityProvisioner.Run(client);
+
+// ── 7. Cloud Flow: rename aditivo de processchunk (Fase 6) — anic_... → sanic_..., sin ventana rota ──
+CloudFlowUpdater.UpdateProcessChunkReference(client);
+
 Console.WriteLine();
 Console.WriteLine($"[OK] Despliegue completo. package={packageId}.");
 return 0;

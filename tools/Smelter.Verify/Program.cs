@@ -13,16 +13,20 @@ using Microsoft.Xrm.Sdk.Query;
 using Smelter.Deploy;
 using Smelter.Plugins.Models;
 using Smelter.Plugins.Services;
+using Smelter.Verify;
 
 const string JobTable = "sanic_tbl_smlt_importjob";
 const string SmokeDomain = "@smelter-smoke.test";
 const string SmokeJobName = "Smoke Test — Smelter.Verify";
 const string SmokeTemplateName = "Smelter Smoke Test";
 
+// Release N (Fase 6): dos entradas de Catalogo.Apis apuntan a ProcessChunkPlugin (anic_/sanic_) —
+// ApiName(...) por PluginTypeName ya no es unívoco para processchunk, así que se resuelve por
+// uniquename explícito, el NUEVO (el que el Cloud Flow debe estar usando tras el rename).
 string ApiName(string pluginType) => Catalogo.Apis.Single(a => a.PluginTypeName.EndsWith(pluginType)).UniqueName;
 string apiImportTemplate = ApiName("ImportTemplatePlugin");
 string apiPrepare = ApiName("PrepareImportPlugin");
-string apiProcessChunk = ApiName("ProcessChunkPlugin");
+string apiProcessChunk = Catalogo.Apis.Single(a => a.UniqueName == "sanic_capi_smelter_processchunk").UniqueName;
 
 bool interactive = args.Contains("--interactive") || args.Contains("--user");
 var url = Environment.GetEnvironmentVariable("DATAVERSE_URL")
@@ -45,6 +49,10 @@ Console.WriteLine($"[1] Conectado. Org: {client.ConnectedOrgFriendlyName}");
 
 try
 {
+    // ── [SEC] Seguridad + UX provisionadas (Fases 3/4/6) — corre antes del smoke funcional: si
+    // la config de seguridad regresionó, no tiene sentido seguir con el import de prueba. ──────
+    SecurityAssertions.RunAll(client);
+
     // ── 2. Pre-cleanup (por si una corrida anterior murió a medias) ────────
     Cleanup(client);
 

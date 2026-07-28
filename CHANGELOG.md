@@ -6,6 +6,36 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+### Added
+- **Modelo de seguridad provisionado por SDK** (`smelter-security`, `tools/Smelter.Deploy/SecurityProvisioner.cs`):
+  roles `Smelter Configurador` (CRUD Org en las 6 tablas `sanic_tbl_smlt_*`) y `Smelter Operador`
+  (Template Read+AppendTo Basic, mappings Read Org, Import Job Create Org + Read/Write Basic, Log Read
+  Basic) — reemplaza el modelo config-only manual de la primera versión. Idempotente: re-correr el
+  deploy no duplica roles ni privilegios.
+- **`ExecutePrivilegeName` en las Custom APIs**: `export`/`importtemplate` gateadas por Write sobre
+  Template (solo Configurador); `prepareimport`/`processchunk` por Create sobre Import Job (Operador
+  también puede).
+- **Validación de acceso en runtime** (`PrepareImportPlugin`/`PrepareImportHandler`): valida que
+  `InitiatingUserId` tenga Read sobre el Template del job antes de prepararlo
+  (`IAccessChecker`/`PrincipalAccessChecker`, `RetrievePrincipalAccessRequest`) — defensa en profundidad
+  además de la matriz de privilegios. Sin acceso, `InvalidPluginExecutionException`, el import no arranca.
+- **Cascade sharing Template→Import Job** (Share=Cascade, Reparent=Cascade) provisionado por SDK
+  (`UpdateRelationshipRequest`) — los jobs nuevos heredan el acceso del team del template.
+- **MDA restringida al Configurador** vía `AppModuleRoles` — el Operador no ve la app en su selector.
+- **UX de Import Job** (`smelter-mda-ux`): 3 vistas públicas (Jobs Activos, Completados con Errores,
+  Todos los Jobs), botones de command bar **Ejecutar**/**Reintentar** (RibbonDiffXml + JS, invocan
+  `prepareimport`/`processchunk`), y dashboard **"Smelter Dashboard"** con entrada en el sitemap.
+- **`Smelter.Verify`**: `SecurityAssertions` — confirma roles/privilegios, cascade, `executeprivilegename`,
+  restricción de la MDA y alineación del Cloud Flow, antes del smoke test funcional.
+
+### Changed
+- **Rename aditivo de la Custom API `processchunk`**: corrige el typo histórico
+  `anic_capi_smelter_processchunk` → `sanic_capi_smelter_processchunk`. Release N agrega la entrada
+  nueva y actualiza el Cloud Flow al nombre correcto en el mismo deploy (`CloudFlowUpdater`) SIN borrar
+  la entrada vieja — ambas coexisten y apuntan al mismo `ProcessChunkPlugin` durante la transición
+  (`ProcessChunkRenameContractTests`). La entrada legacy se remueve en Release N+1, gateada a que
+  `Smelter.Verify` confirme el flow migrado en verde.
+
 ## [[1.0.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.0.0.0)] — 2026-07-25
 
 🎉 **Primer release de la solución** (`smlt_core_smelter`, managed + unmanaged, exportada de Dev por

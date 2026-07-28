@@ -43,9 +43,10 @@ namespace Smelter.Plugins
                     new FileDownloader(service),
                     new CsvParserService(),
                     service,
+                    new PrincipalAccessChecker(service),
                     tracing);
 
-                var total = handler.Run(jobId);
+                var total = handler.Run(jobId, context.InitiatingUserId);
                 tracing.Trace($"PrepareImport: COMPLETED. TotalRows = {total}");
                 context.OutputParameters["TotalRows"] = total;
             }
@@ -74,6 +75,7 @@ namespace Smelter.Plugins
         private readonly IFileDownloader _downloader;
         private readonly ICsvReader _csv;
         private readonly IOrganizationService _service;
+        private readonly IAccessChecker _accessChecker;
         private readonly ITracingService _tracing;
 
         /// <summary>
@@ -83,14 +85,21 @@ namespace Smelter.Plugins
         /// <param name="downloader">Downloads the source file from a Dataverse file column.</param>
         /// <param name="csv">Reads and counts rows from the CSV bytes without staging.</param>
         /// <param name="service">Organization service used to reset the job record (SYSTEM context).</param>
+        /// <param name="accessChecker">
+        /// Validates that the Custom API caller has Read access to the Import Template referenced by
+        /// the job (smelter-access-control, Requirement "Validación de acceso al template en
+        /// PrepareImportPlugin"). The engine itself keeps running as SYSTEM — only this check is
+        /// scoped to the initiating user.
+        /// </param>
         /// <param name="tracing">Optional tracing service; pass <c>null</c> in unit tests.</param>
         public PrepareImportHandler(IImportContextLoader loader, IFileDownloader downloader,
-            ICsvReader csv, IOrganizationService service, ITracingService tracing = null)
+            ICsvReader csv, IOrganizationService service, IAccessChecker accessChecker, ITracingService tracing = null)
         {
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
             _csv = csv ?? throw new ArgumentNullException(nameof(csv));
             _service = service ?? throw new ArgumentNullException(nameof(service));
+            _accessChecker = accessChecker ?? throw new ArgumentNullException(nameof(accessChecker));
             _tracing = tracing;
         }
 
@@ -100,11 +109,16 @@ namespace Smelter.Plugins
         /// <see cref="ImportJobStatus.Processing"/> with all counters at zero.
         /// </summary>
         /// <param name="importJobId">GUID of the <c>sanic_tbl_smlt_importjob</c> record.</param>
+        /// <param name="initiatingUserId">
+        /// <c>InitiatingUserId</c> of the Custom API call — the real caller, even though the engine
+        /// runs as SYSTEM. Must have Read access to the job's Import Template.
+        /// </param>
         /// <returns>Total number of data rows in the source file (header row excluded).</returns>
         /// <exception cref="InvalidPluginExecutionException">
-        /// Thrown when one or more source columns referenced by the template are absent from the CSV header.
+        /// Thrown when <paramref name="initiatingUserId"/> lacks Read access to the Import Template, or
+        /// when one or more source columns referenced by the template are absent from the CSV header.
         /// </exception>
-        public int Run(Guid importJobId)
+        public int Run(Guid importJobId, Guid initiatingUserId)
         {
             _tracing?.Trace($"Run: loading context for job {importJobId}...");
             var context = _loader.LoadContext(importJobId);
@@ -112,6 +126,9 @@ namespace Smelter.Plugins
             _tracing?.Trace($"Run: context loaded. TemplateId={template?.Id}, " +
                 $"hasHeader={template?.HasHeaderRow}, delimiter='{template?.Delimiter}', " +
                 $"tableMappings={context.TableMappings.Count}");
+
+            ValidateTemplateAccess(initiatingUserId, template);
+            _tracing?.Trace("Run: template access validated OK.");
 
             var bytes = _downloader.Download(new EntityReference(ImportJobTable, importJobId), SourceFileAttribute);
             _tracing?.Trace($"Run: downloaded file, {bytes?.Length ?? 0} bytes.");
@@ -124,6 +141,22 @@ namespace Smelter.Plugins
 
             ResetJob(importJobId, totalRows);
             return totalRows;
+        }
+
+        /// <summary>
+        /// Validates that <paramref name="initiatingUserId"/> has Read access to the Import Template
+        /// before any file is downloaded or the job is reset. Prevents an Operador from preparing an
+        /// import against a template that was never shared with their team (smelter-access-control).
+        /// </summary>
+        private void ValidateTemplateAccess(Guid initiatingUserId, ImportTemplateConfig template)
+        {
+            var templateRef = new EntityReference(ImportContextLoader.ImportTemplateTable, template.Id);
+            if (_accessChecker.HasReadAccess(initiatingUserId, templateRef))
+                return;
+
+            throw new InvalidPluginExecutionException(
+                $"User {initiatingUserId} does not have Read access to the Import Template ({template.Id}) " +
+                "referenced by this Import Job. Prepare aborted.");
         }
 
         /// <summary>

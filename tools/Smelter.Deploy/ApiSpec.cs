@@ -26,7 +26,12 @@ internal sealed record CustomApiSpec(
     string Description,
     string PluginTypeName,
     RequestParam[] RequestParams,
-    ResponseProp[] ResponseProps);
+    ResponseProp[] ResponseProps,
+    // Gating de acceso (SecurityProvisioner.SetExecutePrivileges → customapi.executeprivilegename).
+    // Valores: SecuritySpec (smelter-access-control, Requirement "Gating de Custom APIs por
+    // ExecutePrivilegeName"). export/import-template reutilizan Write sobre Template (solo
+    // Configurador); prepareimport/processchunk reutilizan Create sobre ImportJob (Operador puede).
+    string ExecutePrivilegeName);
 
 internal static class Catalogo
 {
@@ -42,12 +47,16 @@ internal static class Catalogo
             Description: "Valida los headers del CSV, cuenta las filas y resetea el estado del Import Job.",
             PluginTypeName: "Smelter.Plugins.PrepareImportPlugin",
             RequestParams: [new("JobId", ParamType.Guid, Optional: false)],
-            ResponseProps: [new("TotalRows", ParamType.Integer)]),
+            ResponseProps: [new("TotalRows", ParamType.Integer)],
+            ExecutePrivilegeName: SecuritySpec.PrivilegeName(PrivilegeType.Create, SecuritySpec.Tables.ImportJob)),
 
         new(
-            // ⚠️ TYPO CONOCIDO (así vive en Dev y así lo llama el Cloud Flow): "anic_", sin la 's'.
-            // NO "corregir" acá: el upsert es por uniquename — cambiarlo crearía una API duplicada
-            // y rompería el flow. Si algún día se renombra, es un cambio coordinado (API + flow).
+            // ⚠️ TYPO CONOCIDO (así vive en Dev y así lo llamaba el Cloud Flow legacy): "anic_", sin
+            // la 's'. Release N (Fase 6, smelter-mda-ux): rename ADITIVO — se agrega la entrada
+            // correcta "sanic_capi_smelter_processchunk" de abajo SIN borrar esta, y el Cloud Flow se
+            // actualiza al nombre nuevo (CloudFlowUpdater) en el mismo deploy. Esta entrada legacy se
+            // remueve recién en Fase 9 (gateada: Smelter.Verify en verde primero) — ver
+            // ProcessChunkRenameContractTests.
             UniqueName: "anic_capi_smelter_processchunk",
             DisplayName: "CAPI | Smelter | Process Chunk",
             Description: "Procesa un lote del CSV (parse streaming + skip al offset, orden DAG, upsert por alternate key).",
@@ -61,7 +70,34 @@ internal static class Catalogo
             [
                 new("HasMore", ParamType.Boolean),
                 new("ProcessedSoFar", ParamType.Integer),
-            ]),
+            ],
+            ExecutePrivilegeName: SecuritySpec.PrivilegeName(PrivilegeType.Create, SecuritySpec.Tables.ImportJob)),
+
+        new(
+            // Nombre CORRECTO ("sanic_", con la 's') — la mitad nueva del rename aditivo de Release N
+            // (ver comentario en la entrada "anic_..." arriba). Mismo PluginTypeName/params/response/
+            // ExecutePrivilegeName a propósito: es el MISMO backing plugin, solo cambia el uniquename
+            // por el que se invoca. NO existe todavía en solutions/unpacked/customapis/ (esa carpeta
+            // es un espejo de metadata que solution-sync escribe DESDE Dev después de un release — se
+            // actualiza sola tras el primer backend-deploy que incluya esta entrada; hasta entonces,
+            // CustomApiContractTests.Api_ExistsInSolutionMetadata/RequestParams/ResponseProps quedan
+            // en rojo para este uniquename PUNTUALMENTE — estado esperado de la ventana de Release N,
+            // no un bug).
+            UniqueName: "sanic_capi_smelter_processchunk",
+            DisplayName: "CAPI | Smelter | Process Chunk",
+            Description: "Procesa un lote del CSV (parse streaming + skip al offset, orden DAG, upsert por alternate key).",
+            PluginTypeName: "Smelter.Plugins.ProcessChunkPlugin",
+            RequestParams:
+            [
+                new("JobId", ParamType.Guid, Optional: false),
+                new("ChunkSize", ParamType.Integer, Optional: true),
+            ],
+            ResponseProps:
+            [
+                new("HasMore", ParamType.Boolean),
+                new("ProcessedSoFar", ParamType.Integer),
+            ],
+            ExecutePrivilegeName: SecuritySpec.PrivilegeName(PrivilegeType.Create, SecuritySpec.Tables.ImportJob)),
 
         new(
             UniqueName: "sanic_capi_smelter_exporttemplate",
@@ -69,7 +105,8 @@ internal static class Catalogo
             Description: "Serializa un Import Template (árbol completo) a JSON portable con refs estables.",
             PluginTypeName: "Smelter.Plugins.ExportTemplatePlugin",
             RequestParams: [new("TemplateId", ParamType.Guid, Optional: false)],
-            ResponseProps: [new("Json", ParamType.String)]),
+            ResponseProps: [new("Json", ParamType.String)],
+            ExecutePrivilegeName: SecuritySpec.PrivilegeName(PrivilegeType.Write, SecuritySpec.Tables.ImportTemplate)),
 
         new(
             UniqueName: "sanic_capi_smelter_importtemplate",
@@ -81,6 +118,7 @@ internal static class Catalogo
             [
                 new("TemplateId", ParamType.Guid),
                 new("Warnings", ParamType.String),
-            ]),
+            ],
+            ExecutePrivilegeName: SecuritySpec.PrivilegeName(PrivilegeType.Write, SecuritySpec.Tables.ImportTemplate)),
     ];
 }

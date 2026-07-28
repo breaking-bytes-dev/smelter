@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Fase 4.2 (openspec/changes/smelter-security/tasks.md): botones de command bar del form de
+  Import Job — Ejecutar (visible cuando sanic_smlt_ij_status = 0, Queued/Pendiente) y Reintentar
+  (visible cuando sanic_smlt_ij_status = 4, Failed). Ambos invocan
+  Sanic.Smelter.executeImportJob/retryImportJob (Assets/sanic_smlt_importjob_actions.js), que a su
+  vez llaman prepareimport/processchunk — gateadas server-side por ExecutePrivilegeName
+  (ver SecuritySpec.cs), no por esta UI: un operador sin acceso al template ve el botón pero la
+  llamada falla por privilegio (mismo criterio que el resto de smelter-access-control).
+
+  Ubicación: Mscrm.Form.<entidad>.MainTab.Actions.Controls._children es el patrón estándar para
+  agregar botones al command bar del form principal (mismo TemplateAlias que usa Microsoft para
+  botones de acción como "Flow"/"Word Templates"). Confirmado por convención, NO contra un Dev
+  real (ver gotcha de Fase 1 en SolutionZipBuilder.cs) — si el import falla por Location inválida,
+  revisar contra el form real exportado desde Dev.
+
+  ValueRule en DisplayRules: filtra por el valor ACTUAL del campo sanic_smlt_ij_status del
+  registro abierto (soportado nativamente por el esquema de Ribbon Workbench / RibbonDiffXml).
+-->
+<RibbonDiffXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <CustomActions>
+    <CustomAction Id="sanic.smlt.EjecutarImportJob.Button.CustomAction" Location="Mscrm.Form.sanic_tbl_smlt_importjob.MainTab.Actions.Controls._children" Sequence="50">
+      <CommandUIDefinition>
+        <Button Command="sanic.smlt.EjecutarImportJob.Command" Id="sanic.smlt.EjecutarImportJob.Button" LabelText="$LocLabels:sanic.smlt.EjecutarImportJob.Button.LabelText" Sequence="50" TemplateAlias="o1" ToolTipTitle="$LocLabels:sanic.smlt.EjecutarImportJob.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.EjecutarImportJob.Button.ToolTipDescription" />
+      </CommandUIDefinition>
+    </CustomAction>
+    <CustomAction Id="sanic.smlt.ReintentarImportJob.Button.CustomAction" Location="Mscrm.Form.sanic_tbl_smlt_importjob.MainTab.Actions.Controls._children" Sequence="55">
+      <CommandUIDefinition>
+        <Button Command="sanic.smlt.ReintentarImportJob.Command" Id="sanic.smlt.ReintentarImportJob.Button" LabelText="$LocLabels:sanic.smlt.ReintentarImportJob.Button.LabelText" Sequence="55" TemplateAlias="o2" ToolTipTitle="$LocLabels:sanic.smlt.ReintentarImportJob.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.ReintentarImportJob.Button.ToolTipDescription" />
+      </CommandUIDefinition>
+    </CustomAction>
+  </CustomActions>
+  <Templates>
+    <RibbonTemplates Id="Mscrm.Templates"></RibbonTemplates>
+  </Templates>
+  <CommandDefinitions>
+    <CommandDefinition Id="sanic.smlt.EjecutarImportJob.Command">
+      <EnableRules>
+        <EnableRule Id="sanic.sanic_tbl_smlt_importjob.FormStateEnableRule.EnableRule" />
+      </EnableRules>
+      <DisplayRules>
+        <DisplayRule Id="sanic.smlt.EjecutarImportJob.DisplayRule" />
+      </DisplayRules>
+      <Actions>
+        <JavaScriptFunction FunctionName="Sanic.Smelter.executeImportJob" Library="$webresource:sanic_smlt_importjob_actions.js">
+          <CrmParameter Value="PrimaryControl" />
+        </JavaScriptFunction>
+      </Actions>
+    </CommandDefinition>
+    <CommandDefinition Id="sanic.smlt.ReintentarImportJob.Command">
+      <EnableRules>
+        <EnableRule Id="sanic.sanic_tbl_smlt_importjob.FormStateEnableRule.EnableRule" />
+      </EnableRules>
+      <DisplayRules>
+        <DisplayRule Id="sanic.smlt.ReintentarImportJob.DisplayRule" />
+      </DisplayRules>
+      <Actions>
+        <JavaScriptFunction FunctionName="Sanic.Smelter.retryImportJob" Library="$webresource:sanic_smlt_importjob_actions.js">
+          <CrmParameter Value="PrimaryControl" />
+        </JavaScriptFunction>
+      </Actions>
+    </CommandDefinition>
+  </CommandDefinitions>
+  <RuleDefinitions>
+    <TabDisplayRules />
+    <DisplayRules>
+      <DisplayRule Id="sanic.smlt.EjecutarImportJob.DisplayRule">
+        <ValueRule Field="sanic_smlt_ij_status" Value="0" Default="false" InvertResult="false" />
+      </DisplayRule>
+      <DisplayRule Id="sanic.smlt.ReintentarImportJob.DisplayRule">
+        <ValueRule Field="sanic_smlt_ij_status" Value="4" Default="false" InvertResult="false" />
+      </DisplayRule>
+    </DisplayRules>
+    <EnableRules>
+      <EnableRule Id="sanic.sanic_tbl_smlt_importjob.FormStateEnableRule.EnableRule">
+        <FormStateRule State="Create" InvertResult="true" />
+      </EnableRule>
+    </EnableRules>
+  </RuleDefinitions>
+  <LocLabels>
+    <LocLabel Id="sanic.smlt.EjecutarImportJob.Button.LabelText">
+      <Titles>
+        <Title description="Ejecutar" languagecode="1033" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.EjecutarImportJob.Button.ToolTipTitle">
+      <Titles>
+        <Title description="Ejecutar" languagecode="1033" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.EjecutarImportJob.Button.ToolTipDescription">
+      <Titles>
+        <Title description="Corre PrepareImport + ProcessChunk hasta completar el job." languagecode="1033" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.ReintentarImportJob.Button.LabelText">
+      <Titles>
+        <Title description="Reintentar" languagecode="1033" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.ReintentarImportJob.Button.ToolTipTitle">
+      <Titles>
+        <Title description="Reintentar" languagecode="1033" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.ReintentarImportJob.Button.ToolTipDescription">
+      <Titles>
+        <Title description="Reintenta un job Fallido (vuelve a correr Prepare + ProcessChunk)." languagecode="1033" />
+      </Titles>
+    </LocLabel>
+  </LocLabels>
+</RibbonDiffXml>

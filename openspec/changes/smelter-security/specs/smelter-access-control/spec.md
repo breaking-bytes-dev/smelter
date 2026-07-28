@@ -2,85 +2,100 @@
 
 ## Purpose
 
-Separar configuración de operación mediante dos roles de seguridad, controlar la visibilidad de templates
-por ownership de equipo, y compartir la visibilidad de Import Jobs/logs entre operadores del mismo template
-mediante auto-asignación al Owner Team. El procesamiento corre como SYSTEM y no se ve afectado.
+Separar configuración/operación con dos roles vía SDK, gatear Custom APIs por privilegio, restringir la MDA
+al Configurador, propagar acceso vía cascade, y validar en runtime el acceso al template. El motor sigue
+SYSTEM.
 
 ## Requirements
 
-### Requirement: Rol Configurador
+### Requirement: Rol Smelter Configurador
 
-El rol **Smelter Configurador** MUST otorgar CRUD a nivel Organización sobre Import Template, Table Mapping,
-Column Mapping y Relationship Mapping, y lectura de todos los Import Jobs y logs.
+MUST otorgar CRUD Org (Create/Read/Write/Delete/Append/AppendTo) sobre las 6 tablas `sanic_tbl_smlt_*`
+(Template, Table/Column/Relationship Mapping, Import Job, Import Job Log). MUST crearse vía
+`tools/Smelter.Deploy` (SDK) como solution component de `sanic`.
 
-#### Scenario: Configurador crea y ve todo
+#### Scenario: Configurador con CRUD total
 
-- GIVEN un usuario con rol Smelter Configurador
-- WHEN abre Smelter
-- THEN SHALL poder crear/editar/eliminar templates y mappings
-- AND SHALL ver TODOS los templates, jobs y logs (sin importar el owner)
+- GIVEN un usuario con rol Configurador
+- WHEN opera cualquier registro de las 6 tablas, sin importar el owner
+- THEN SHALL permitirse y el rol SHALL figurar en `sanic` como solution component
 
-### Requirement: Rol Operador no configura
+### Requirement: Rol Smelter Operador
 
-El rol **Smelter Operador** MUST NOT otorgar create/write/delete sobre Import Template ni sobre los mappings.
-SHALL permitir leer mappings (config no sensible) pero no modificarlos.
+MUST otorgar: Template → Read User + AppendTo; Table/Column/Relationship Mapping → Read Org sin
+Create/Write/Delete; Import Job → Create Org + Read/Write User; Import Job Log → Read User. MUST crearse vía
+SDK como solution component.
 
-#### Scenario: Operador no puede configurar
+#### Scenario: Operador bloqueado en write, habilitado en lectura y jobs
 
-- GIVEN un usuario con rol Smelter Operador (sin Configurador)
-- WHEN intenta crear o editar un template o un mapping
-- THEN la operación SHALL ser denegada (botón/acción bloqueada o error de privilegios)
+- GIVEN un operador sin Configurador, con un template visible
+- WHEN intenta editar ese Template/mapping, y luego lee un mapping, crea un Import Job y lee/edita ese job y su log
+- THEN lo primero SHALL denegarse por privilegios y lo segundo SHALL permitirse
 
-### Requirement: Operador opera y ve logs
+### Requirement: MDA restringida al Configurador
 
-El rol Operador MUST permitir crear Import Jobs (incluyendo subir el archivo y vincular el template) y leer
-los Import Job Logs de los jobs visibles.
+La app model-driven de Smelter MUST asociarse solo al rol Configurador (`AppModuleRoles`), vía SDK.
 
-#### Scenario: Operador carga datos
+#### Scenario: Operador no ve la app, Configurador sí
 
-- GIVEN un operador con un template asignado
-- WHEN crea un Import Job, sube el CSV y lo ejecuta
-- THEN el job SHALL procesarse
-- AND el operador SHALL poder ver los logs de ese job
+- GIVEN un Operador y un Configurador
+- WHEN cada uno lista sus apps disponibles
+- THEN Smelter MUST NOT aparecer para el Operador y SHALL aparecer para el Configurador
 
-### Requirement: Visibilidad de templates por team ownership
+### Requirement: Cascade share/reparent Template→ImportJob
 
-Un operador SHALL ver únicamente los templates propiedad de los equipos a los que pertenece. Un configurador
-SHALL ver todos los templates.
+La relación Import Job→Template (`sanic_smlt_ij_importtemplateid`) MUST tener `CascadeShare`=`Cascade` y
+`CascadeReparent`=`Cascade` (`UpdateRelationshipRequest`) para que los jobs hereden el acceso del team del
+template.
 
-#### Scenario: Operador ve solo lo asignado
+#### Scenario: Job hereda acceso del team; sin share no propaga
 
-- GIVEN templates T1 (Team A) y T2 (Team B), y un operador miembro solo de Team A
-- WHEN el operador lista templates
-- THEN SHALL ver T1
-- AND MUST NOT ver T2
+- GIVEN un template compartido con Team A (O1/O2 miembros) y otro sin compartir con ningún team
+- WHEN O1 crea un Import Job bajo cada uno
+- THEN O2 SHALL ver el primer job; el otro SHALL crearse sin error y sin herencia extra
 
-#### Scenario: Configurador ve todos
+### Requirement: Gating de Custom APIs por ExecutePrivilegeName
 
-- GIVEN los mismos T1 y T2
-- WHEN un configurador lista templates
-- THEN SHALL ver T1 y T2
+Las 4 Custom APIs MUST declarar `ExecutePrivilegeName` reutilizando privilegios existentes:
+`exporttemplate`/`importtemplate` → `prvWritesanic_tbl_smlt_importtemplate`; `prepareimport`/`processchunk`
+→ `prvCreatesanic_tbl_smlt_importjob`.
 
-### Requirement: Jobs heredan el acceso del template (cascade sharing)
+#### Scenario: Operador bloqueado en export/import, habilitado en prepare/process
 
-Los Import Jobs creados bajo un template SHALL ser visibles para los miembros del team con el que el template
-está compartido, aunque el job lo haya creado otro operador. Esto se logra con **cascade sharing** en la
-relación Template→Import Job (los hijos heredan el acceso del padre). No requiere código.
+- GIVEN un operador sin Write sobre Template pero con Create sobre Import Job
+- WHEN invoca `exporttemplate`/`importtemplate` y luego `prepareimport`/`processchunk`
+- THEN lo primero SHALL fallar por privilegio y lo segundo SHALL ejecutarse
 
-#### Scenario: Job visible para el equipo
+### Requirement: Validación de acceso al template en PrepareImportPlugin
 
-- GIVEN un template compartido con Team A (relación con Share/Reparent = Cascade All), y operadores O1 y O2 miembros de Team A
-- WHEN O1 crea un Import Job contra ese template
-- THEN O2 SHALL poder ver ese job y sus logs (acceso heredado del template)
+`PrepareImportPlugin` MUST validar (`RetrievePrincipalAccessRequest`) que `InitiatingUserId` tenga Read
+sobre el Template del job antes de prepararlo. Sin acceso, MUST lanzar `InvalidPluginExecutionException`
+con mensaje claro. ProcessChunk/downstream SHALL seguir como SYSTEM.
 
-#### Scenario: Job de template no asignado no es visible
+#### Scenario: Sin acceso es rechazado, con acceso es aceptado
 
-- GIVEN un template compartido solo con Team B, y un operador miembro únicamente de Team A
-- WHEN se crea un job bajo ese template
-- THEN ese operador MUST NOT ver el job (visibilidad acotada a los templates asignados)
+- GIVEN job A: template NO compartido con ningún team del iniciador; job B: template sí compartido
+- WHEN se ejecuta `PrepareImportPlugin` para cada uno
+- THEN A SHALL lanzar `InvalidPluginExecutionException` (no se prepara) y B SHALL continuar normalmente
 
-#### Scenario: Template sin compartir con team
+### Requirement: Provisioning idempotente
 
-- GIVEN un job creado bajo un template no compartido con ningún team
-- WHEN se crea
-- THEN no hay herencia de acceso (solo el creador/owner lo ve) y la creación SHALL completarse sin error
+`tools/Smelter.Deploy` MUST ser idempotente: re-ejecutarlo MUST NOT duplicar roles ni romper la config
+(roles, privilegios, app-rol, cascade). `tools/Smelter.Verify` MUST verificar ese estado post-deploy.
+
+#### Scenario: Segunda corrida no duplica y Verify confirma
+
+- GIVEN un ambiente ya provisionado
+- WHEN corre `Smelter.Deploy` de nuevo y luego `Smelter.Verify`
+- THEN NO SHALL haber rol duplicado y Verify SHALL confirmar roles/privilegios/app-rol/cascade OK
+
+### Requirement: Ownership de templates por team
+
+Un operador SHALL ver y disparar imports solo sobre templates de sus equipos; un configurador SHALL operar
+todos.
+
+#### Scenario: Operador acotado, Configurador sin límite
+
+- GIVEN templates T1 (Team A) y T2 (Team B), y un operador solo de Team A
+- WHEN intenta crear un job contra T1 y contra T2
+- THEN SHALL poder contra T1, MUST NOT contra T2, y un configurador SHALL poder contra ambos

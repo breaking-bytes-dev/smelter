@@ -34,8 +34,16 @@ namespace Smelter.Plugins.Tests.Plugins
             public IFileDownloader Downloader = Substitute.For<IFileDownloader>();
             public ICsvReader Csv = Substitute.For<ICsvReader>();
             public IOrganizationService Service = Substitute.For<IOrganizationService>();
+            public IAccessChecker Access = Substitute.For<IAccessChecker>();
 
-            public PrepareImportHandler Build() => new PrepareImportHandler(Loader, Downloader, Csv, Service);
+            public Mocks()
+            {
+                // Default: access granted, so pre-existing tests (unrelated to Fase 5) don't need
+                // to know about the access check at all.
+                Access.HasReadAccess(Arg.Any<Guid>(), Arg.Any<EntityReference>()).Returns(true);
+            }
+
+            public PrepareImportHandler Build() => new PrepareImportHandler(Loader, Downloader, Csv, Service, Access);
         }
 
         [Fact]
@@ -43,6 +51,7 @@ namespace Smelter.Plugins.Tests.Plugins
         {
             var m = new Mocks();
             var jobId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
             var bytes = new byte[] { 1 };
 
             m.Loader.LoadContext(jobId).Returns(ContextWith(true, "name", "code"));
@@ -50,7 +59,7 @@ namespace Smelter.Plugins.Tests.Plugins
             m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name", "code" });
             m.Csv.CountRows(bytes, true, ",").Returns(42);
 
-            var total = m.Build().Run(jobId);
+            var total = m.Build().Run(jobId, userId);
 
             total.Should().Be(42);
             m.Service.Received(1).Update(Arg.Is<Entity>(e =>
@@ -64,16 +73,67 @@ namespace Smelter.Plugins.Tests.Plugins
         {
             var m = new Mocks();
             var jobId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
             var bytes = new byte[] { 1 };
 
             m.Loader.LoadContext(jobId).Returns(ContextWith(true, "name", "code"));
             m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
             m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name" }); // falta "code"
 
-            Action act = () => m.Build().Run(jobId);
+            Action act = () => m.Build().Run(jobId, userId);
 
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*code*");
             m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+        }
+
+        // ── Fase 5: validación de acceso al Template (smelter-access-control) ─────────────────────
+
+        [Fact]
+        public void Run_InitiatingUserWithoutReadAccessOnTemplate_ThrowsAndDoesNotDownloadOrUpdate()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var templateId = Guid.NewGuid();
+
+            var ctx = ContextWith(true, "name", "code");
+            ctx.Template.Id = templateId;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            // Overrides the Mocks() default (true) for this specific templateId/user pair.
+            m.Access.HasReadAccess(userId, Arg.Any<EntityReference>()).Returns(false);
+
+            Action act = () => m.Build().Run(jobId, userId);
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*Read access*");
+            m.Access.Received(1).HasReadAccess(userId, Arg.Is<EntityReference>(r =>
+                r.LogicalName == ImportContextLoader.ImportTemplateTable && r.Id == templateId));
+            m.Downloader.DidNotReceive().Download(Arg.Any<EntityReference>(), Arg.Any<string>());
+            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+        }
+
+        [Fact]
+        public void Run_InitiatingUserWithReadAccessOnTemplate_CompletesNormally()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var templateId = Guid.NewGuid();
+            var bytes = new byte[] { 1 };
+
+            var ctx = ContextWith(true, "name", "code");
+            ctx.Template.Id = templateId;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            m.Access.HasReadAccess(userId, Arg.Any<EntityReference>()).Returns(true);
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name", "code" });
+            m.Csv.CountRows(bytes, true, ",").Returns(7);
+
+            var total = m.Build().Run(jobId, userId);
+
+            total.Should().Be(7);
+            m.Access.Received(1).HasReadAccess(userId, Arg.Is<EntityReference>(r =>
+                r.LogicalName == ImportContextLoader.ImportTemplateTable && r.Id == templateId));
+            m.Service.Received(1).Update(Arg.Any<Entity>());
         }
     }
 }
