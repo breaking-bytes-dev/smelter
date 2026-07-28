@@ -53,10 +53,6 @@ internal static class SecurityProvisioner
         client.Execute(new PublishAllXmlRequest());
         Console.WriteLine("[6]   PublishAllXml OK.");
 
-        // DESPUÉS del publish a propósito: los role maps rotos del appmodule se re-materializan
-        // desde la capa de solución al publicar — desasociarlos antes era trabajo perdido
-        // (backend-verify contaba 3 asociaciones, run 30361865789). Post-publish, la
-        // desasociación queda como estado final del deploy.
         AssociateAppModuleRole(client, roleIds[SecuritySpec.ConfiguradorRoleName]);
     }
 
@@ -254,26 +250,27 @@ internal static class SecurityProvisioner
             ColumnSet = new ColumnSet(false),
             RelatedEntitiesQuery = new RelationshipQueryCollection
             {
-                { relationship, new QueryExpression("role") { ColumnSet = new ColumnSet("roleid") } },
+                { relationship, new QueryExpression("role") { ColumnSet = new ColumnSet("roleid", "name") } },
             },
         });
 
-        var rolesActuales = retrieve.Entity.RelatedEntities.TryGetValue(relationship, out var related)
-            ? related.Entities.Select(e => e.Id).ToArray()
+        var rolesAsociados = retrieve.Entity.RelatedEntities.TryGetValue(relationship, out var related)
+            ? related.Entities.ToArray()
             : [];
+        var rolesActuales = rolesAsociados.Select(e => e.Id).ToArray();
 
-        // appmoduleroles es entidad intersect: NO soporta Delete directo ("The 'Delete' method
-        // does not support entities of type 'appmoduleroles'", run 30362357390) — el único
-        // camino es DisassociateRequest. Se ejecuta POST-publish (ver Run()): el publish
-        // re-materializa los role maps desde la capa de solución del appmodule, así que
-        // desasociar antes era trabajo perdido (backend-verify contó 3, run 30361865789).
-        foreach (var rolAjeno in rolesActuales.Where(id => id != configuradorRoleId))
+        // System Administrator y System Customizer los asocia la PLATAFORMA a toda MDA y no se
+        // pueden quitar: DisassociateRequest "funciona" pero Dataverse los re-deriva al instante
+        // (read-back inmediato seguía mostrando 3, run 30363240939 — eran justamente esos dos).
+        // Se conservan; cualquier OTRO rol ajeno a Configurador sí se desasocia.
+        foreach (var rolAjeno in rolesAsociados.Where(r => r.Id != configuradorRoleId))
         {
-            var existeRol = client.RetrieveMultiple(new QueryExpression("role")
+            var nombre = rolAjeno.GetAttributeValue<string>("name");
+            if (SecuritySpec.PlatformAppRoles.Contains(nombre))
             {
-                ColumnSet = new ColumnSet("roleid"),
-                Criteria = { Conditions = { new ConditionExpression("roleid", ConditionOperator.Equal, rolAjeno) } },
-            }).Entities.Count > 0;
+                Console.WriteLine($"[6]   AppModuleRole '{nombre}' es de plataforma — se conserva.");
+                continue;
+            }
 
             try
             {
@@ -281,31 +278,15 @@ internal static class SecurityProvisioner
                 {
                     Target = new EntityReference("appmodule", appModule.Id),
                     Relationship = relationship,
-                    RelatedEntities = new EntityReferenceCollection { new EntityReference("role", rolAjeno) },
+                    RelatedEntities = new EntityReferenceCollection { new EntityReference("role", rolAjeno.Id) },
                 });
-                Console.WriteLine($"[6]   AppModuleRole desasociado: {rolAjeno} ({(existeRol ? "rol existente ajeno a Smelter" : "rol INEXISTENTE — huérfano")}).");
+                Console.WriteLine($"[6]   AppModuleRole desasociado: {rolAjeno.Id} ('{nombre}').");
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[6]   WARN: no se pudo desasociar el AppModuleRole {rolAjeno}: {ex.Message}");
+                Console.Error.WriteLine($"[6]   WARN: no se pudo desasociar el AppModuleRole {rolAjeno.Id} ('{nombre}'): {ex.Message}");
             }
         }
-
-        // Read-back inmediato: discrimina "la desasociación no surte efecto" vs "los role maps
-        // se re-materializan más tarde" (backend-verify volvió a contar 3, run 30363044249).
-        var readBack = (RetrieveResponse)client.Execute(new RetrieveRequest
-        {
-            Target = new EntityReference("appmodule", appModule.Id),
-            ColumnSet = new ColumnSet(false),
-            RelatedEntitiesQuery = new RelationshipQueryCollection
-            {
-                { relationship, new QueryExpression("role") { ColumnSet = new ColumnSet("roleid", "name") } },
-            },
-        });
-        var quedan = readBack.Entity.RelatedEntities.TryGetValue(relationship, out var rb)
-            ? rb.Entities.Select(e => $"{e.Id} ('{e.GetAttributeValue<string>("name")}')").ToArray()
-            : [];
-        Console.WriteLine($"[6]   read-back post-desasociación: {quedan.Length} asociado(s): {string.Join(", ", quedan)}.");
 
         if (!rolesActuales.Contains(configuradorRoleId))
         {

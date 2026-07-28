@@ -51,7 +51,7 @@ dashboard) + `tools/Smelter.Deploy/ApiSpec.cs` (`ExecutePrivilegeName` por Custo
 | Roles + privilegios | Crea/actualiza `Smelter Configurador` y `Smelter Operador` con la matriz exacta de abajo | `role` + `AddPrivilegesRoleRequest` |
 | Cascade Template→Job | Share=Cascade, Reparent=Cascade en la relación 1:N | `UpdateRelationshipRequest` |
 | `ExecutePrivilegeName` | Gatea cada Custom API por el privilegio real que reutiliza (tabla de abajo) | update `customapi.executeprivilegename` |
-| MDA → solo Configurador | Desasocia cualquier rol roto, asocia Configurador | `Associate`/`DisassociateRequest` |
+| MDA → solo Configurador | Asocia Configurador; desasocia cualquier otro rol NO de plataforma. `System Administrator` y `System Customizer` los asocia Dataverse a toda MDA y no se pueden quitar (la plataforma los re-deriva al instante) — quedan siempre, pero los operadores no los tienen | `Associate`/`DisassociateRequest` |
 | Vistas de Import Job | 3 vistas públicas (`savedquery`) | `Create`/`UpdateRequest` |
 | Botones Ejecutar/Reintentar | RibbonDiffXml versionado (`Assets/`) + JS, importados como mini-solución | `ImportSolutionRequest` |
 | Dashboard + sitemap | "Smelter Dashboard" + entrada en el sitemap de la app | `Create`/`UpdateRequest` |
@@ -187,7 +187,8 @@ Confirma contra el ambiente real:
 - Cascade Share=Cascade, Reparent=Cascade en la relación Template→Job.
 - `executeprivilegename` seteado en las 5 Custom APIs registradas (Release N: incluye `anic_`/`sanic_`
   processchunk en transición).
-- La MDA está asociada solo al rol Configurador.
+- La MDA está asociada al rol Configurador y a ningún otro fuera de los de plataforma
+  (`System Administrator`/`System Customizer`, que Dataverse asocia a toda MDA y no permite quitar).
 - Al menos un Cloud Flow que referencia `processchunk` apunta a `sanic_capi_smelter_processchunk` (si
   no lo encuentra, lo reporta como WARN en vez de fallar en silencio — puede que el flow real tenga otra
   forma de JSON; revisar `CloudFlowUpdater.cs`).

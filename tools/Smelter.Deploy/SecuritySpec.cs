@@ -179,4 +179,10 @@ internal static class SecuritySpec
     // El dashboard ya existe en el ambiente (viaja con la solución) — el provisioner solo lo
     // busca por este nombre y lo enlaza en el sitemap; no crea ni modifica su formxml.
     internal const string DashboardName = "Smelter Dashboard";
+
+    // Roles que la PLATAFORMA asocia automáticamente a toda model-driven app y que no se pueden
+    // desasociar (Dataverse los re-deriva al instante — verificado contra Dev, run 30363240939).
+    // La MDA queda: Configurador + estos. Los operadores no los tienen, así que no ven la app.
+    internal static readonly IReadOnlySet<string> PlatformAppRoles =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "System Administrator", "System Customizer" };
 }

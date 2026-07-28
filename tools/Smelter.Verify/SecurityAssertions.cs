@@ -157,14 +157,22 @@ internal static class SecurityAssertions
         var associatedRoles = retrieve.Entity.RelatedEntities.TryGetValue(relationship, out var related)
             ? related.Entities.ToArray()
             : Array.Empty<Entity>();
-        var associatedRoleIds = associatedRoles.Select(e => e.Id).ToArray();
-        Console.WriteLine($"[SEC]   AppModuleRoles asociados ({associatedRoleIds.Length}): " +
+        Console.WriteLine($"[SEC]   AppModuleRoles asociados ({associatedRoles.Length}): " +
             string.Join(", ", associatedRoles.Select(e => $"{e.Id} ('{e.GetAttributeValue<string>("name")}')")));
 
-        Assert(associatedRoleIds.Contains(configuradorRoleId), "la MDA de Smelter debe estar asociada al rol Configurador");
-        Assert(associatedRoleIds.Length == 1,
-            $"la MDA de Smelter debe estar asociada SOLO a Configurador, tiene {associatedRoleIds.Length} rol(es) asociados");
-        Console.WriteLine("[SEC]   AppModuleRoles: MDA asociada solo a Configurador OK.");
+        Assert(associatedRoles.Any(e => e.Id == configuradorRoleId),
+            "la MDA de Smelter debe estar asociada al rol Configurador");
+
+        // System Administrator/System Customizer los asocia la plataforma a toda MDA y no se
+        // pueden quitar (verificado contra Dev, run 30363240939) — no cuentan como violación.
+        var intrusos = associatedRoles
+            .Where(e => e.Id != configuradorRoleId
+                && !SecuritySpec.PlatformAppRoles.Contains(e.GetAttributeValue<string>("name")))
+            .Select(e => $"'{e.GetAttributeValue<string>("name")}'")
+            .ToArray();
+        Assert(intrusos.Length == 0,
+            $"la MDA de Smelter tiene roles NO permitidos asociados: {string.Join(", ", intrusos)}");
+        Console.WriteLine("[SEC]   AppModuleRoles: MDA restringida a Configurador (+ roles de plataforma) OK.");
     }
 
     // ── 7.6: Cloud Flow de processchunk referencia el uniquename nuevo (Release N) ────────────
