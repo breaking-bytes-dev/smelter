@@ -120,6 +120,19 @@ try
 catch (Exception ex)
 {
     Console.Error.WriteLine($"[FAIL] {ex.Message}");
+
+    // Un plugin que tira una excepción no controlada llega como fault genérico ("An unexpected
+    // error occurred") — el detalle real (incluido el trace del plugin) viene en el
+    // OrganizationServiceFault: TraceText + cadena de InnerFaults. Sin esto se debuggea a ciegas.
+    if (ex is System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault> fx)
+    {
+        for (var fault = fx.Detail; fault is not null; fault = fault.InnerFault)
+        {
+            Console.Error.WriteLine($"[FAIL]   Fault: 0x{fault.ErrorCode:X8} {fault.Message}");
+            if (!string.IsNullOrWhiteSpace(fault.TraceText))
+                Console.Error.WriteLine($"[FAIL]   TraceText:\n{fault.TraceText}");
+        }
+    }
     return 1;
 }
 finally
