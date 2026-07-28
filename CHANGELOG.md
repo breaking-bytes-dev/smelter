@@ -6,6 +6,14 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+_Nada todavía._
+
+## [[1.1.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.1.0.0)] — 2026-07-28
+
+**Modelo de seguridad por teams + UX de la MDA** (`smelter-security` v2). Todo el provisioning se
+hace por SDK desde CI (`backend-deploy`) — cero configuración manual — y quedó verificado E2E contra
+Dev (`backend-verify`: asserts de seguridad + smoke test de import idempotente).
+
 ### Added
 - **Modelo de seguridad provisionado por SDK** (`smelter-security`, `tools/Smelter.Deploy/SecurityProvisioner.cs`):
   roles `Smelter Configurador` (CRUD Org en las 6 tablas `sanic_tbl_smlt_*`) y `Smelter Operador`
@@ -22,6 +30,9 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 - **Cascade sharing Template→Import Job** (Share=Cascade, Reparent=Cascade) provisionado por SDK
   (`UpdateRelationshipRequest`) — los jobs nuevos heredan el acceso del team del template.
 - **MDA restringida al Configurador** vía `AppModuleRoles` — el Operador no ve la app en su selector.
+  Nota de plataforma: `System Administrator` y `System Customizer` quedan asociados a toda MDA por
+  Dataverse y no se pueden quitar (verificado contra Dev) — no afecta al modelo: los operadores no
+  tienen esos roles.
 - **UX de Import Job** (`smelter-mda-ux`): 3 vistas públicas (Jobs Activos, Completados con Errores,
   Todos los Jobs), botones de command bar **Ejecutar**/**Reintentar** (RibbonDiffXml + JS, invocan
   `prepareimport`/`processchunk`), y dashboard **"Smelter Dashboard"** con entrada en el sitemap.
@@ -29,12 +40,16 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
   restricción de la MDA y alineación del Cloud Flow, antes del smoke test funcional.
 
 ### Changed
-- **Rename aditivo de la Custom API `processchunk`**: corrige el typo histórico
-  `anic_capi_smelter_processchunk` → `sanic_capi_smelter_processchunk`. Release N agrega la entrada
-  nueva y actualiza el Cloud Flow al nombre correcto en el mismo deploy (`CloudFlowUpdater`) SIN borrar
-  la entrada vieja — ambas coexisten y apuntan al mismo `ProcessChunkPlugin` durante la transición
-  (`ProcessChunkRenameContractTests`). La entrada legacy se remueve en Release N+1, gateada a que
-  `Smelter.Verify` confirme el flow migrado en verde.
+- **Rename de la Custom API `processchunk` COMPLETADO**: corregido el typo histórico
+  `anic_capi_smelter_processchunk` → `sanic_capi_smelter_processchunk`. Se ejecutó en dos pasos sin
+  ventana rota: primero rename aditivo + migración del Cloud Flow al nombre nuevo en el mismo deploy
+  (`CloudFlowUpdater`, reemplazo por token exacto e idempotente), y — tras confirmar `Smelter.Verify`
+  en verde — la **entrada legacy fue eliminada de Dev** (`DeleteRequest` explícito en el deploy).
+  Integraciones que invocaran el nombre viejo deben migrar a `sanic_capi_smelter_processchunk`.
+- **`Smelter.Verify` más robusto**: imprime el `OrganizationServiceFault` completo (TraceText +
+  InnerFaults) ante fallos, y reintenta acotadamente el 400 transitorio de Azure Blob Storage
+  (`InvalidQueryParameterValue`) en la descarga del archivo del job — solo esa firma; cualquier otro
+  error se propaga al primer intento.
 
 ## [[1.0.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.0.0.0)] — 2026-07-25
 
