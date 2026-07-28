@@ -1,12 +1,13 @@
 <customapi uniquename="sanic_capi_smelter_prepareimport">
   <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
   <bindingtype>0</bindingtype>
-  <description default="CAPI | Smelter | Prepare Import">
-    <label description="CAPI | Smelter | Prepare Import" languagecode="1033" />
+  <description default="Valida los headers del CSV, cuenta las filas y resetea el estado del Import Job.">
+    <label description="Valida los headers del CSV, cuenta las filas y resetea el estado del Import Job." languagecode="1033" />
   </description>
   <displayname default="CAPI | Smelter | Prepare Import">
     <label description="CAPI | Smelter | Prepare Import" languagecode="1033" />
   </displayname>
+  <executeprivilegename>prvCreatesanic_tbl_smlt_importjob</executeprivilegename>
   <iscustomizable>1</iscustomizable>
   <isfunction>0</isfunction>
   <isprivate>0</isprivate>

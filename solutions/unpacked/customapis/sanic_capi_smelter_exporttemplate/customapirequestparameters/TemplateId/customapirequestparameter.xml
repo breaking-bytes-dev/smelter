@@ -2,8 +2,8 @@
   <description default="TemplateId">
     <label description="TemplateId" languagecode="1033" />
   </description>
-  <displayname default="Template Id">
-    <label description="Template Id" languagecode="1033" />
+  <displayname default="TemplateId">
+    <label description="TemplateId" languagecode="1033" />
   </displayname>
   <iscustomizable>1</iscustomizable>
   <isoptional>0</isoptional>

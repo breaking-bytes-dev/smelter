@@ -91,7 +91,7 @@
                   "type": "OpenApiConnection",
                   "inputs": {
                     "parameters": {
-                      "actionName": "anic_capi_smelter_processchunk",
+                      "actionName": "sanic_capi_smelter_processchunk",
                       "item/JobId": "@triggerOutputs()?['body/sanic_tbl_smlt_importjobid']"
                     },
                     "host": {

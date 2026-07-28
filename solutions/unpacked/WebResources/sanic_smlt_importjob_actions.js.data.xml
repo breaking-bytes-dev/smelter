@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WebResource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <WebResourceId>{d051cf90-818a-f111-8076-70a8a59c703e}</WebResourceId>
+  <Name>sanic_smlt_importjob_actions.js</Name>
+  <DisplayName>WebResource | SMLT | Import Job Actions</DisplayName>
+  <WebResourceType>3</WebResourceType>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsEnabledForMobileClient>0</IsEnabledForMobileClient>
+  <IsAvailableForMobileOffline>0</IsAvailableForMobileOffline>
+  <IsCustomizable>1</IsCustomizable>
+  <CanBeDeleted>1</CanBeDeleted>
+  <IsHidden>0</IsHidden>
+  <FileName>/WebResources/sanic_smlt_importjob_actionsjsD051CF90-818A-F111-8076-70A8A59C703E</FileName>
+</WebResource>

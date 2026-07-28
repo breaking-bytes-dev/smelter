@@ -1,12 +1,13 @@
 <customapi uniquename="sanic_capi_smelter_exporttemplate">
   <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
   <bindingtype>0</bindingtype>
-  <description default="Export Smelter Template">
-    <label description="Export Smelter Template" languagecode="1033" />
+  <description default="Serializa un Import Template (árbol completo) a JSON portable con refs estables.">
+    <label description="Serializa un Import Template (árbol completo) a JSON portable con refs estables." languagecode="1033" />
   </description>
   <displayname default="Export Smelter Template">
     <label description="Export Smelter Template" languagecode="1033" />
   </displayname>
+  <executeprivilegename>prvWritesanic_tbl_smlt_importtemplate</executeprivilegename>
   <iscustomizable>1</iscustomizable>
   <isfunction>0</isfunction>
   <isprivate>0</isprivate>

@@ -1,12 +1,13 @@
 <customapi uniquename="sanic_capi_smelter_importtemplate">
   <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
   <bindingtype>0</bindingtype>
-  <description default="Import Smelter Template">
-    <label description="Import Smelter Template" languagecode="1033" />
+  <description default="Valida el JSON, recrea el árbol del template (upsert por nombre) y remapea GUIDs por ref.">
+    <label description="Valida el JSON, recrea el árbol del template (upsert por nombre) y remapea GUIDs por ref." languagecode="1033" />
   </description>
   <displayname default="Import Smelter Template">
     <label description="Import Smelter Template" languagecode="1033" />
   </displayname>
+  <executeprivilegename>prvWritesanic_tbl_smlt_importtemplate</executeprivilegename>
   <iscustomizable>1</iscustomizable>
   <isfunction>0</isfunction>
   <isprivate>0</isprivate>

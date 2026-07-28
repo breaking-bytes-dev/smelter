@@ -1,12 +1,13 @@
-<customapi uniquename="anic_capi_smelter_processchunk">
+<customapi uniquename="sanic_capi_smelter_processchunk">
   <allowedcustomprocessingsteptype>0</allowedcustomprocessingsteptype>
   <bindingtype>0</bindingtype>
-  <description default="CAPI | Smelter | Process Chunk">
-    <label description="CAPI | Smelter | Process Chunk" languagecode="1033" />
+  <description default="Procesa un lote del CSV (parse streaming + skip al offset, orden DAG, upsert por alternate key).">
+    <label description="Procesa un lote del CSV (parse streaming + skip al offset, orden DAG, upsert por alternate key)." languagecode="1033" />
   </description>
   <displayname default="CAPI | Smelter | Process Chunk">
     <label description="CAPI | Smelter | Process Chunk" languagecode="1033" />
   </displayname>
+  <executeprivilegename>prvCreatesanic_tbl_smlt_importjob</executeprivilegename>
   <iscustomizable>1</iscustomizable>
   <isfunction>0</isfunction>
   <isprivate>0</isprivate>
