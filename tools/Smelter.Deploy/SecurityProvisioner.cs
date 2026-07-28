@@ -261,7 +261,9 @@ internal static class SecurityProvisioner
         // role maps volvían en cada deploy y backend-verify contó 3 asociaciones, run 30361865789).
         // Se opera directo sobre la tabla appmodulerole: borrar la FILA elimina el vínculo de
         // forma durable; además se loguea si el rol referenciado existe (diagnóstico de huérfanos).
-        var mapRows = client.RetrieveMultiple(new QueryExpression("appmodulerole")
+        // Logical name: appmoduleroles (PLURAL — como la relación appmoduleroles_association);
+        // "appmodulerole" singular no existe en metadata (run 30362092533).
+        var mapRows = client.RetrieveMultiple(new QueryExpression("appmoduleroles")
         {
             ColumnSet = new ColumnSet("appmoduleroleid", "roleid"),
             Criteria = { Conditions = { new ConditionExpression("appmoduleid", ConditionOperator.Equal, appModule.Id) } },
@@ -281,8 +283,8 @@ internal static class SecurityProvisioner
 
             try
             {
-                client.Delete("appmodulerole", row.Id);
-                Console.WriteLine($"[6]   appmodulerole {row.Id} eliminado (role {roleRef.Id}, {(existeRol ? "rol existente ajeno a Smelter" : "rol INEXISTENTE — huérfano")}).");
+                client.Delete("appmoduleroles", row.Id);
+                Console.WriteLine($"[6]   appmoduleroles {row.Id} eliminado (role {roleRef.Id}, {(existeRol ? "rol existente ajeno a Smelter" : "rol INEXISTENTE — huérfano")}).");
             }
             catch (Exception ex)
             {
