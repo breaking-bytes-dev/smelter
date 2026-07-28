@@ -2,18 +2,11 @@
 // capacidad reusable: arma un solution.zip MÍNIMO en memoria para importar RibbonDiffXml vía
 // ImportSolutionRequest, sin exportar/reempacar la solución completa `smlt_core_smelter`.
 //
-// Técnica: un solution.zip para import solo necesita solution.xml + customizations.xml — el
-// [Content_Types].xml solo hace falta cuando el paquete trae contenido binario (p.ej. webresource
-// nuevo); acá no se toca ningún webresource, solo RibbonDiffXml de entidades existentes.
-// Formato de RootComponent (type="1"=Entity, schemaName, behavior="0") corroborado contra
-// solutions/unpacked/Other/Solution.xml (la solución real ya exportada de este mismo repo).
-//
-// GOTCHA (task 1.2, spike): esta clase NO fue validada contra un Dev real en este sandbox — sin
-// acceso a Dataverse por restricción del entorno de desarrollo. La confirmación de "el botón
-// aparece sin error de import y sin publish manual extra" queda pendiente del primer
-// backend-deploy en CI que ejecute SecurityProvisioner.UpsertRibbon (Fase 4.3). Si el import
-// falla, los sospechosos más probables son: namespace/orden de nodos en customizations.xml, o la
-// ausencia de [Content_Types].xml.
+// Técnica: el zip lleva SIEMPRE los tres archivos en la raíz: solution.xml, customizations.xml
+// y [Content_Types].xml — Dev rechaza el paquete sin el tercero (verificado contra Dev real,
+// backend-deploy run 30359848587). Formato de RootComponent (type="1"=Entity, schemaName,
+// behavior="0") corroborado contra solutions/unpacked/Other/Solution.xml (la solución real ya
+// exportada de este mismo repo).
 
 using System.IO.Compression;
 using System.Text;
@@ -44,9 +37,20 @@ internal static class SolutionZipBuilder
         {
             WriteEntry(zip, "solution.xml", BuildSolutionXml(solutionUniqueName, publisherUniqueName, publisherPrefix, version, ribbonDiffXmlByEntity.Keys));
             WriteEntry(zip, "customizations.xml", BuildCustomizationsXml(ribbonDiffXmlByEntity));
+            WriteEntry(zip, "[Content_Types].xml", ContentTypesXml);
         }
         return stream.ToArray();
     }
+
+    // Dev lo exige siempre en la raíz del paquete (verificado en backend-deploy run 30359848587):
+    // "The compressed file must contain ... solution.xml, customizations.xml, and [Content_Types].xml"
+    private const string ContentTypesXml =
+        """
+        <?xml version="1.0" encoding="utf-8"?>
+        <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+          <Default Extension="xml" ContentType="text/xml" />
+        </Types>
+        """;
 
     private static void WriteEntry(ZipArchive zip, string name, string content)
     {

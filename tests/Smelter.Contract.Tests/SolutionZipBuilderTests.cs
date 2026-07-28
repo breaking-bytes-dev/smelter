@@ -22,7 +22,15 @@ public class SolutionZipBuilderTests
 
         using var archive = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
 
-        archive.Entries.Select(e => e.FullName).Should().BeEquivalentTo("solution.xml", "customizations.xml");
+        // Dev exige los tres en la raíz: "The compressed file must contain the following
+        // files at its root: solution.xml, customizations.xml, and [Content_Types].xml"
+        archive.Entries.Select(e => e.FullName)
+            .Should().BeEquivalentTo("solution.xml", "customizations.xml", "[Content_Types].xml");
+
+        using var reader = new StreamReader(
+            archive.GetEntry("[Content_Types].xml")!.Open());
+        reader.ReadToEnd().Should().Contain("Extension=\"xml\"")
+            .And.Contain("schemas.openxmlformats.org/package/2006/content-types");
     }
 
     [Fact]
