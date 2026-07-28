@@ -45,7 +45,6 @@ internal static class SecurityProvisioner
         var roleIds = UpsertRoles(client);
         SetCascade(client);
         SetExecutePrivileges(client);
-        AssociateAppModuleRole(client, roleIds[SecuritySpec.ConfiguradorRoleName]);
         UpsertViews(client);
         UpsertRibbon(client);
         UpsertDashboardSubArea(client);
@@ -53,6 +52,12 @@ internal static class SecurityProvisioner
         Console.WriteLine("[6] Publicando customizations (roles/vistas/ribbon/dashboard) ...");
         client.Execute(new PublishAllXmlRequest());
         Console.WriteLine("[6]   PublishAllXml OK.");
+
+        // DESPUÉS del publish a propósito: los role maps rotos del appmodule se re-materializan
+        // desde la capa de solución al publicar — desasociarlos antes era trabajo perdido
+        // (backend-verify contaba 3 asociaciones, run 30361865789). Post-publish, la
+        // desasociación queda como estado final del deploy.
+        AssociateAppModuleRole(client, roleIds[SecuritySpec.ConfiguradorRoleName]);
     }
 
     // ── 3.2 Roles + privilegios ─────────────────────────────────────────────────────────────────
@@ -257,38 +262,32 @@ internal static class SecurityProvisioner
             ? related.Entities.Select(e => e.Id).ToArray()
             : [];
 
-        // DisassociateRequest sobre la relación reportaba éxito pero NO persistía (los mismos 2
-        // role maps volvían en cada deploy y backend-verify contó 3 asociaciones, run 30361865789).
-        // Se opera directo sobre la tabla appmodulerole: borrar la FILA elimina el vínculo de
-        // forma durable; además se loguea si el rol referenciado existe (diagnóstico de huérfanos).
-        // Logical name: appmoduleroles (PLURAL — como la relación appmoduleroles_association);
-        // "appmodulerole" singular no existe en metadata (run 30362092533).
-        var mapRows = client.RetrieveMultiple(new QueryExpression("appmoduleroles")
+        // appmoduleroles es entidad intersect: NO soporta Delete directo ("The 'Delete' method
+        // does not support entities of type 'appmoduleroles'", run 30362357390) — el único
+        // camino es DisassociateRequest. Se ejecuta POST-publish (ver Run()): el publish
+        // re-materializa los role maps desde la capa de solución del appmodule, así que
+        // desasociar antes era trabajo perdido (backend-verify contó 3, run 30361865789).
+        foreach (var rolAjeno in rolesActuales.Where(id => id != configuradorRoleId))
         {
-            ColumnSet = new ColumnSet("appmoduleroleid", "roleid"),
-            Criteria = { Conditions = { new ConditionExpression("appmoduleid", ConditionOperator.Equal, appModule.Id) } },
-        }).Entities;
-
-        foreach (var row in mapRows)
-        {
-            var roleRef = row.GetAttributeValue<EntityReference>("roleid");
-            if (roleRef is null || roleRef.Id == configuradorRoleId)
-                continue;
-
             var existeRol = client.RetrieveMultiple(new QueryExpression("role")
             {
                 ColumnSet = new ColumnSet("roleid"),
-                Criteria = { Conditions = { new ConditionExpression("roleid", ConditionOperator.Equal, roleRef.Id) } },
+                Criteria = { Conditions = { new ConditionExpression("roleid", ConditionOperator.Equal, rolAjeno) } },
             }).Entities.Count > 0;
 
             try
             {
-                client.Delete("appmoduleroles", row.Id);
-                Console.WriteLine($"[6]   appmoduleroles {row.Id} eliminado (role {roleRef.Id}, {(existeRol ? "rol existente ajeno a Smelter" : "rol INEXISTENTE — huérfano")}).");
+                client.Execute(new DisassociateRequest
+                {
+                    Target = new EntityReference("appmodule", appModule.Id),
+                    Relationship = relationship,
+                    RelatedEntities = new EntityReferenceCollection { new EntityReference("role", rolAjeno) },
+                });
+                Console.WriteLine($"[6]   AppModuleRole desasociado: {rolAjeno} ({(existeRol ? "rol existente ajeno a Smelter" : "rol INEXISTENTE — huérfano")}).");
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[6]   WARN: no se pudo eliminar appmodulerole {row.Id} (role {roleRef.Id}): {ex.Message}");
+                Console.Error.WriteLine($"[6]   WARN: no se pudo desasociar el AppModuleRole {rolAjeno}: {ex.Message}");
             }
         }
 
