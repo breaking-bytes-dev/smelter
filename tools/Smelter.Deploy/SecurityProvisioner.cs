@@ -452,8 +452,14 @@ internal static class SecurityProvisioner
         }
 
         var doc = System.Xml.Linq.XDocument.Parse(sitemapXml);
-        var firstGroup = doc.Descendants("Group").FirstOrDefault();
-        if (firstGroup is null)
+
+        // El dashboard va en el grupo de "Ejecución y Monitoreo" — se ubica por su SubArea de
+        // Import Job; si la estructura cambió, cae al primer Group.
+        var targetGroup = doc.Descendants("Group")
+                .FirstOrDefault(g => g.Elements("SubArea")
+                    .Any(sa => (string?)sa.Attribute("Entity") == SecuritySpec.Tables.ImportJob))
+            ?? doc.Descendants("Group").FirstOrDefault();
+        if (targetGroup is null)
         {
             Console.Error.WriteLine("[6]   WARN: sitemap sin ningún <Group> — se omite entrada del dashboard (estructura inesperada).");
             return;
@@ -467,7 +473,11 @@ internal static class SecurityProvisioner
                 new System.Xml.Linq.XElement("Title",
                     new System.Xml.Linq.XAttribute("LCID", "1033"),
                     new System.Xml.Linq.XAttribute("Title", SecuritySpec.DashboardName))));
-        firstGroup.AddFirst(subArea);
+
+        // Append al FINAL del Group: el XSD del sitemap exige <Titles> del grupo primero y
+        // después los <SubArea> — AddFirst lo rompía ("Group has invalid child element Titles",
+        // run 30361175930).
+        targetGroup.Add(subArea);
 
         client.Update(new Entity("sitemap", sitemap.Id) { ["sitemapxml"] = doc.ToString() });
         Console.WriteLine($"[6]   sitemap: entrada '{SecuritySpec.DashboardName}' agregada.");
