@@ -13,7 +13,10 @@ solution.zip armado en memoria en deploy (sin binarios versionados).
       `solutions/unpacked/Other/Solution.xml` real. Cubierto por
       `tests/Smelter.Contract.Tests/SolutionZipBuilderTests.cs` (4 tests, forma del zip, sin
       llamar Dataverse).
-- [ ] 1.2 **BLOQUEADA** — Confirmar: el botón aparece sin error de import y sin publish manual
+- [x] 1.2 ~~BLOQUEADA~~ **CONFIRMADA contra Dev**: RibbonDiffXml importado OK vía mini-solución en
+      memoria (backend-deploy run 30360739680+; requirió 3 fixes descubiertos contra Dev:
+      [Content_Types].xml obligatorio, stripear la declaración XML del asset embebido, y
+      CustomizationOptionValuePrefix real 15946). Confirmar: el botón aparece sin error de import y sin publish manual
       extra. No se puede correr en este sandbox (sin acceso a Dataverse, restricción explícita del
       entorno). Queda pendiente del primer `backend-deploy` en CI que ejecute
       `SecurityProvisioner.UpsertRibbon` (Fase 4.3) contra Dev — ver gotcha documentado en el
@@ -140,7 +143,9 @@ solution.zip armado en memoria en deploy (sin binarios versionados).
       evidencia RED→GREEN en el reporte de este batch). `CloudFlowUpdater.UpdateOne` ahora usa
       `Rename(...)` y saltea el `Update`/Draft-Activate por completo cuando `Changed=false`
       (idempotencia real, no solo "no se rompe").
-- [ ] 6.4 Deploy release N a Dev vía CI (`backend-deploy`). — **BLOQUEADA**: sin acceso a Dataverse
+- [x] 6.4 Deploy release N a Dev vía CI (`backend-deploy`). → **HECHO**: run 30361504392 success
+      (CloudFlowUpdater migró el flow 0eb777e3-6760-f111-ab0c-0022480a5be8 al uniquename nuevo).
+      ~~BLOQUEADA~~: sin acceso a Dataverse
       desde este sandbox (restricción explícita del entorno, igual que 1.2/3.5/4.5). Pendiente del
       primer `backend-deploy` de CI que corra `Program.cs` completo (incl. `CloudFlowUpdater`) contra
       Dev.
@@ -174,9 +179,11 @@ solution.zip armado en memoria en deploy (sin binarios versionados).
       (misma lógica de token exacto que el fix de 6.3, sin divergir el criterio entre quien escribe y
       quien verifica) — 3 asserts independientes: token nuevo presente, token viejo AUSENTE, sin
       corrupción "ssanic_...".
-- [ ] 7.7 Correr `Smelter.Verify` contra Dev vía CI (`backend-verify`), confirmar verde. —
-      **BLOQUEADA**: mismo motivo que 6.4, sin acceso a Dataverse desde este sandbox. `dotnet build`
-      confirma que `SecurityAssertions.cs` compila limpio contra los tipos reales del SDK.
+- [x] 7.7 Correr `Smelter.Verify` contra Dev vía CI (`backend-verify`), confirmar verde. →
+      **VERDE**: run 30364284364 ([SEC] completo + smoke E2E) en Release N; run 30365195704 en
+      Release N+1 (4 APIs, legacy eliminada). Hallazgos de Dev incorporados: System
+      Administrator/System Customizer son roles de plataforma no removibles de toda MDA; retry
+      acotado para el 400 transitorio de blob storage en la descarga del File.
 
 ## Phase 8: Docs
 
@@ -231,4 +238,6 @@ CloudFlowUpdater/SecurityAssertions/CustomApiContractTests ya quedaron anotados 
       → ProcessChunkRenameContractTests reescrito al estado N+1 (TDD: rojo→verde);
       SecuritySpecContractTests sin la InlineData legacy; SecurityAssertions exige la API
       legacy AUSENTE en Dev.
-- [ ] 9.5 Deploy release N+1; re-correr `Smelter.Verify` — confirmar 4 APIs, verde.
+- [x] 9.5 Deploy release N+1; re-correr `Smelter.Verify` — confirmar 4 APIs, verde. → **VERDE**:
+      deploy run 30364664298 (paso [8] borró la legacy 100be171-e960-f111-ab0b-0022480a5be8),
+      verify run 30365195704 completo.
