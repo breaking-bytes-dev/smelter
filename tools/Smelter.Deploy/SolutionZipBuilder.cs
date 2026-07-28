@@ -22,12 +22,17 @@ internal static class SolutionZipBuilder
     /// Logical name de la tabla → elemento &lt;RibbonDiffXml&gt;...&lt;/RibbonDiffXml&gt; COMPLETO
     /// (con su propio nodo raíz), tal como vive en los assets versionados de Assets/.
     /// </param>
+    // Prefix numérico del publisher sanic — de solutions/unpacked/Other/Solution.xml:22.
+    // Dev exige un valor real entre 10000 y 99999 en el manifest (run 30360446260).
+    internal const int PublisherOptionValuePrefix = 15946;
+
     internal static byte[] BuildRibbonSolution(
         string solutionUniqueName,
         string publisherUniqueName,
         string publisherPrefix,
         string version,
-        IReadOnlyDictionary<string, string> ribbonDiffXmlByEntity)
+        IReadOnlyDictionary<string, string> ribbonDiffXmlByEntity,
+        int optionValuePrefix = PublisherOptionValuePrefix)
     {
         if (ribbonDiffXmlByEntity.Count == 0)
             throw new ArgumentException("Debe incluir al menos una entidad con RibbonDiffXml.", nameof(ribbonDiffXmlByEntity));
@@ -35,7 +40,7 @@ internal static class SolutionZipBuilder
         using var stream = new MemoryStream();
         using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
         {
-            WriteEntry(zip, "solution.xml", BuildSolutionXml(solutionUniqueName, publisherUniqueName, publisherPrefix, version, ribbonDiffXmlByEntity.Keys));
+            WriteEntry(zip, "solution.xml", BuildSolutionXml(solutionUniqueName, publisherUniqueName, publisherPrefix, version, ribbonDiffXmlByEntity.Keys, optionValuePrefix));
             WriteEntry(zip, "customizations.xml", BuildCustomizationsXml(ribbonDiffXmlByEntity));
             WriteEntry(zip, "[Content_Types].xml", ContentTypesXml);
         }
@@ -61,7 +66,7 @@ internal static class SolutionZipBuilder
 
     private static string BuildSolutionXml(
         string solutionUniqueName, string publisherUniqueName, string publisherPrefix, string version,
-        IEnumerable<string> entities)
+        IEnumerable<string> entities, int optionValuePrefix)
     {
         var rootComponents = new StringBuilder();
         foreach (var entity in entities)
@@ -82,7 +87,7 @@ internal static class SolutionZipBuilder
                $"        <LocalizedName description=\"{publisherUniqueName}\" languagecode=\"1033\" />\n" +
                "      </LocalizedNames>\n" +
                $"      <CustomizationPrefix>{publisherPrefix}</CustomizationPrefix>\n" +
-               "      <CustomizationOptionValuePrefix>0</CustomizationOptionValuePrefix>\n" +
+               $"      <CustomizationOptionValuePrefix>{optionValuePrefix}</CustomizationOptionValuePrefix>\n" +
                "    </Publisher>\n" +
                "    <RootComponents>\n" +
                rootComponents +

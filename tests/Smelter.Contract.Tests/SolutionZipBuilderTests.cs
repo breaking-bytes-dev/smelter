@@ -47,6 +47,9 @@ public class SolutionZipBuilderTests
         var solutionXml = ReadEntry(zip, "solution.xml");
 
         solutionXml.Should().Contain("<UniqueName>smlt_core_smelter</UniqueName>");
+        // Dev exige un CustomizationOptionValuePrefix real (10000-99999); con 0 el
+        // manifest se rechaza (run 30360446260). El de sanic es 15946 (Solution.xml:22).
+        solutionXml.Should().Contain("<CustomizationOptionValuePrefix>15946</CustomizationOptionValuePrefix>");
         solutionXml.Should().Contain("<Version>1.0.0.7</Version>");
         solutionXml.Should().Contain("<RootComponent type=\"1\" schemaName=\"sanic_tbl_smlt_importjob\" behavior=\"0\" />");
         solutionXml.Should().Contain("<RootComponent type=\"1\" schemaName=\"sanic_tbl_smlt_importtemplate\" behavior=\"0\" />");
