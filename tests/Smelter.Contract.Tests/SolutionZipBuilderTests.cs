@@ -67,6 +67,29 @@ public class SolutionZipBuilderTests
     }
 
     [Fact]
+    public void BuildRibbonSolution_StripsXmlDeclarationFromEmbeddedRibbonDiff()
+    {
+        // El asset versionado arranca con <?xml ...?>; embebido crudo dentro de
+        // customizations.xml, Dev rechaza el import: "Unexpected XML declaration"
+        // (verificado en backend-deploy run 30360173757).
+        var zip = SolutionZipBuilder.BuildRibbonSolution(
+            "smlt_core_smelter", "Sistemas_Abiertos_Nicaragua", "sanic", "1.0.0.1",
+            new Dictionary<string, string>
+            {
+                ["sanic_tbl_smlt_importjob"] =
+                    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- comentario -->\n<RibbonDiffXml><CustomActions /></RibbonDiffXml>",
+            });
+
+        using var archive = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
+        using var reader = new StreamReader(archive.GetEntry("customizations.xml")!.Open());
+        var customizations = reader.ReadToEnd();
+
+        customizations.LastIndexOf("<?xml", StringComparison.Ordinal).Should().Be(0,
+            because: "la única declaración XML permitida es la del propio customizations.xml, como primer nodo");
+        customizations.Should().Contain("<RibbonDiffXml>");
+    }
+
+    [Fact]
     public void BuildRibbonSolution_WithNoEntities_Throws()
     {
         var act = () => SolutionZipBuilder.BuildRibbonSolution(

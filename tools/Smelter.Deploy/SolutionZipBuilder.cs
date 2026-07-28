@@ -97,9 +97,15 @@ internal static class SolutionZipBuilder
         var entities = new StringBuilder();
         foreach (var (entityName, ribbonDiffXml) in ribbonDiffXmlByEntity)
         {
+            // La declaración <?xml ...?> del asset no puede quedar embebida dentro de
+            // customizations.xml — Dev rechaza el import ("Unexpected XML declaration",
+            // run 30360173757). Solo el documento contenedor lleva declaración.
+            var embeddable = System.Text.RegularExpressions.Regex.Replace(
+                ribbonDiffXml, @"^\s*<\?xml[^>]*\?>\s*", string.Empty);
+
             entities.Append("    <Entity>\n")
                 .Append("      <Name>").Append(entityName).Append("</Name>\n")
-                .Append(ribbonDiffXml).Append('\n')
+                .Append(embeddable).Append('\n')
                 .Append("    </Entity>\n");
         }
 
