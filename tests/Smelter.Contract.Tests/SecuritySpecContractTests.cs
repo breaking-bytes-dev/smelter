@@ -151,4 +151,16 @@ public class SecuritySpecContractTests
     {
         SecuritySpec.AllJobsView.FetchXml.Should().NotContain("<filter");
     }
+
+    [Fact]
+    public void Views_LayoutXml_CarriesObjectTypeCodePlaceholderOnGrid()
+    {
+        // Dataverse rechaza layoutxml sin el atributo object (ObjectTypeCode de la
+        // entidad, específico de cada org) — el provisioner lo resuelve en runtime.
+        foreach (var view in SecuritySpec.Views)
+        {
+            view.LayoutXml.Should().Contain($"object=\"{SecuritySpec.ObjectTypeCodePlaceholder}\"",
+                because: $"la vista '{view.Name}' debe llevar el placeholder que UpsertViews reemplaza por el ObjectTypeCode real");
+        }
+    }
 }

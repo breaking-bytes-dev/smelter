@@ -116,9 +116,14 @@ internal static class SecuritySpec
           </row>
         """;
 
+    // Dataverse exige el atributo object (ObjectTypeCode) en el grid del layoutxml;
+    // para tablas custom es específico de cada org, así que va como placeholder y
+    // SecurityProvisioner.UpsertViews lo resuelve en runtime contra metadata.
+    public const string ObjectTypeCodePlaceholder = "__OBJECT_TYPE_CODE__";
+
     private static string ImportJobLayoutXml() =>
         $"""
-        <grid name="resultset" jump="sanic_smlt_ij_name" select="1" icon="1" preview="1">
+        <grid name="resultset" object="{ObjectTypeCodePlaceholder}" jump="sanic_smlt_ij_name" select="1" icon="1" preview="1">
         {ImportJobGridColumns}
         </grid>
         """;

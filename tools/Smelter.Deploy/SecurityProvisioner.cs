@@ -294,8 +294,19 @@ internal static class SecurityProvisioner
     // ── 4.1 Vistas custom de Import Job ────────────────────────────────────────────────────────
     private static void UpsertViews(ServiceClient client)
     {
+        var metadata = (RetrieveEntityResponse)client.Execute(new RetrieveEntityRequest
+        {
+            LogicalName = SecuritySpec.Tables.ImportJob,
+            EntityFilters = EntityFilters.Entity,
+        });
+        var objectTypeCode = metadata.EntityMetadata.ObjectTypeCode
+            ?? throw new InvalidOperationException(
+                $"La entidad {SecuritySpec.Tables.ImportJob} no expone ObjectTypeCode en metadata.");
+
         foreach (var view in SecuritySpec.Views)
         {
+            var layoutXml = view.LayoutXml.Replace(
+                SecuritySpec.ObjectTypeCodePlaceholder, objectTypeCode.ToString());
             var existentes = client.RetrieveMultiple(new QueryExpression("savedquery")
             {
                 ColumnSet = new ColumnSet("savedqueryid"),
@@ -315,7 +326,7 @@ internal static class SecurityProvisioner
                 {
                     ["description"] = view.Description,
                     ["fetchxml"] = view.FetchXml,
-                    ["layoutxml"] = view.LayoutXml,
+                    ["layoutxml"] = layoutXml,
                 });
                 Console.WriteLine($"[6]   vista '{view.Name}' existente — actualizada.");
                 continue;
@@ -327,7 +338,7 @@ internal static class SecurityProvisioner
                 ["description"] = view.Description,
                 ["returnedtypecode"] = SecuritySpec.Tables.ImportJob,
                 ["fetchxml"] = view.FetchXml,
-                ["layoutxml"] = view.LayoutXml,
+                ["layoutxml"] = layoutXml,
                 ["querytype"] = 0,
                 ["isquickfindquery"] = false,
                 ["isdefault"] = false,
