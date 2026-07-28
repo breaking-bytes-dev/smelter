@@ -398,90 +398,36 @@ internal static class SecurityProvisioner
     }
 
     // ── 4.5 Dashboard + entrada de sitemap ─────────────────────────────────────────────────────
+    // El "Smelter Dashboard" YA viaja con la solución (InteractionCentricDashboards/ en la
+    // exportada) — acá NO se crea ningún dashboard: se busca el existente por nombre entre los
+    // tipos dashboard (0=clásico, 10=interaction-centric) y solo se lo enlaza en el sitemap.
+    // Crear un formxml de dashboard por código fue descartado: Dev rechazó el schema best-effort
+    // (run 30360739680, "The element 'form' has invalid child element 'dashboard'").
     private static void UpsertDashboardSubArea(ServiceClient client)
     {
-        var jobsActivosViewId = RetrieveViewId(client, SecuritySpec.ActiveJobsView.Name);
-        var completadosConErroresViewId = RetrieveViewId(client, SecuritySpec.CompletedWithErrorsView.Name);
-
-        var dashboardId = UpsertDashboard(client, jobsActivosViewId, completadosConErroresViewId);
-        UpsertSiteMapEntry(client, dashboardId);
-    }
-
-    private static Guid RetrieveViewId(ServiceClient client, string viewName) =>
-        client.RetrieveMultiple(new QueryExpression("savedquery")
+        var dashboards = client.RetrieveMultiple(new QueryExpression("systemform")
         {
-            ColumnSet = new ColumnSet("savedqueryid"),
-            Criteria =
-            {
-                Conditions =
-                {
-                    new ConditionExpression("name", ConditionOperator.Equal, viewName),
-                    new ConditionExpression("returnedtypecode", ConditionOperator.Equal, SecuritySpec.Tables.ImportJob),
-                },
-            },
-        }).Entities.Single().Id;
-
-    private static Guid UpsertDashboard(ServiceClient client, Guid jobsActivosViewId, Guid completadosConErroresViewId)
-    {
-        var formXml = BuildDashboardFormXml(jobsActivosViewId, completadosConErroresViewId);
-
-        var existentes = client.RetrieveMultiple(new QueryExpression("systemform")
-        {
-            ColumnSet = new ColumnSet("formid"),
+            ColumnSet = new ColumnSet("formid", "type"),
             Criteria =
             {
                 Conditions =
                 {
                     new ConditionExpression("name", ConditionOperator.Equal, SecuritySpec.DashboardName),
-                    new ConditionExpression("type", ConditionOperator.Equal, 0), // Dashboard
+                    new ConditionExpression("type", ConditionOperator.In, 0, 10),
                 },
             },
         }).Entities;
 
-        if (existentes.Count > 0)
+        if (dashboards.Count == 0)
         {
-            client.Update(new Entity("systemform", existentes[0].Id) { ["formxml"] = formXml });
-            Console.WriteLine($"[6]   dashboard '{SecuritySpec.DashboardName}' existente — actualizado.");
-            return existentes[0].Id;
+            Console.Error.WriteLine(
+                $"[6]   WARN: dashboard '{SecuritySpec.DashboardName}' no existe en el ambiente — se omite la entrada del sitemap.");
+            return;
         }
 
-        var creado = CrearEnSolucion(client, new Entity("systemform")
-        {
-            ["name"] = SecuritySpec.DashboardName,
-            ["description"] = SecuritySpec.DashboardDescription,
-            ["type"] = new OptionSetValue(0), // Dashboard
-            ["formxml"] = formXml,
-        });
-        Console.WriteLine($"[6]   dashboard '{SecuritySpec.DashboardName}' creado: {creado}.");
-        return creado;
+        Console.WriteLine($"[6]   dashboard '{SecuritySpec.DashboardName}' encontrado: {dashboards[0].Id}.");
+        UpsertSiteMapEntry(client, dashboards[0].Id);
     }
-
-    // Schema de "single-stream dashboard" (subgrid por control) documentado por Microsoft para
-    // crear dashboards por código — best-effort, ver comentario de riesgo al inicio del archivo.
-    private static string BuildDashboardFormXml(Guid jobsActivosViewId, Guid completadosConErroresViewId) =>
-        "<form><dashboard>" +
-        "<rows>" +
-        "<row>" +
-        BuildDashboardCell("id_smlt_dashboard_activos", "Jobs Activos", SecuritySpec.Tables.ImportJob,
-            jobsActivosViewId, SecuritySpec.DashboardActiveJobsControlUniqueId) +
-        BuildDashboardCell("id_smlt_dashboard_errores", "Completados con Errores", SecuritySpec.Tables.ImportJob,
-            completadosConErroresViewId, SecuritySpec.DashboardCompletedWithErrorsControlUniqueId) +
-        "</row>" +
-        "</rows>" +
-        "</dashboard></form>";
-
-    // `uniqueId` viene de SecuritySpec (GUID FIJO, no Guid.NewGuid() por corrida) — de lo contrario
-    // el formxml cambiaría en TODO deploy aunque nada lógico haya cambiado (churn/ruido de diffs).
-    private static string BuildDashboardCell(string controlId, string title, string entityLogicalName, Guid viewId, string uniqueId) =>
-        "<cell showlabel=\"true\" showborder=\"true\" labelwidth=\"auto\">" +
-        $"<labelwidth>auto</labelwidth><label description=\"{title}\" languagecode=\"1033\" />" +
-        $"<control id=\"{controlId}\" uniqueid=\"{uniqueId}\" type=\"subgrid\">" +
-        "<parameters>" +
-        $"<ViewId>{{{viewId}}}</ViewId>" +
-        $"<EntityLogicalName>{entityLogicalName}</EntityLogicalName>" +
-        "</parameters>" +
-        "</control>" +
-        "</cell>";
 
     private static void UpsertSiteMapEntry(ServiceClient client, Guid dashboardId)
     {

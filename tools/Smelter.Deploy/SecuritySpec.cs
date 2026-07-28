@@ -176,17 +176,7 @@ internal static class SecuritySpec
     internal static readonly ViewSpec[] Views = [ActiveJobsView, CompletedWithErrorsView, AllJobsView];
 
     // ── Dashboard (Requirement "Dashboard Smelter Dashboard en el sitemap", smelter-mda-ux) ────
+    // El dashboard ya existe en el ambiente (viaja con la solución) — el provisioner solo lo
+    // busca por este nombre y lo enlaza en el sitemap; no crea ni modifica su formxml.
     internal const string DashboardName = "Smelter Dashboard";
-    internal const string DashboardDescription =
-        "Resumen de Import Jobs por estado y jobs con errores recientes.";
-
-    // `uniqueid` de cada control <subgrid> del formxml del dashboard (SecurityProvisioner.
-    // BuildDashboardCell). DETERMINÍSTICOS a propósito: si se generaran con Guid.NewGuid() en cada
-    // corrida, el formxml cambiaría en TODO deploy aunque nada lógico haya cambiado — ruido en
-    // diffs/logs y falso "actualizado" en un ambiente ya provisionado (rompe el espíritu idempotente
-    // del resto de SecurityProvisioner). Fijos una vez, para siempre — cambiarlos no rompe nada
-    // (Dataverse no les da significado propio más allá de distinguir controles dentro del mismo
-    // form), pero cambiarlos sin necesidad genera el mismo churn que se está evitando acá.
-    internal const string DashboardActiveJobsControlUniqueId = "64a99bb5-4fd9-4792-9a93-c609d577a2af";
-    internal const string DashboardCompletedWithErrorsControlUniqueId = "d9be5fbb-5ee5-40d4-9b91-3b413dfa9bc4";
 }
