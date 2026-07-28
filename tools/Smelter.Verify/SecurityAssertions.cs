@@ -150,13 +150,16 @@ internal static class SecurityAssertions
             ColumnSet = new ColumnSet(false),
             RelatedEntitiesQuery = new RelationshipQueryCollection
             {
-                { relationship, new QueryExpression("role") { ColumnSet = new ColumnSet("roleid") } },
+                { relationship, new QueryExpression("role") { ColumnSet = new ColumnSet("roleid", "name") } },
             },
         });
 
-        var associatedRoleIds = retrieve.Entity.RelatedEntities.TryGetValue(relationship, out var related)
-            ? related.Entities.Select(e => e.Id).ToArray()
-            : Array.Empty<Guid>();
+        var associatedRoles = retrieve.Entity.RelatedEntities.TryGetValue(relationship, out var related)
+            ? related.Entities.ToArray()
+            : Array.Empty<Entity>();
+        var associatedRoleIds = associatedRoles.Select(e => e.Id).ToArray();
+        Console.WriteLine($"[SEC]   AppModuleRoles asociados ({associatedRoleIds.Length}): " +
+            string.Join(", ", associatedRoles.Select(e => $"{e.Id} ('{e.GetAttributeValue<string>("name")}')")));
 
         Assert(associatedRoleIds.Contains(configuradorRoleId), "la MDA de Smelter debe estar asociada al rol Configurador");
         Assert(associatedRoleIds.Length == 1,

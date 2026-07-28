@@ -291,6 +291,22 @@ internal static class SecurityProvisioner
             }
         }
 
+        // Read-back inmediato: discrimina "la desasociación no surte efecto" vs "los role maps
+        // se re-materializan más tarde" (backend-verify volvió a contar 3, run 30363044249).
+        var readBack = (RetrieveResponse)client.Execute(new RetrieveRequest
+        {
+            Target = new EntityReference("appmodule", appModule.Id),
+            ColumnSet = new ColumnSet(false),
+            RelatedEntitiesQuery = new RelationshipQueryCollection
+            {
+                { relationship, new QueryExpression("role") { ColumnSet = new ColumnSet("roleid", "name") } },
+            },
+        });
+        var quedan = readBack.Entity.RelatedEntities.TryGetValue(relationship, out var rb)
+            ? rb.Entities.Select(e => $"{e.Id} ('{e.GetAttributeValue<string>("name")}')").ToArray()
+            : [];
+        Console.WriteLine($"[6]   read-back post-desasociación: {quedan.Length} asociado(s): {string.Join(", ", quedan)}.");
+
         if (!rolesActuales.Contains(configuradorRoleId))
         {
             client.Execute(new AssociateRequest
