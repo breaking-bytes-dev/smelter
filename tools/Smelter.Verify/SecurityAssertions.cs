@@ -127,8 +127,16 @@ internal static class SecurityAssertions
             Assert(actual == api.ExecutePrivilegeName,
                 $"customapi '{api.UniqueName}'.executeprivilegename es '{actual}', esperado '{api.ExecutePrivilegeName}'");
         }
-        Console.WriteLine($"[SEC]   executeprivilegename OK en las {Catalogo.Apis.Length} Custom APIs " +
-            "(Release N: incluye anic_/sanic_ processchunk durante la transición).");
+        Console.WriteLine($"[SEC]   executeprivilegename OK en las {Catalogo.Apis.Length} Custom APIs del catálogo.");
+
+        // Release N+1 (Fase 9): la API legacy del typo no debe existir más en Dev.
+        var legacy = client.RetrieveMultiple(new QueryExpression("customapi")
+        {
+            ColumnSet = new ColumnSet("customapiid"),
+            Criteria = { Conditions = { new ConditionExpression("uniquename", ConditionOperator.Equal, "anic_capi_smelter_processchunk") } },
+        }).Entities;
+        Assert(legacy.Count == 0, "la Custom API legacy 'anic_capi_smelter_processchunk' sigue existiendo en Dev (Fase 9 pendiente)");
+        Console.WriteLine("[SEC]   Custom API legacy 'anic_' eliminada de Dev OK.");
     }
 
     // ── 7.5: AppModuleRoles — MDA asociada SOLO a Configurador ─────────────────────────────────

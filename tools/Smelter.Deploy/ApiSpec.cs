@@ -50,29 +50,10 @@ internal static class Catalogo
             ResponseProps: [new("TotalRows", ParamType.Integer)],
             ExecutePrivilegeName: SecuritySpec.PrivilegeName(PrivilegeType.Create, SecuritySpec.Tables.ImportJob)),
 
-        new(
-            // ⚠️ TYPO CONOCIDO (así vive en Dev y así lo llamaba el Cloud Flow legacy): "anic_", sin
-            // la 's'. Release N (Fase 6, smelter-mda-ux): rename ADITIVO — se agrega la entrada
-            // correcta "sanic_capi_smelter_processchunk" de abajo SIN borrar esta, y el Cloud Flow se
-            // actualiza al nombre nuevo (CloudFlowUpdater) en el mismo deploy. Esta entrada legacy se
-            // remueve recién en Fase 9 (gateada: Smelter.Verify en verde primero) — ver
-            // ProcessChunkRenameContractTests.
-            UniqueName: "anic_capi_smelter_processchunk",
-            DisplayName: "CAPI | Smelter | Process Chunk",
-            Description: "Procesa un lote del CSV (parse streaming + skip al offset, orden DAG, upsert por alternate key).",
-            PluginTypeName: "Smelter.Plugins.ProcessChunkPlugin",
-            RequestParams:
-            [
-                new("JobId", ParamType.Guid, Optional: false),
-                new("ChunkSize", ParamType.Integer, Optional: true),
-            ],
-            ResponseProps:
-            [
-                new("HasMore", ParamType.Boolean),
-                new("ProcessedSoFar", ParamType.Integer),
-            ],
-            ExecutePrivilegeName: SecuritySpec.PrivilegeName(PrivilegeType.Create, SecuritySpec.Tables.ImportJob)),
-
+        // La entrada legacy "anic_capi_smelter_processchunk" (typo histórico, sin la 's') vivió acá
+        // durante el rename aditivo de Release N y se removió en Fase 9 tras backend-verify verde
+        // (run 30364284364). El deploy borra el registro remanente de Dev vía DeleteRequest
+        // (Program.cs, cleanup) — no debe re-upsertearse nunca más.
         new(
             // Nombre CORRECTO ("sanic_", con la 's') — la mitad nueva del rename aditivo de Release N
             // (ver comentario en la entrada "anic_..." arriba). Mismo PluginTypeName/params/response/

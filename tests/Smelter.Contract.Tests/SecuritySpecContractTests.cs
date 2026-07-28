@@ -45,7 +45,7 @@ public class SecuritySpecContractTests
     }
 
     [Theory]
-    [InlineData("anic_capi_smelter_processchunk")]
+    [InlineData("sanic_capi_smelter_processchunk")]
     [InlineData("sanic_capi_smelter_prepareimport")]
     public void PrepareImportAndProcessChunk_Apis_RequireCreateOnImportJob(string uniqueName)
     {

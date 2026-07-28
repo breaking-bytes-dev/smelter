@@ -5,45 +5,46 @@ using Xunit;
 namespace Smelter.Contract.Tests;
 
 /// <summary>
-/// CONTRATO del rename aditivo de processchunk (Release N, smelter-mda-ux Requirement "Rename de
-/// processchunk sin ventana rota"): durante la transición ambas entradas (anic_/sanic_) MUST existir
-/// en <see cref="Catalogo.Apis"/> y apuntar al MISMO <c>PluginTypeName</c>, con idéntica forma de
-/// request/response y el mismo <c>ExecutePrivilegeName</c> — si alguna diverge, el Cloud Flow legacy
-/// o el nuevo quedarían invocando un plugin distinto o con params rotos. Fase 9 (gateada, tras
-/// confirmar Smelter.Verify en verde) remueve la entrada <c>anic_</c>.
+/// CONTRATO del rename de processchunk — estado Release N+1 (Fase 9, smelter-mda-ux Requirement
+/// "Rename de processchunk sin ventana rota"): la entrada legacy <c>anic_</c> ya NO existe en
+/// <see cref="Catalogo.Apis"/> (el deploy la borra de Dev con un DeleteRequest explícito) y la
+/// entrada correcta <c>sanic_</c> queda como única processchunk, con la forma y el privilegio que
+/// el Cloud Flow ya migrado espera. El estado transicional de Release N (ambas entradas conviviendo)
+/// quedó documentado en el historial de este archivo y se cerró tras backend-verify verde
+/// (run 30364284364).
 /// </summary>
 public class ProcessChunkRenameContractTests
 {
-    private const string OldUniqueName = "anic_capi_smelter_processchunk";
+    private const string LegacyUniqueName = "anic_capi_smelter_processchunk";
     private const string NewUniqueName = "sanic_capi_smelter_processchunk";
 
     [Fact]
-    public void BothOldAndNewProcessChunkApis_ExistDuringTransition()
+    public void LegacyProcessChunkApi_IsGoneFromCatalog()
     {
-        Catalogo.Apis.Should().Contain(a => a.UniqueName == OldUniqueName,
-            "el flow legacy todavía invoca el uniquename viejo hasta que el Cloud Flow se actualice");
-        Catalogo.Apis.Should().Contain(a => a.UniqueName == NewUniqueName,
-            "el rename es ADITIVO en Release N — la entrada nueva debe existir antes de tocar el flow");
+        Catalogo.Apis.Should().NotContain(a => a.UniqueName == LegacyUniqueName,
+            "Fase 9 (Release N+1): el Cloud Flow ya migró al uniquename nuevo con verify verde — " +
+            "la entrada legacy no debe re-upsertearse nunca más");
     }
 
     [Fact]
-    public void BothOldAndNewProcessChunkApis_PointToTheSamePluginType()
+    public void NewProcessChunkApi_IsTheOnlyProcessChunkEntry()
     {
-        var oldApi = Catalogo.Apis.Single(a => a.UniqueName == OldUniqueName);
-        var newApi = Catalogo.Apis.Single(a => a.UniqueName == NewUniqueName);
+        var processChunkApis = Catalogo.Apis
+            .Where(a => a.PluginTypeName == "Smelter.Plugins.ProcessChunkPlugin")
+            .ToArray();
 
-        newApi.PluginTypeName.Should().Be(oldApi.PluginTypeName,
-            "ambas entradas deben ejecutar el mismo backing plugin durante la transición");
+        processChunkApis.Should().ContainSingle()
+            .Which.UniqueName.Should().Be(NewUniqueName);
     }
 
     [Fact]
-    public void BothOldAndNewProcessChunkApis_HaveIdenticalRequestResponseShapeAndPrivilege()
+    public void NewProcessChunkApi_KeepsShapeAndPrivilegeTheFlowDependsOn()
     {
-        var oldApi = Catalogo.Apis.Single(a => a.UniqueName == OldUniqueName);
-        var newApi = Catalogo.Apis.Single(a => a.UniqueName == NewUniqueName);
+        var api = Catalogo.Apis.Single(a => a.UniqueName == NewUniqueName);
 
-        newApi.RequestParams.Should().BeEquivalentTo(oldApi.RequestParams);
-        newApi.ResponseProps.Should().BeEquivalentTo(oldApi.ResponseProps);
-        newApi.ExecutePrivilegeName.Should().Be(oldApi.ExecutePrivilegeName);
+        api.RequestParams.Select(p => p.Name).Should().BeEquivalentTo("JobId", "ChunkSize");
+        api.ResponseProps.Select(p => p.Name).Should().BeEquivalentTo("HasMore", "ProcessedSoFar");
+        api.ExecutePrivilegeName.Should().Be(
+            SecuritySpec.PrivilegeName(PrivilegeType.Create, SecuritySpec.Tables.ImportJob));
     }
 }

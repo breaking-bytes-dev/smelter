@@ -95,6 +95,24 @@ SecurityProvisioner.Run(client);
 // ── 7. Cloud Flow: rename aditivo de processchunk (Fase 6) — anic_... → sanic_..., sin ventana rota ──
 CloudFlowUpdater.UpdateProcessChunkReference(client);
 
+// ── 8. Cleanup Fase 9 (Release N+1, gate: backend-verify verde run 30364284364): borrar la Custom
+//       API legacy "anic_..." de Dev. Idempotente: si ya no existe, no hay nada que borrar. ──
+var legacyApi = client.RetrieveMultiple(new QueryExpression("customapi")
+{
+    ColumnSet = new ColumnSet("customapiid"),
+    Criteria = { Conditions = { new ConditionExpression("uniquename", ConditionOperator.Equal, ClientDataProcessChunkRenamer.OldActionUniqueName) } },
+}).Entities.SingleOrDefault();
+
+if (legacyApi is not null)
+{
+    client.Delete("customapi", legacyApi.Id);
+    Console.WriteLine($"[8] Custom API legacy '{ClientDataProcessChunkRenamer.OldActionUniqueName}' eliminada de Dev ({legacyApi.Id}).");
+}
+else
+{
+    Console.WriteLine($"[8] Custom API legacy '{ClientDataProcessChunkRenamer.OldActionUniqueName}' ya no existe — nada que borrar.");
+}
+
 Console.WriteLine();
 Console.WriteLine($"[OK] Despliegue completo. package={packageId}.");
 return 0;

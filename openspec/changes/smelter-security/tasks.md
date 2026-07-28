@@ -222,9 +222,13 @@ CloudFlowUpdater/SecurityAssertions/CustomApiContractTests ya quedaron anotados 
 
 ## Phase 9: Rename processchunk — Release N+1 (cleanup, gated)
 
-- [ ] 9.1 Gate: Fase 7 (`Smelter.Verify`) debe estar en verde en release N antes de continuar.
-- [ ] 9.2 `ApiSpec.cs`: quitar `anic_capi_smelter_processchunk` de `Catalogo.Apis`.
-- [ ] 9.3 `DeleteRequest` explícito del registro `customapi` legacy en el deploy (cleanup, no
-      reconciliación silenciosa).
-- [ ] 9.4 Actualizar el contract test de 6.2: solo `sanic_` processchunk, sin la entrada legacy.
+- [x] 9.1 Gate: Fase 7 (`Smelter.Verify`) debe estar en verde en release N antes de continuar.
+      → CUMPLIDO: backend-verify run 30364063750/30364284364 VERDE completo ([SEC] + smoke E2E).
+- [x] 9.2 `ApiSpec.cs`: quitar `anic_capi_smelter_processchunk` de `Catalogo.Apis`.
+- [x] 9.3 `DeleteRequest` explícito del registro `customapi` legacy en el deploy (cleanup, no
+      reconciliación silenciosa). → Program.cs paso [8], idempotente (query + delete si existe).
+- [x] 9.4 Actualizar el contract test de 6.2: solo `sanic_` processchunk, sin la entrada legacy.
+      → ProcessChunkRenameContractTests reescrito al estado N+1 (TDD: rojo→verde);
+      SecuritySpecContractTests sin la InlineData legacy; SecurityAssertions exige la API
+      legacy AUSENTE en Dev.
 - [ ] 9.5 Deploy release N+1; re-correr `Smelter.Verify` — confirmar 4 APIs, verde.
