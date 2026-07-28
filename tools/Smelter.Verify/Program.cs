@@ -145,7 +145,7 @@ finally
 
 static void RunImport(ServiceClient client, string apiPrepare, string apiProcessChunk, Guid jobId, int expectTotal)
 {
-    var prep = client.Execute(new OrganizationRequest(apiPrepare) { ["JobId"] = jobId });
+    var prep = ExecuteWithTransientBlobRetry(client, new OrganizationRequest(apiPrepare) { ["JobId"] = jobId });
     var total = (int)prep["TotalRows"];
     Assert(total == expectTotal, $"PrepareImport debía contar {expectTotal} filas, contó {total}");
 
@@ -155,6 +155,39 @@ static void RunImport(ServiceClient client, string apiPrepare, string apiProcess
         if (!(bool)resp["HasMore"]) return;
     }
     throw new InvalidOperationException("ProcessChunk no terminó en 10 iteraciones (HasMore nunca fue false).");
+}
+
+// La descarga de la columna File dentro de PrepareImport falla INTERMITENTE con un 400
+// "InvalidQueryParameterValue" de Azure Blob Storage cuando el CSV se subió segundos antes
+// (timing/SAS — visto en backend-verify runs 30364063750 y 30365035368; el mismo flujo dio
+// verde en 30364284364 sin tocar nada). Retry acotado SOLO para esa firma transitoria: cualquier
+// otro error (p.ej. el chequeo de acceso del plugin) se propaga al primer intento.
+static OrganizationResponse ExecuteWithTransientBlobRetry(ServiceClient client, OrganizationRequest request)
+{
+    const int maxAttempts = 4;
+    for (var attempt = 1; ; attempt++)
+    {
+        try
+        {
+            return client.Execute(request);
+        }
+        catch (System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault> fx)
+            when (attempt < maxAttempts && FaultChainContains(fx.Detail, "InvalidQueryParameterValue"))
+        {
+            Console.WriteLine($"[5]   WARN: descarga del File transitoriamente rechazada por storage (400 InvalidQueryParameterValue) — retry {attempt}/{maxAttempts - 1} en 15s ...");
+            System.Threading.Thread.Sleep(TimeSpan.FromSeconds(15));
+        }
+    }
+}
+
+static bool FaultChainContains(Microsoft.Xrm.Sdk.OrganizationServiceFault? fault, string needle)
+{
+    for (; fault is not null; fault = fault.InnerFault)
+    {
+        if (fault.Message?.Contains(needle, StringComparison.OrdinalIgnoreCase) == true) return true;
+        if (fault.TraceText?.Contains(needle, StringComparison.OrdinalIgnoreCase) == true) return true;
+    }
+    return false;
 }
 
 static void AssertJob(ServiceClient client, Guid jobId, int expectedSuccess)
