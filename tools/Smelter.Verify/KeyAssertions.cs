@@ -4,6 +4,8 @@
 // del log de filas fallidas daría un falso negativo confuso.
 
 using Microsoft.PowerPlatform.Dataverse.Client;
+// EntityKeyIndexStatus vive en Microsoft.Xrm.Sdk (no en .Metadata) — sin este using, CS0103.
+using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Metadata;
 using Smelter.Deploy;
 
