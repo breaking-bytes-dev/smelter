@@ -24,8 +24,9 @@ sin errores.
   required como atributo. Los logs de filas fallidas se escriben y son idempotentes ante retries.
 - **Alternate key recreada por SDK**: nuevo `KeyProvisioner` (`tools/Smelter.Deploy/KeySpec.cs` +
   `KeyProvisioner.cs`, paso `[4c]`) — detecta la composición incorrecta, elimina y recrea la key con
-  las columnas correctas, esperando el índice Active (aborta con mensaje claro si queda Failed por
-  duplicados preexistentes).
+  las columnas correctas, y espera el índice Active. Si el índice queda Failed por filas duplicadas
+  preexistentes (basura de la era del bug), se auto-repara con el flujo documentado de la plataforma:
+  deduplica los grupos exactos (conserva la fila más reciente de cada uno) + `ReactivateEntityKeyRequest`.
 - **Doc corregida** (`docs/02-solution-reference/tables/import-job-log.md`): `sanic_smlt_ijl_id` es el
   autonumber del nombre primario, NO un lookup; el FK real `sanic_smlt_ijl_importjobid` ahora figura en
   la tabla de columnas y en la composición de la key (con la historia del bug).

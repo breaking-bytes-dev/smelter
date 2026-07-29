@@ -1,16 +1,22 @@
 // Provisioning idempotente de alternate keys (KeySpec.cs). Para cada spec:
-//   - si la key existe con la composición correcta → solo verifica que el índice esté Active;
+//   - si la key existe con la composición correcta → verifica el índice (y lo repara si hace falta);
 //   - si existe con composición INCORRECTA (el caso del bug 1.2.1.0 del Import Job Log) →
 //     DeleteEntityKeyRequest + CreateEntityKeyRequest con las columnas correctas;
 //   - si no existe → se crea.
-// La creación de una key dispara la creación ASÍNCRONA del índice en SQL: se espera hasta que
-// EntityKeyIndexStatus sea Active (Failed aborta el deploy — típico si hay datos duplicados
-// preexistentes que violan la unicidad de la key nueva).
+// La creación dispara la construcción ASÍNCRONA del índice: se espera EntityKeyIndexStatus.Active.
+//
+// Si el índice queda Failed, la causa típica son filas DUPLICADAS preexistentes que violan la
+// unicidad de la key (en el Import Job Log: basura de la era del bug — la key vieja con autonumber
+// no deduplicaba nada). El provisioner se auto-repara con el flujo documentado de la plataforma:
+// deduplicar los grupos exactos (conserva la fila MÁS RECIENTE de cada grupo, borra el resto — son
+// filas de diagnóstico idénticas en la key, no data de negocio) + ReactivateEntityKeyRequest, y
+// re-espera. Si aún así queda Failed, aborta con detalle.
 
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Metadata;
+using Microsoft.Xrm.Sdk.Query;
 
 namespace Smelter.Deploy;
 
@@ -28,7 +34,7 @@ internal static class KeyProvisioner
             {
                 Console.WriteLine($"[4c]   key '{spec.SchemaName}' ya tiene la composición correcta " +
                     $"({string.Join(", ", spec.KeyAttributes)}).");
-                EsperarIndiceActivo(client, spec);
+                AsegurarIndiceActivo(client, spec);
                 continue;
             }
 
@@ -43,23 +49,8 @@ internal static class KeyProvisioner
                 });
             }
 
-            var create = new CreateEntityKeyRequest
-            {
-                EntityName = spec.EntityLogicalName,
-                EntityKey = new EntityKeyMetadata
-                {
-                    SchemaName = spec.SchemaName,
-                    LogicalName = spec.SchemaName.ToLowerInvariant(),
-                    DisplayName = new Label(spec.DisplayName, 1033),
-                    KeyAttributes = spec.KeyAttributes,
-                },
-            };
-            create.Parameters["SolutionUniqueName"] = Catalogo.SolutionName;
-            client.Execute(create);
-            Console.WriteLine($"[4c]   key '{spec.SchemaName}' creada con ({string.Join(", ", spec.KeyAttributes)}). " +
-                "Esperando el índice ...");
-
-            EsperarIndiceActivo(client, spec);
+            CrearKey(client, spec);
+            AsegurarIndiceActivo(client, spec);
         }
     }
 
@@ -83,7 +74,50 @@ internal static class KeyProvisioner
         && key.KeyAttributes.Length == spec.KeyAttributes.Length
         && spec.KeyAttributes.All(a => key.KeyAttributes.Contains(a, StringComparer.OrdinalIgnoreCase));
 
-    private static void EsperarIndiceActivo(ServiceClient client, EntityKeySpec spec)
+    private static void CrearKey(ServiceClient client, EntityKeySpec spec)
+    {
+        var create = new CreateEntityKeyRequest
+        {
+            EntityName = spec.EntityLogicalName,
+            EntityKey = new EntityKeyMetadata
+            {
+                SchemaName = spec.SchemaName,
+                LogicalName = spec.SchemaName.ToLowerInvariant(),
+                DisplayName = new Label(spec.DisplayName, 1033),
+                KeyAttributes = spec.KeyAttributes,
+            },
+        };
+        create.Parameters["SolutionUniqueName"] = Catalogo.SolutionName;
+        client.Execute(create);
+        Console.WriteLine($"[4c]   key '{spec.SchemaName}' creada con ({string.Join(", ", spec.KeyAttributes)}). " +
+            "Esperando el índice ...");
+    }
+
+    // Espera el índice; si queda Failed, dedupea las filas en conflicto + reactiva la key, una vez.
+    private static void AsegurarIndiceActivo(ServiceClient client, EntityKeySpec spec)
+    {
+        if (EsperarIndice(client, spec) == EntityKeyIndexStatus.Active)
+            return;
+
+        Console.WriteLine($"[4c]   key '{spec.SchemaName}': índice Failed — hay filas que violan la unicidad. " +
+            "Deduplicando (se conserva la más reciente de cada grupo) ...");
+        var eliminadas = DedupeRows(client, spec);
+        Console.WriteLine($"[4c]   {eliminadas} fila(s) duplicada(s) eliminadas de {spec.EntityLogicalName}. " +
+            "Reactivando la key ...");
+
+        client.Execute(new ReactivateEntityKeyRequest
+        {
+            EntityLogicalName = spec.EntityLogicalName,
+            EntityKeyLogicalName = spec.SchemaName.ToLowerInvariant(),
+        });
+
+        if (EsperarIndice(client, spec) != EntityKeyIndexStatus.Active)
+            throw new InvalidOperationException(
+                $"key '{spec.SchemaName}': el índice sigue Failed incluso después de deduplicar " +
+                $"({eliminadas} filas eliminadas). Revisar manualmente los datos de {spec.EntityLogicalName}.");
+    }
+
+    private static EntityKeyIndexStatus EsperarIndice(ServiceClient client, EntityKeySpec spec)
     {
         var deadline = DateTime.UtcNow.AddSeconds(180);
         while (true)
@@ -95,12 +129,9 @@ internal static class KeyProvisioner
             {
                 case EntityKeyIndexStatus.Active:
                     Console.WriteLine($"[4c]   key '{spec.SchemaName}': índice Active.");
-                    return;
+                    return EntityKeyIndexStatus.Active;
                 case EntityKeyIndexStatus.Failed:
-                    throw new InvalidOperationException(
-                        $"key '{spec.SchemaName}': el índice quedó en Failed — casi seguro hay filas duplicadas " +
-                        $"preexistentes en {spec.EntityLogicalName} que violan ({string.Join(", ", spec.KeyAttributes)}). " +
-                        "Limpiar los duplicados y reactivar la key (o re-correr el deploy).");
+                    return EntityKeyIndexStatus.Failed;
                 default:
                     if (DateTime.UtcNow > deadline)
                         throw new InvalidOperationException(
@@ -110,5 +141,59 @@ internal static class KeyProvisioner
                     break;
             }
         }
+    }
+
+    // Borra las filas cuyo valor de key está EXACTAMENTE duplicado, conservando la más reciente de
+    // cada grupo. Solo toca duplicados — nunca vacía la tabla.
+    private static int DedupeRows(ServiceClient client, EntityKeySpec spec)
+    {
+        var query = new QueryExpression(spec.EntityLogicalName)
+        {
+            ColumnSet = new ColumnSet(spec.KeyAttributes.Concat(["createdon"]).ToArray()),
+            PageInfo = new PagingInfo { Count = 5000, PageNumber = 1 },
+        };
+
+        var todas = new List<Entity>();
+        while (true)
+        {
+            var page = client.RetrieveMultiple(query);
+            todas.AddRange(page.Entities);
+            if (!page.MoreRecords) break;
+            query.PageInfo.PageNumber++;
+            query.PageInfo.PagingCookie = page.PagingCookie;
+        }
+
+        var eliminadas = 0;
+        foreach (var grupo in todas.GroupBy(e => string.Join("|", spec.KeyAttributes.Select(a => ValorNormalizado(e, a)))))
+        {
+            var duplicadas = grupo
+                .OrderByDescending(e => e.GetAttributeValue<DateTime?>("createdon") ?? DateTime.MinValue)
+                .Skip(1)
+                .ToList();
+            if (duplicadas.Count == 0) continue;
+
+            Console.WriteLine($"[4c]     grupo ({grupo.Key}): {duplicadas.Count + 1} filas — se conserva 1, se borran {duplicadas.Count}.");
+            foreach (var d in duplicadas)
+            {
+                client.Delete(spec.EntityLogicalName, d.Id);
+                eliminadas++;
+            }
+        }
+        return eliminadas;
+    }
+
+    // Normaliza el valor de una columna de la key para agrupar como agruparía el índice:
+    // strings case-insensitive (collation de Dataverse), lookups por GUID.
+    private static string ValorNormalizado(Entity e, string attribute)
+    {
+        var v = e.Contains(attribute) ? e[attribute] : null;
+        return v switch
+        {
+            null => "<null>",
+            EntityReference er => er.Id.ToString(),
+            OptionSetValue os => os.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            string s => s.Trim().ToLowerInvariant(),
+            _ => Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture) ?? "<null>",
+        };
     }
 }
