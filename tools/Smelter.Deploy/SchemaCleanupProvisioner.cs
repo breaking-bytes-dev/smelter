@@ -21,7 +21,6 @@ internal static class SchemaCleanupProvisioner
     {
         Console.WriteLine("[4d] SchemaCleanupProvisioner: atributos muertos (SchemaCleanupSpec.cs) ...");
 
-        var entidadesTocadas = new HashSet<string>();
         foreach (var spec in SchemaCleanupCatalogo.Attributes)
         {
             if (!AttributeExists(client, spec))
@@ -33,8 +32,11 @@ internal static class SchemaCleanupProvisioner
             ScrubForms(client, spec);
             ScrubViews(client, spec);
 
-            if (entidadesTocadas.Add(spec.EntityLogicalName))
-                PublishEntity(client, spec.EntityLogicalName);
+            // Publicar SIEMPRE antes de cada delete: la dependencia se evalúa contra la capa
+            // PUBLICADA — un scrub sin publicar deja la referencia viva y el delete falla con
+            // "referenced by N other components" (visto en run 30460874368 con totalbatches:
+            // el publish "una vez por entidad" dejó sin publicar el scrub del segundo atributo).
+            PublishEntity(client, spec.EntityLogicalName);
 
             try
             {
