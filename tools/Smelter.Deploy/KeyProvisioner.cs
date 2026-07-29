@@ -93,33 +93,45 @@ internal static class KeyProvisioner
             "Esperando el índice ...");
     }
 
-    // Espera el índice; si queda Failed, dedupea las filas en conflicto + reactiva la key, una vez.
+    // Espera el índice; si queda Failed, dedupea las filas en conflicto + reactiva la key (hasta 2
+    // intentos — el segundo cubre duplicados que aparezcan entre el scan y la reactivación).
     private static void AsegurarIndiceActivo(ServiceClient client, EntityKeySpec spec)
     {
-        if (EsperarIndice(client, spec) == EntityKeyIndexStatus.Active)
+        if (EsperarIndice(client, spec, failedGrace: TimeSpan.Zero) == EntityKeyIndexStatus.Active)
             return;
 
-        Console.WriteLine($"[4c]   key '{spec.SchemaName}': índice Failed — hay filas que violan la unicidad. " +
-            "Deduplicando (se conserva la más reciente de cada grupo) ...");
-        var eliminadas = DedupeRows(client, spec);
-        Console.WriteLine($"[4c]   {eliminadas} fila(s) duplicada(s) eliminadas de {spec.EntityLogicalName}. " +
-            "Reactivando la key ...");
-
-        client.Execute(new ReactivateEntityKeyRequest
+        for (var intento = 1; intento <= 2; intento++)
         {
-            EntityLogicalName = spec.EntityLogicalName,
-            EntityKeyLogicalName = spec.SchemaName.ToLowerInvariant(),
-        });
+            Console.WriteLine($"[4c]   key '{spec.SchemaName}': índice Failed — hay filas que violan la unicidad. " +
+                $"Deduplicando (se conserva la más reciente de cada grupo), intento {intento}/2 ...");
+            var eliminadas = DedupeRows(client, spec);
+            Console.WriteLine($"[4c]   {eliminadas} fila(s) duplicada(s) eliminadas de {spec.EntityLogicalName}. " +
+                "Reactivando la key ...");
 
-        if (EsperarIndice(client, spec) != EntityKeyIndexStatus.Active)
-            throw new InvalidOperationException(
-                $"key '{spec.SchemaName}': el índice sigue Failed incluso después de deduplicar " +
-                $"({eliminadas} filas eliminadas). Revisar manualmente los datos de {spec.EntityLogicalName}.");
+            client.Execute(new ReactivateEntityKeyRequest
+            {
+                EntityLogicalName = spec.EntityLogicalName,
+                EntityKeyLogicalName = spec.SchemaName.ToLowerInvariant(),
+            });
+
+            // La reactivación resetea el estado de forma ASÍNCRONA: el primer read puede seguir
+            // devolviendo el Failed viejo (visto en run 30451570950: read 1 s después de reactivar
+            // → Failed stale → abort prematuro). Se tolera Failed durante la ventana de gracia.
+            if (EsperarIndice(client, spec, failedGrace: TimeSpan.FromSeconds(90)) == EntityKeyIndexStatus.Active)
+                return;
+        }
+
+        throw new InvalidOperationException(
+            $"key '{spec.SchemaName}': el índice sigue Failed tras deduplicar y reactivar 2 veces. " +
+            $"Revisar manualmente los datos de {spec.EntityLogicalName}.");
     }
 
-    private static EntityKeyIndexStatus EsperarIndice(ServiceClient client, EntityKeySpec spec)
+    // failedGrace: tiempo durante el cual un estado Failed se trata como "posiblemente stale"
+    // (post-reactivación) y se sigue esperando en vez de devolverlo como definitivo.
+    private static EntityKeyIndexStatus EsperarIndice(ServiceClient client, EntityKeySpec spec, TimeSpan failedGrace)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(180);
+        var inicio = DateTime.UtcNow;
+        var deadline = inicio.AddSeconds(300);
         while (true)
         {
             var key = RetrieveKey(client, spec)
@@ -131,11 +143,17 @@ internal static class KeyProvisioner
                     Console.WriteLine($"[4c]   key '{spec.SchemaName}': índice Active.");
                     return EntityKeyIndexStatus.Active;
                 case EntityKeyIndexStatus.Failed:
+                    if (DateTime.UtcNow - inicio < failedGrace)
+                    {
+                        Console.WriteLine("[4c]   ... índice Failed (posible estado stale pre-reactivación), reintento en 10 s");
+                        System.Threading.Thread.Sleep(TimeSpan.FromSeconds(10));
+                        continue;
+                    }
                     return EntityKeyIndexStatus.Failed;
                 default:
                     if (DateTime.UtcNow > deadline)
                         throw new InvalidOperationException(
-                            $"key '{spec.SchemaName}': el índice sigue en {key.EntityKeyIndexStatus} tras 180 s.");
+                            $"key '{spec.SchemaName}': el índice sigue en {key.EntityKeyIndexStatus} tras 300 s.");
                     Console.WriteLine($"[4c]   ... índice {key.EntityKeyIndexStatus}, reintento en 10 s");
                     System.Threading.Thread.Sleep(TimeSpan.FromSeconds(10));
                     break;
@@ -163,7 +181,8 @@ internal static class KeyProvisioner
             query.PageInfo.PagingCookie = page.PagingCookie;
         }
 
-        var eliminadas = 0;
+        var aBorrar = new List<Guid>();
+        var gruposLogueados = 0;
         foreach (var grupo in todas.GroupBy(e => string.Join("|", spec.KeyAttributes.Select(a => ValorNormalizado(e, a)))))
         {
             var duplicadas = grupo
@@ -172,14 +191,34 @@ internal static class KeyProvisioner
                 .ToList();
             if (duplicadas.Count == 0) continue;
 
-            Console.WriteLine($"[4c]     grupo ({grupo.Key}): {duplicadas.Count + 1} filas — se conserva 1, se borran {duplicadas.Count}.");
-            foreach (var d in duplicadas)
-            {
-                client.Delete(spec.EntityLogicalName, d.Id);
-                eliminadas++;
-            }
+            // Con miles de grupos (run 30451570950: 15100 duplicadas), loguear cada uno inunda el log.
+            if (++gruposLogueados <= 20)
+                Console.WriteLine($"[4c]     grupo ({grupo.Key}): {duplicadas.Count + 1} filas — se conserva 1, se borran {duplicadas.Count}.");
+            else if (gruposLogueados == 21)
+                Console.WriteLine("[4c]     ... (más grupos con duplicados; se omite el detalle)");
+
+            aBorrar.AddRange(duplicadas.Select(d => d.Id));
         }
-        return eliminadas;
+
+        // Deletes en lotes por ExecuteMultiple: de a uno, 15k filas tomaron ~80 min (run 30451570950).
+        foreach (var lote in aBorrar.Chunk(500))
+        {
+            var requests = new OrganizationRequestCollection();
+            foreach (var id in lote)
+                requests.Add(new DeleteRequest { Target = new EntityReference(spec.EntityLogicalName, id) });
+
+            var response = (ExecuteMultipleResponse)client.Execute(new ExecuteMultipleRequest
+            {
+                Requests = requests,
+                Settings = new ExecuteMultipleSettings { ContinueOnError = true, ReturnResponses = true },
+            });
+
+            if (response.IsFaulted)
+                foreach (var item in response.Responses.Where(r => r.Fault is not null))
+                    Console.Error.WriteLine($"[4c]     WARN: delete de {lote[item.RequestIndex]} falló: {item.Fault.Message}");
+        }
+
+        return aBorrar.Count;
     }
 
     // Normaliza el valor de una columna de la key para agrupar como agruparía el índice:
