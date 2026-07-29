@@ -263,7 +263,9 @@ static void RunImport(ServiceClient client, string apiPrepare, string apiProcess
 
     for (var i = 0; i < 10; i++)
     {
-        var resp = client.Execute(new OrganizationRequest(apiProcessChunk) { ["JobId"] = jobId });
+        // ProcessChunk también descarga la columna File en cada chunk — el mismo 400 transitorio
+        // de blob storage que Prepare (visto en run 30461450578, 2ª corrida) merece el mismo retry.
+        var resp = ExecuteWithTransientBlobRetry(client, new OrganizationRequest(apiProcessChunk) { ["JobId"] = jobId });
         if (!(bool)resp["HasMore"]) return;
     }
     throw new InvalidOperationException("ProcessChunk no terminó en 10 iteraciones (HasMore nunca fue false).");
