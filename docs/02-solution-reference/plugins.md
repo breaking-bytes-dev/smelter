@@ -6,18 +6,19 @@
 
 **`Smelter.Plugins`** — .NET Framework 4.6.2, compilado para sandbox de Dataverse.
 
-El assembly contiene exactamente cuatro plugin types, uno por Custom API. No hay steps de mensaje
-registrados (ni pre-operation, ni post-operation). Cada plugin type se vincula directamente a su
-Custom API como **backing plugin** — Dataverse lo invoca cuando la API es ejecutada.
+El assembly contiene exactamente cinco plugin types: cuatro **backing plugins** (uno por Custom API —
+Dataverse los invoca cuando la API es ejecutada) y un **message step** (`AssignJobOwnerPlugin`, sync
+Pre-operation en el Create del Import Job).
 
 ## Plugin Types
 
-| Clase | Custom API de respaldo | Modo |
-|-------|------------------------|------|
-| `PrepareImportPlugin` | `sanic_PrepareImport` | SYSTEM |
-| `ProcessChunkPlugin` | `sanic_ProcessChunk` | SYSTEM |
-| `ExportTemplatePlugin` | `sanic_ExportTemplate` | SYSTEM |
-| `ImportTemplatePlugin` | `sanic_ImportTemplate` | SYSTEM |
+| Clase | Vínculo | Modo |
+|-------|---------|------|
+| `PrepareImportPlugin` | Backing de `sanic_PrepareImport` | SYSTEM |
+| `ProcessChunkPlugin` | Backing de `sanic_ProcessChunk` | SYSTEM |
+| `ExportTemplatePlugin` | Backing de `sanic_ExportTemplate` | SYSTEM |
+| `ImportTemplatePlugin` | Backing de `sanic_ImportTemplate` | SYSTEM |
+| `AssignJobOwnerPlugin` | Step: Create de `sanic_tbl_smlt_importjob`, sync, Pre-operation | SYSTEM |
 
 ### Modo SYSTEM
 
@@ -47,11 +48,19 @@ Cada plugin type actúa exclusivamente como adaptador de entrada/salida (lee `In
 Los `*Handler` no dependen de `IServiceProvider` ni de `IPluginExecutionContext`, lo que permite
 testearlos con mocks en tests unitarios sin un contexto Dataverse real.
 
-## Sin steps de mensaje
+## Message steps
 
-Smelter no registra ningún step en el pipeline de mensajes de Dataverse (pre/post-operation en Create,
-Update, Delete, etc.). Si en el futuro se necesita lógica de negocio reactiva (ej. auditoría al crear
-un job), el administrador puede registrar steps adicionales — no hay conflicto con los backing plugins.
+Smelter registra exactamente **un** step en el pipeline de mensajes de Dataverse:
+
+| Step | Mensaje | Entidad | Stage | Modo | Qué hace |
+|------|---------|---------|-------|------|----------|
+| `AssignJobOwnerPlugin` | Create | `sanic_tbl_smlt_importjob` | Pre-operation (20) | Sync | Si el Import Template referenciado por el job nuevo es owned por un **team**, setea `ownerid` del Target a ese mismo team — el job nace owned por el team y todos sus miembros lo ven/operan con Read/Write Basic. Template owned por user (o job sin template): no toca nada, aplica el default de la plataforma (el creador). |
+
+El registro NO se hace con el Plugin Registration Tool: la spec declarativa vive en
+`tools/Smelter.Deploy/StepSpec.cs` y el upsert idempotente en `StepProvisioner.cs` (paso `[4b]` del
+deploy), con verificación E2E en `tools/Smelter.Verify/StepAssertions.cs` — mismo patrón
+spec → provisioner → assertion que las Custom APIs y la seguridad. Si en el futuro se necesita más
+lógica reactiva, se agrega una entrada a `StepCatalogo.Steps` — no hay conflicto con los backing plugins.
 
 ## Requisitos del assembly
 

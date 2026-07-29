@@ -17,6 +17,15 @@ La relación con Import Job tiene **Cascade Share = All** y **Cascade Reparent =
 jobs creados bajo un template compartido heredan el acceso vía POA (Principal Object Access) sin código
 adicional.
 
+## Ownership
+
+La tabla es user/team-owned, y el **owner del template define el owner de sus Import Jobs**: si el
+template es owned por un **team**, todo Import Job creado contra él nace owned por ese mismo team
+(`AssignJobOwnerPlugin`, step sync pre-operation del Create del job) — así todos los miembros del team
+ven y operan los jobs de cualquier otro miembro. La práctica operativa recomendada es **asignar cada
+template al team de operadores que lo usa** (ver [Seguridad y
+roles](../../04-admin-guide/security-and-roles.md), guía operativa de teams).
+
 ## Columnas
 
 | Columna | Tipo | Requerido | Descripción |

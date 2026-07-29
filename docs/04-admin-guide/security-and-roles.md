@@ -5,25 +5,33 @@
 > Implementación real del feature **smelter-security** (`openspec/changes/smelter-security/`). Todo lo
 > de esta guía — roles, privilegios, cascade sharing, gating de Custom APIs, restricción de la MDA,
 > vistas/ribbon/dashboard — se provisiona **por SDK** (`tools/Smelter.Deploy`), NO a mano en el portal.
-> Lo único que sigue siendo manual es **operación de teams** (Paso 4 de esta guía): crear el team,
-> agregarle operadores, y compartirle templates — eso no lo automatiza `Smelter.Deploy` porque depende
-> de cómo cada organización agrupa a sus operadores (no hay una convención única que provisionar).
+> Lo único que sigue siendo manual es **operación de teams** (guía operativa de esta página): crear el
+> team, agregarle operadores, y **asignarle los templates** (ownership) — eso no lo automatiza
+> `Smelter.Deploy` porque depende de cómo cada organización agrupa a sus operadores (no hay una
+> convención única que provisionar).
 >
 > **Separación de roles:** **Configurador** (crea/edita templates y mappings, ve todo) vs. **Operador**
 > (solo carga datos y ve logs, viendo solo los templates de sus teams).
 
 ---
 
-## Cómo funciona (el modelo, en 4 piezas)
+## Cómo funciona (el modelo, en 5 piezas)
 
-1. **`tools/Smelter.Deploy`** provisiona TODO lo declarativo — roles, privilegios, cascade, gating de
-   Custom APIs, restricción de la MDA, vistas, botones y dashboard — de forma **idempotente**: correrlo
-   de nuevo no duplica nada (Requirement "Provisioning idempotente", smelter-access-control).
-2. **Templates compartidos con un Team** → los operadores miembros ven solo esos templates.
-3. **Cascade sharing** en la relación Template→Import Job → los jobs creados bajo un template
-   **heredan** el acceso del template. Así un operador ve los jobs de sus templates (de cualquier
-   operador del team), sin necesitar Business Unit ni compartir cada job a mano.
-4. **`PrepareImportPlugin` valida en runtime** que quien dispara el import (`InitiatingUserId`) tenga
+1. **`tools/Smelter.Deploy`** provisiona TODO lo declarativo — roles, privilegios, message steps,
+   cascade, gating de Custom APIs, restricción de la MDA, vistas, botones y dashboard — de forma
+   **idempotente**: correrlo de nuevo no duplica nada (Requirement "Provisioning idempotente",
+   smelter-access-control).
+2. **Templates owned por un Team** → los operadores miembros los ven directamente (Read Basic cubre lo
+   owned por los teams del usuario). Compartir con `GrantAccess` queda para dar acceso a teams
+   *adicionales*.
+3. **Ownership del Import Job heredado del team** (`AssignJobOwnerPlugin`, step sync pre-operation en
+   el Create del job): si el template del job es owned por un team, el job **nace owned por ese mismo
+   team** — todos los miembros ven y operan los jobs de cualquier otro miembro, con la matriz de
+   privilegios tal como está (Read/Write Basic).
+4. **Cascade sharing** en la relación Template→Import Job → los jobs bajo un template *compartido*
+   (teams adicionales, o templates owned por un user) también **heredan** el acceso del template vía
+   POA — complementa a la pieza 3 para los casos donde el ownership no aplica.
+5. **`PrepareImportPlugin` valida en runtime** que quien dispara el import (`InitiatingUserId`) tenga
    Read sobre el Template — defensa en profundidad además de la matriz de privilegios (Fase 5).
 
 > 🔑 **El motor de Smelter sigue corriendo como SYSTEM.** La seguridad no puede romper un import ya
@@ -49,6 +57,7 @@ dashboard) + `tools/Smelter.Deploy/ApiSpec.cs` (`ExecutePrivilegeName` por Custo
 | Paso | Qué hace | Mensaje SDK |
 |---|---|---|
 | Roles + privilegios | Crea/actualiza `Smelter Configurador` y `Smelter Operador` con la matriz exacta de abajo | `role` + `AddPrivilegesRoleRequest` |
+| Message step AssignJobOwner | Registra el step sync pre-operation en el Create de Import Job (ownership por team) — paso `[4b]` del deploy, spec en `StepSpec.cs`, upsert en `StepProvisioner.cs` | `sdkmessageprocessingstep` |
 | Cascade Template→Job | Share=Cascade, Reparent=Cascade en la relación 1:N | `UpdateRelationshipRequest` |
 | `ExecutePrivilegeName` | Gatea cada Custom API por el privilegio real que reutiliza (tabla de abajo) | update `customapi.executeprivilegename` |
 | MDA → solo Configurador | Asocia Configurador; desasocia cualquier otro rol NO de plataforma. `System Administrator` y `System Customizer` los asocia Dataverse a toda MDA y no se pueden quitar (la plataforma los re-deriva al instante) — quedan siempre, pero los operadores no los tienen | `Associate`/`DisassociateRequest` |
@@ -89,7 +98,9 @@ dashboard) + `tools/Smelter.Deploy/ApiSpec.cs` (`ExecutePrivilegeName` por Custo
 - **Mappings Read = Org:** config no sensible; el Operador necesita leerlos para entender el template,
   pero sin Write no puede tocarlos.
 - **Import Job Create = Org, Read/Write = Basic:** cualquier Operador con acceso al template puede
-  *crear* un job; una vez creado, solo lo ve/edita quien tiene acceso (el team, vía cascade).
+  *crear* un job; una vez creado, solo lo ve/edita quien tiene acceso. Con template owned por un team,
+  el job **nace owned por ese team** (`AssignJobOwnerPlugin`) y Basic alcanza para que TODO el team lo
+  vea/opere — sin depender del cascade ni de shares por registro.
 - **Import Job Log Read = Basic, sin Create:** el log lo escribe el plugin como SYSTEM — el Operador
   solo necesita verlo.
 
@@ -132,13 +143,32 @@ verificando el acceso real al Template referenciado por el job específico que s
 
 ---
 
+## Ownership del Import Job — heredado del team del template
+
+`AssignJobOwnerPlugin` (message step **sync, Pre-operation**, Create de `sanic_tbl_smlt_importjob` —
+spec en `tools/Smelter.Deploy/StepSpec.cs`, registro idempotente en `StepProvisioner.cs`) resuelve el
+owner del template referenciado por el job nuevo:
+
+- **Template owned por un team** → escribe ese team como `ownerid` del Target ANTES de que la
+  plataforma persista el Create: el job **nace owned por el team**, sin `AssignRequest` posterior ni
+  ventana en la que el creador sea el owner. Un `ownerid` explícito en el payload se pisa — la regla es
+  determinista para que la visibilidad del equipo no dependa de cómo se creó el job.
+- **Template owned por un user** (o job sin template) → no toca nada; el owner queda en el default de
+  la plataforma (el creador).
+
+Esto es lo que hace que "cualquier miembro del team ve los jobs de cualquier otro" funcione con la
+matriz tal cual está: la profundidad **Basic** de Read/Write del Operador cubre los registros owned por
+el usuario **y por sus teams**.
+
 ## Cascade Template → Import Job
 
 `tools/Smelter.Deploy` setea `Share=Cascade`, `Reparent=Cascade` en la relación
 `sanic_tbl_smlt_importjob_smlt_ij_importtemplateid_sanic_tbl_smlt_importtemplate` vía
 `UpdateRelationshipRequest` — sin plugin, nativo de la plataforma (POA). `Reparent=Cascade` es la clave:
 hace que los Import Jobs **nuevos** (creados después del share) también hereden el acceso, no solo los
-que ya existían al momento de compartir.
+que ya existían al momento de compartir. Con el ownership por team (sección anterior) cubriendo el caso
+principal, el cascade queda como complemento: da visibilidad a teams **adicionales** con los que se
+compartió el template, y a los jobs de templates owned por un user.
 
 ---
 
@@ -177,9 +207,9 @@ Provisionados por el mismo `SecurityProvisioner.Run`:
 
 ## Verificación post-deploy
 
-`tools/Smelter.Verify` (workflow de CI `backend-verify`) corre `SecurityAssertions.RunAll` ANTES del
-smoke test funcional — si la seguridad regresionó, no tiene sentido seguir con el import de prueba.
-Confirma contra el ambiente real:
+`tools/Smelter.Verify` (workflow de CI `backend-verify`) corre `SecurityAssertions.RunAll` +
+`StepAssertions.RunAll` ANTES del smoke test funcional — si la seguridad regresionó, no tiene sentido
+seguir con el import de prueba. Confirma contra el ambiente real:
 
 - Los roles Configurador/Operador existen con EXACTAMENTE los privilegios de `SecuritySpec` (incluido
   que el Operador NO tenga Create/Write/Delete en Template — proxy estático de "no puede configurar",
@@ -192,6 +222,10 @@ Confirma contra el ambiente real:
 - Al menos un Cloud Flow que referencia `processchunk` apunta a `sanic_capi_smelter_processchunk` (si
   no lo encuentra, lo reporta como WARN en vez de fallar en silencio — puede que el flow real tenga otra
   forma de JSON; revisar `CloudFlowUpdater.cs`).
+- El message step de `AssignJobOwnerPlugin` existe, está **habilitado**, y con el stage/mode/rank
+  exactos de `StepSpec` (`StepAssertions`). Además, el smoke test verifica el comportamiento: el job de
+  prueba debe nacer owned por el team del template si este es team-owned, o conservar el owner default
+  si es user-owned (el caso del smoke, que corre con el Service Principal).
 
 Corré verify manualmente:
 
@@ -266,11 +300,34 @@ client.Execute(new AssociateRequest
 });
 ```
 
-### 3. Compartir (asignar) un template al team
+### 3. Asignar el template al team (ownership — el camino recomendado)
 
-Esto es lo que "asignar un template a un operador" significa en la práctica — se comparte con el
-**team**, no con cada usuario, y gracias al cascade del paso anterior los Import Jobs futuros heredan
-el acceso automáticamente.
+**Asignar** (cambiar el owner) es lo que activa TODO el modelo: los miembros ven el template
+directamente (Read Basic cubre lo owned por sus teams), y cada Import Job creado contra él **nace owned
+por el team** (`AssignJobOwnerPlugin`) — todos los miembros ven y operan los jobs de todos.
+
+```powershell
+# Asignar el template al team (ownership)
+Invoke-RestMethod -Method Patch -Headers $headers `
+    -Uri "$base/sanic_tbl_smlt_importtemplates($templateId)" `
+    -Body (@{ "ownerid@odata.bind" = "$base/teams($teamId)" } | ConvertTo-Json)
+```
+
+```csharp
+client.Update(new Entity("sanic_tbl_smlt_importtemplate", templateId)
+{
+    ["ownerid"] = new EntityReference("team", teamId),
+});
+```
+
+> El team debe ser de tipo **Owner** (`teamtype = 0`, como en el Paso 1) y tener un rol de seguridad
+> asociado — sin rol, Dataverse rechaza el assign.
+
+### 3b. (Opcional) Compartir el template con teams ADICIONALES
+
+Un registro tiene UN solo owner. Si un mismo template lo usan varios teams, asignalo al principal
+(Paso 3) y compartilo con los demás — el cascade Share/Reparent propaga el acceso de esos teams a los
+jobs del template (los jobs igual nacen owned por el team **owner**).
 
 ```powershell
 Invoke-RestMethod -Method Post -Headers $headers -Uri "$base/GrantAccess" -Body (@{
@@ -302,7 +359,7 @@ client.Execute(new GrantAccessRequest
 > comentario de riesgo en `SecurityProvisioner.cs`). Si tu versión de Dataverse expone otro nombre,
 > confirmalo con `GET {org}/api/data/v9.2/$metadata` antes de automatizar esto en un script propio.
 
-Repetí el paso 3 por cada template, para cada team de operadores que deba usarlo. Asigná el rol
+Repetí el paso 3 (o 3b) por cada template, para cada team de operadores que deba usarlo. Asigná el rol
 **Smelter Configurador** a los usuarios que configuran templates de la misma forma (paso 1, con
 `ConfiguradorRoleId` en vez de `operadorRoleId` — no hace falta un team, se puede asignar el rol
 directo al usuario vía `systemuserroles_association`).
@@ -314,14 +371,18 @@ directo al usuario vía `systemuserroles_association`).
 Probá con un usuario **Operador** de prueba (solo el rol Smelter Operador, miembro de UN team):
 
 - [ ] **No puede configurar:** abrir un Import Template para editar/crear está bloqueado.
-- [ ] **Ve solo lo asignado:** en la vista Import Templates ve SOLO los templates compartidos con su
-      team. Un template de OTRO team no debe aparecerle.
+- [ ] **Ve solo lo asignado:** en la vista Import Templates ve SOLO los templates owned por (o
+      compartidos con) su team. Un template de OTRO team no debe aparecerle.
 - [ ] **No ve la MDA de Smelter** en su selector de apps (pero SÍ puede operar un Import Job por URL
       directa — ver caveat de "MDA restringida" arriba).
 - [ ] **Carga datos:** crea un Import Job contra un template asignado, sube el CSV, ejecuta (botón
       Ejecutar) → procesa OK y ve los logs.
-- [ ] **Cascade:** un SEGUNDO operador del MISMO team ve el job que creó el primero, incluidos jobs
-      creados DESPUÉS del share (valida `Reparent=Cascade`).
+- [ ] **Ownership por team:** un job creado contra un template **owned por el team** queda con
+      Owner = el team (visible en el form del job), y un SEGUNDO operador del MISMO team lo ve y lo
+      opera. Ojo: ese job NO aparece en la vista de plataforma "My Import Jobs" del creador (filtra
+      por owner = el usuario) — usá "Jobs Activos" / "Todos los Jobs".
+- [ ] **Cascade (teams adicionales):** con un template *compartido* (no owned) con el team, un segundo
+      operador ve los jobs, incluidos los creados DESPUÉS del share (valida `Reparent=Cascade`).
 - [ ] **Sin acceso al template → rechazado:** intentar `prepareimport` sobre un job cuyo template NO
       está compartido con ningún team del operador debe fallar (Fase 5).
 
@@ -331,8 +392,9 @@ Probá con un usuario **Operador** de prueba (solo el rol Smelter Operador, miem
 
 | Síntoma | Causa probable | Solución |
 |---------|----------------|----------|
-| Operador no ve NINGÚN template | El template no está compartido con su team / no es miembro | Repetí el Paso 3 (GrantAccess) y confirmá membresía (Paso 2) |
-| Operador no ve los jobs de otro operador | Cascade no configurado o `Reparent` ≠ Cascade | Corré `Smelter.Verify` — `AssertCascade` lo confirma; si falla, re-corré `Smelter.Deploy` |
+| Operador no ve NINGÚN template | El template no está owned por / compartido con su team, o no es miembro | Asigná el template al team (Paso 3) o compartilo (Paso 3b); confirmá membresía (Paso 2) |
+| Operador no ve los jobs de otro operador | El template NO es owned por un team (los jobs nacen owned por cada creador), el step AssignJobOwner está deshabilitado, o — para teams adicionales — cascade sin configurar | Asigná el template al team (Paso 3); corré `Smelter.Verify` — `StepAssertions` confirma el step y `AssertCascade` el cascade; si falla, re-corré `Smelter.Deploy` |
+| Un job de team no aparece en "My Import Jobs" | Comportamiento esperado: la vista de plataforma filtra por owner = el usuario, y el job es owned por el team | Usá las vistas "Jobs Activos" / "Todos los Jobs" (muestran todo lo que el usuario puede leer) |
 | `prepareimport` falla con "does not have Read access" | El template del job no está compartido con ningún team del `InitiatingUserId` | Compartí el template con el team del operador (Paso 3) |
 | Botón Ejecutar/Reintentar no aparece | RibbonDiffXml no se importó, o el estado del job no matchea la visibilidad del botón | Confirmá que `backend-deploy` corrió `UpsertRibbon`; revisá el estado (`sanic_smlt_ij_status`) del job |
 | Cloud Flow falla con "acción no encontrada" tras un deploy | El Cloud Flow quedó apuntando a `anic_...` o `sanic_...` incorrectamente | Corré `Smelter.Verify` — `AssertProcessChunkCloudFlowReferencesNewApi` lo detecta; revisar `CloudFlowUpdater.cs` |
@@ -343,15 +405,18 @@ Probá con un usuario **Operador** de prueba (solo el rol Smelter Operador, miem
 
 ## Resumen
 ```
-1. tools/Smelter.Deploy (SecurityProvisioner) provisiona TODO lo declarativo:
-   roles + privilegios (SecuritySpec), cascade Template→Job, ExecutePrivilegeName
-   por Custom API, MDA restringida a Configurador, vistas + ribbon + dashboard.
-2. PrepareImportPlugin valida en runtime (Fase 5) que InitiatingUserId tenga
+1. tools/Smelter.Deploy provisiona TODO lo declarativo: roles + privilegios
+   (SecuritySpec), message step AssignJobOwner (StepSpec), cascade Template→Job,
+   ExecutePrivilegeName por Custom API, MDA restringida a Configurador,
+   vistas + ribbon + dashboard.
+2. AssignJobOwnerPlugin (step pre-op del Create): template owned por team ⇒
+   el Import Job nace owned por ese team ⇒ todo el team lo ve/opera (Basic).
+3. PrepareImportPlugin valida en runtime (Fase 5) que InitiatingUserId tenga
    Read sobre el Template del job — defensa en profundidad, además de la matriz.
-3. tools/Smelter.Verify (SecurityAssertions) confirma todo lo anterior post-deploy
-   contra el ambiente real, antes del smoke test funcional.
-4. Lo único manual: crear el team, agregarle operadores, compartir templates
-   con el team (GrantAccess) — vía Web API/pwsh o SDK, ejemplos arriba.
+4. tools/Smelter.Verify (SecurityAssertions + StepAssertions) confirma todo lo
+   anterior post-deploy contra el ambiente real, antes del smoke test funcional.
+5. Lo único manual: crear el team, agregarle operadores, ASIGNARLE los templates
+   (ownership; GrantAccess solo para teams adicionales) — ejemplos arriba.
 ```
 
 > **Caveat de escala:** el cascade sharing y el `GrantAccess` a teams escriben en la tabla

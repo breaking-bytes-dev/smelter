@@ -63,7 +63,11 @@ Console.WriteLine($"[2] nupkg: {nupkgPath} ({nupkgBytes.Length:N0} bytes, versi�
 Guid packageId = UpsertPackage(client, contentB64, pkgVersion);
 
 // ── 3. Esperar los plugintypes auto-descubiertos ───────────────────────────
-var typesEsperados = Catalogo.Apis.Select(a => a.PluginTypeName).Distinct().ToArray();
+// Unión de backing plugins de Custom APIs (ApiSpec) y plugins de message steps (StepSpec):
+// un plugin type que solo tiene step (AssignJobOwnerPlugin) no aparece en Catalogo.Apis.
+var typesEsperados = Catalogo.Apis.Select(a => a.PluginTypeName)
+    .Concat(StepCatalogo.Steps.Select(s => s.PluginTypeName))
+    .Distinct().ToArray();
 var typePorNombre = await EsperarPluginTypesAsync(client, typesEsperados);
 if (typePorNombre is null)
     return 1;
@@ -83,6 +87,9 @@ foreach (var api in Catalogo.Apis)
     ReemplazarResponseProps(client, apiId, api);
     Console.WriteLine($"[4]   OK ({api.RequestParams.Length} params, {api.ResponseProps.Length} response props).");
 }
+
+// ── 4b. Upsert de los message steps (StepSpec.cs) ──────────────────────────
+StepProvisioner.Run(client, typePorNombre);
 
 // ── 5. Publicar: refresca la metadata OData del Web API ────────────────────
 Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del Web API) ...");

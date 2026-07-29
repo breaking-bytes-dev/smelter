@@ -8,6 +8,35 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 _Nada todavía._
 
+## [[1.2.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.2.0.0)] — 2026-07-28
+
+**Ownership de Import Jobs por team** (`smelter-access-control`, Requirement "Ownership del Import Job
+heredado del team del template"): los jobs creados contra un template owned por un team nacen owned por
+ese MISMO team — todo el equipo ve y opera los jobs de cualquier miembro con la matriz de privilegios
+tal como está (Read/Write Basic del rol Operador cubre lo owned por los teams del usuario).
+
+### Added
+- **`AssignJobOwnerPlugin` + `AssignJobOwnerHandler`** (`src/Smelter.Plugins/AssignJobOwnerPlugin.cs`):
+  primer message step del assembly — sync, Pre-operation, Create de `sanic_tbl_smlt_importjob`. Si el
+  template referenciado es owned por un team, setea `ownerid` del Target a ese team ANTES de persistir
+  (sin `AssignRequest` posterior ni ventana owned-por-el-creador); pisa cualquier `ownerid` explícito
+  del payload (regla determinista). Template owned por user o job sin template: owner default (creador).
+- **Infraestructura declarativa de message steps** en el deploy, mismo patrón spec → provisioner →
+  assertion de las Custom APIs: `tools/Smelter.Deploy/StepSpec.cs` (catálogo, fuente única de verdad),
+  `StepProvisioner.cs` (upsert idempotente de `sdkmessageprocessingstep` por clave natural, paso `[4b]`,
+  re-habilita steps deshabilitados a mano) y `tools/Smelter.Verify/StepAssertions.cs` (asserts E2E de
+  stage/mode/rank/estado). El smoke de `Smelter.Verify` además verifica el comportamiento del ownership
+  sobre el job de prueba.
+- Tests: `AssignJobOwnerHandlerTests` (7 casos, NSubstitute) y `StepSpecContractTests` (contrato del
+  step: sync + pre-op + Create de Import Job).
+
+### Changed
+- **Guía operativa de teams** (`docs/04-admin-guide/security-and-roles.md`): el paso recomendado ahora
+  es **asignar** el template al team (ownership, `ownerid`) — `GrantAccess` queda para dar acceso a
+  teams adicionales. Actualizados el modelo (5 piezas), checklist, troubleshooting y las referencias de
+  tablas (`import-job.md`, `import-template.md`, `plugins.md` — que ya no dice "sin steps de mensaje").
+- `Smelter.Plugins` bump a `1.0.3` (recarga del package en Dataverse).
+
 ## [[1.1.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.1.0.0)] — 2026-07-28
 
 **Modelo de seguridad por teams + UX de la MDA** (`smelter-security` v2). Todo el provisioning se

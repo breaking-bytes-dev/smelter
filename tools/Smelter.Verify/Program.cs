@@ -53,6 +53,9 @@ try
     // la config de seguridad regresionó, no tiene sentido seguir con el import de prueba. ──────
     SecurityAssertions.RunAll(client);
 
+    // ── [STEP] Message steps registrados según StepSpec (AssignJobOwner) ───
+    StepAssertions.RunAll(client);
+
     // ── 2. Pre-cleanup (por si una corrida anterior murió a medias) ────────
     Cleanup(client);
 
@@ -95,6 +98,27 @@ try
         ["sanic_smlt_ij_importtemplateid"] = new EntityReference("sanic_tbl_smlt_importtemplate", templateId),
     });
     Console.WriteLine($"[4] Import Job creado: {jobId}");
+
+    // ── 4b. Ownership del job (AssignJobOwnerPlugin, step pre-op de Create): si el template es
+    // owned por un team, el job debe nacer owned por ese MISMO team; si es owned por un user
+    // (el caso del smoke: lo crea el Service Principal), el owner queda en el default. ─────────
+    var templateOwner = client.Retrieve("sanic_tbl_smlt_importtemplate", templateId, new ColumnSet("ownerid"))
+        .GetAttributeValue<EntityReference>("ownerid");
+    var jobOwner = client.Retrieve(JobTable, jobId, new ColumnSet("ownerid"))
+        .GetAttributeValue<EntityReference>("ownerid");
+    if (templateOwner?.LogicalName == "team")
+    {
+        Assert(jobOwner is not null && jobOwner.LogicalName == "team" && jobOwner.Id == templateOwner.Id,
+            $"el job debía nacer owned por el team del template ({templateOwner.Id}), su owner es " +
+            $"{jobOwner?.LogicalName}/{jobOwner?.Id}");
+        Console.WriteLine($"[4b] Ownership OK: job owned por el team del template ({templateOwner.Id}).");
+    }
+    else
+    {
+        Assert(jobOwner?.LogicalName == "systemuser",
+            $"con template owned por user, el job debía conservar un owner systemuser (default), es {jobOwner?.LogicalName}");
+        Console.WriteLine("[4b] Ownership OK: template owned por user — el job conserva el owner default (path pass-through del step).");
+    }
 
     var csv = "Email,FirstName,LastName\n" + string.Join("\n",
         Enumerable.Range(1, 5).Select(i => $"smoke{i}{SmokeDomain},Smoke{i},Verify"));

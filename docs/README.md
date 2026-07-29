@@ -41,7 +41,7 @@ ambientes.
 - [Alternate Keys](04-admin-guide/alternate-keys.md) — el contrato de las claves alternativas.
 - [Import nuevo de punta a punta](04-admin-guide/new-import-end-to-end.md) — del CSV a las tablas.
 - [Exportar / Importar templates](04-admin-guide/export-import-templates.md) — portabilidad entre ambientes.
-- [Seguridad y roles](04-admin-guide/security-and-roles.md) — roles, teams, cascade sharing.
+- [Seguridad y roles](04-admin-guide/security-and-roles.md) — roles, teams, ownership de jobs por team, cascade sharing.
 
 ### 05 · User Guide (operadores)
 - [Usar la app](05-user-guide/using-the-app.md) — la Model-Driven App, pantalla por pantalla.

@@ -56,6 +56,11 @@ Una vez que verificaste que todo está bien, podés desactivar Dry Run y ejecuta
 
 Hacé click en **Guardar** para registrar el job. Todavía no empezó a procesar.
 
+> **Trabajo en equipo:** si el template pertenece a un equipo (lo normal), el job queda **a nombre del
+> equipo** automáticamente — cualquier compañero del equipo puede verlo, seguir su progreso y
+> reintentarlo. Buscalo en las vistas **Jobs Activos** o **Todos los Jobs** (la vista "My Import Jobs"
+> solo muestra jobs a tu nombre personal).
+
 ### 7. Ejecutar
 
 Hacé click en el botón **▶ Ejecutar** en la barra de comandos.

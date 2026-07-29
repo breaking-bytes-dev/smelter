@@ -31,6 +31,20 @@ de progreso, el offset actual y el estado del job.
 | `sanic_smlt_ij_endtime` | DateTime | No | Fin del procesamiento (seteado por `ProcessChunk` al completar) |
 | `sanic_smlt_ij_isdryrun` | Boolean | No | Si es `true`, simula el procesamiento sin escribir en Dataverse |
 | `sanic_smlt_ij_errorsummary` | Multiline | No | Resumen de errores fatales del job (ej. excepción del flow) |
+| `ownerid` | Owner (user/team) | Auto | Owner del job. Si el template referenciado es owned por un **team**, `AssignJobOwnerPlugin` (step sync pre-operation del Create) lo setea a ese mismo team; si no, queda el default de la plataforma (el creador). Ver [Ownership](#ownership). |
+
+## Ownership
+
+La tabla es user/team-owned. Al **crear** un job, el step `AssignJobOwnerPlugin` (sync, Pre-operation)
+resuelve el owner del Import Template referenciado:
+
+- **Template owned por un team** → el job nace owned por ese MISMO team. Cualquier miembro del team
+  (rol Smelter Operador, Read/Write Basic sobre Import Job) ve y opera los jobs creados por cualquier
+  otro miembro. Un `ownerid` explícito en el payload del Create se pisa — la regla es determinista.
+- **Template owned por un user** (o job sin template) → el owner queda en el default de la plataforma:
+  el usuario creador.
+
+Detalle completo del modelo en [Seguridad y roles](../../04-admin-guide/security-and-roles.md).
 
 ## OptionSet — `sanic_smlt_ij_status`
 

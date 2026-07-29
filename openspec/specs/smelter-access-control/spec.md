@@ -99,3 +99,26 @@ todos.
 - GIVEN templates T1 (Team A) y T2 (Team B), y un operador solo de Team A
 - WHEN intenta crear un job contra T1 y contra T2
 - THEN SHALL poder contra T1, MUST NOT contra T2, y un configurador SHALL poder contra ambos
+
+### Requirement: Ownership del Import Job heredado del team del template
+
+Al crearse un Import Job cuyo template referenciado es owned por un team, el job MUST nacer owned por ese
+mismo team (`AssignJobOwnerPlugin`, message step sync Pre-operation sobre Create de
+`sanic_tbl_smlt_importjob`, registrado vía `StepSpec`/`StepProvisioner`). La regla MUST ganar a cualquier
+`ownerid` explícito en el payload del Create (determinismo: la visibilidad del equipo no depende de cómo
+se creó el job). Con template owned por un user, o job sin template, el owner MUST quedar en el default de
+la plataforma (el creador). El step MUST ser síncrono y Pre-operation (mutar el Target basta; sin ventana
+en la que el job exista owned por el creador).
+
+#### Scenario: Job de template team-owned nace owned por el team y todo el team lo ve
+
+- GIVEN un template owned por Team A, y operadores O1/O2 miembros de Team A
+- WHEN O1 crea un Import Job contra ese template
+- THEN el job SHALL quedar owned por Team A, y O2 SHALL verlo y operarlo (Read/Write Basic cubre lo
+  owned por los teams del usuario)
+
+#### Scenario: Template user-owned no altera el owner
+
+- GIVEN un template owned por un usuario
+- WHEN cualquier usuario crea un Import Job contra ese template
+- THEN el owner del job SHALL ser el default de la plataforma (el creador)
