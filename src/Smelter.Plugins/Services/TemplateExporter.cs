@@ -87,9 +87,8 @@ namespace Smelter.Plugins.Services
                     TargetTable = tm.GetAttributeValue<string>("sanic_smlt_tm_targettable"),
                     ProcessingOrder = tm.GetAttributeValue<int?>("sanic_smlt_tm_processingorder") ?? 0,
                     DedupColumns = tm.GetAttributeValue<string>("sanic_smlt_tm_dedupcolumns"),
-                    IsJunctionTable = tm.GetAttributeValue<bool?>("sanic_smlt_tm_isjunctiontable") ?? false,
                     CreateIfNotExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_createifnotexists") ?? true,
-                    UpdateIfExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_updateifexists") ?? false,
+                    UpdateIfExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_updateifexists") ?? true,
                     ColumnMappings = LoadColumns(tm.Id)
                 });
             }

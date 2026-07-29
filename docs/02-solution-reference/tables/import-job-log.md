@@ -23,7 +23,6 @@ fallaron; las filas exitosas y omitidas se contabilizan en los contadores del Im
 | `sanic_smlt_ijl_status` | OptionSet | Sí | Resultado de la operación |
 | `sanic_smlt_ijl_errormessage` | Multiline | No | Detalle del error, incluyendo la columna que falló (nulo en caso de éxito) |
 | `sanic_smlt_ijl_errorcategory` | OptionSet | No | Categoría de error — etapa del pipeline donde ocurrió el fallo |
-| `sanic_smlt_ijl_createdrecordid` | String(50) | No | ID del registro destino creado/actualizado (cuando aplica) |
 
 ## OptionSet — `sanic_smlt_ijl_status`
 
@@ -33,6 +32,11 @@ fallaron; las filas exitosas y omitidas se contabilizan en los contadores del Im
 | 1 | Updated | Registro existente actualizado (dedup match + updateIfExists) |
 | 2 | Skipped | Match de dedup encontrado, updateIfExists = false |
 | 3 | Failed | Error durante create/update |
+
+> **Nota (1.3.0.0):** hoy el motor escribe **solo `3: Failed`** en el log. Los resultados
+> `Created`, `Updated` y `Skipped` se reflejan en los contadores del Import Job
+> (`successcount`, `skippedcount`), no en el log. Los otros valores del optionset se
+> conservan por compatibilidad.
 
 ## OptionSet — `sanic_smlt_ijl_errorcategory`
 

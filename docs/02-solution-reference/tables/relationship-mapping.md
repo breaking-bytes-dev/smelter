@@ -24,7 +24,6 @@ construir el DAG de procesamiento (orden padre→hijo) y por la resolución de l
 | `sanic_smlt_rm_childtablemappingid` | Lookup | Sí | FK → Table Mapping (tabla hija en el DAG) |
 | `sanic_smlt_rm_relationshiptype` | OptionSet | Sí | Tipo de relación |
 | `sanic_smlt_rm_lookupcolumnonchild` | String(100) | Condicional | Para 1:N: logical name de la columna lookup en la tabla hija |
-| `sanic_smlt_rm_intersecttable` | String(100) | Condicional | Para N:M: logical name de la tabla intersect |
 | `sanic_smlt_rm_parentdedupcolumns` | String(500) | Sí | Columnas de origen (separadas por coma) que identifican al registro padre. Usadas para resolver el GUID del padre desde el cache de dedup. |
 
 ## OptionSet — `sanic_smlt_rm_relationshiptype`
@@ -34,12 +33,12 @@ construir el DAG de procesamiento (orden padre→hijo) y por la resolución de l
 | 0 | OneToMany | El padre tiene un lookup en la tabla hija |
 | 1 | ManyToMany | Usa una tabla intersect (junction table) |
 
-> ⚠️ **`ManyToMany` (valor 1) / `sanic_smlt_rm_intersecttable` — no implementados en v2.** El
-> `NormalizationEngine` filtra los relationship mappings con `.Where(r => r.IsOneToMany)`, por lo que
-> cualquier mapping configurado como `ManyToMany` se **ignora en silencio** — no produce error pero
-> tampoco genera ningún vínculo. El campo `IntersectTable` no se lee en ninguna ruta de código.
-> Implementar N:M requeriría `AssociateRequest` y desarrollo nuevo. El comentario del propio modelo indica
-> _"Not yet supported in v1"_ — sigue sin soporte en v2.
+> ⚠️ **`ManyToMany` (valor 1) — sin soporte.** El `NormalizationEngine` filtra los relationship
+> mappings con `.Where(r => r.IsOneToMany)`, por lo que cualquier mapping configurado como
+> `ManyToMany` se **ignora en silencio** — no produce error pero tampoco genera ningún vínculo.
+> Implementar N:M requeriría `AssociateRequest` y desarrollo nuevo. El campo
+> `sanic_smlt_rm_intersecttable` fue **eliminado del schema en 1.3.0.0** (nunca se leyó en ninguna
+> ruta de código).
 > Para tablas intersect, la alternativa actual es mapear la tabla join explícitamente como un `TableMapping`
 > adicional con sus propias `DedupColumns` y lookups hacia ambas tablas padre.
 

@@ -37,13 +37,9 @@ Desde **Ejecución y Monitoreo → Import Jobs** podés cambiar entre distintas 
 
 Desde la vista **Completados con Errores**, hacé click en el job que querés revisar.
 
-### 2. Ver el Error Summary
+### 2. Ver los errores del job
 
-En la sección **Resumen** del form, el campo **Error Summary** tiene un texto con los primeros 100 errores que se registraron. Es un punto de partida rápido para entender qué pasó.
-
-### 3. Ir a la pestaña Errores
-
-Para ver el detalle completo, hacé click en la pestaña **Errores** dentro del form del job.
+El detalle de los errores está en la pestaña **Errores** dentro del form del job.
 
 Ahí aparece la lista de **Import Job Logs**, una entrada por cada fila que falló, con estas columnas:
 
@@ -52,7 +48,7 @@ Ahí aparece la lista de **Import Job Logs**, una entrada por cada fila que fall
 | **Row Number** | El número de fila en el CSV original donde ocurrió el error. Podés abrir el archivo y buscar esa fila para ver qué tiene. |
 | **Target Table** | La tabla de Dataverse a la que se intentó escribir. |
 | **Error Category** | El tipo de error. Ver la sección siguiente para entender cada categoría. |
-| **Error Message** | El mensaje de error específico del sistema. |
+| **Error Message** | El mensaje de error específico del sistema, incluyendo la columna exacta que falló. |
 
 También podés ir a **Diagnóstico → Import Job Logs** para ver todos los errores de todos los jobs, con opción de filtrar y agrupar por categoría. Es útil para detectar patrones.
 
@@ -131,8 +127,7 @@ Cuando un job terminó con `CompletedWithErrors` o `Failed`, podés volver a cor
 Al hacer click en Reintentar:
 
 1. Los contadores se resetean (Processed Rows, Success, Failed, Skipped vuelven a cero).
-2. El Error Summary se limpia.
-3. El job pasa a estado **Queued** y el proceso arranca de nuevo desde el principio.
+2. El job pasa a estado **Queued** y el proceso arranca de nuevo desde el principio.
 
 ### Por qué es seguro reintentar
 

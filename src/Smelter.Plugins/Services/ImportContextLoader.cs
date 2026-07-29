@@ -18,7 +18,7 @@ namespace Smelter.Plugins.Services
         ImportContext LoadContext(Guid importJobId);
 
         /// <summary>Just the template config — enough for PrepareImport to parse the file.</summary>
-        ImportTemplateConfig LoadTemplateConfig(Guid importJobId);
+        ImportTemplateConfig LoadTemplateConfig(Guid templateId);
 
         /// <summary>All relationship mappings for a template (empty when none).</summary>
         List<RelationshipMappingConfig> LoadRelationshipMappings(Guid templateId);
@@ -98,7 +98,11 @@ namespace Smelter.Plugins.Services
                 SourceType = template.GetAttributeValue<OptionSetValue>("sanic_smlt_it_sourcetype")?.Value ?? 0,
                 HasHeaderRow = template.GetAttributeValue<bool?>("sanic_smlt_it_hasheaderrow") ?? true,
                 Delimiter = template.GetAttributeValue<string>("sanic_smlt_it_delimiter") ?? ",",
-                ChunkSize = template.GetAttributeValue<int?>("sanic_smlt_it_chunksize") ?? 0
+                ChunkSize = template.GetAttributeValue<int?>("sanic_smlt_it_chunksize") ?? 0,
+                // Default Active si el atributo viene sin poblar (registros legacy): el gate de
+                // PrepareImport no debe bloquear templates anteriores a 1.3.0.0.
+                Status = template.GetAttributeValue<OptionSetValue>("sanic_smlt_it_status")?.Value
+                    ?? (int)ImportTemplateStatus.Active
             };
         }
 
@@ -144,9 +148,10 @@ namespace Smelter.Plugins.Services
                     TargetTable = tm.GetAttributeValue<string>("sanic_smlt_tm_targettable"),
                     ProcessingOrder = tm.GetAttributeValue<int?>("sanic_smlt_tm_processingorder") ?? 0,
                     DedupColumns = tm.GetAttributeValue<string>("sanic_smlt_tm_dedupcolumns"),
-                    IsJunctionTable = tm.GetAttributeValue<bool?>("sanic_smlt_tm_isjunctiontable") ?? false,
                     CreateIfNotExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_createifnotexists") ?? true,
-                    UpdateIfExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_updateifexists") ?? false
+                    // Fallback true = comportamiento histórico (el motor siempre actualizaba) para
+                    // registros legacy sin el atributo poblado — el flag recién se honra desde 1.3.0.0.
+                    UpdateIfExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_updateifexists") ?? true
                 };
                 config.ColumnMappings.AddRange(LoadColumnMappings(tm.Id));
                 mappings.Add(config);
@@ -193,7 +198,6 @@ namespace Smelter.Plugins.Services
                 ChildTableMappingId = e.GetAttributeValue<EntityReference>("sanic_smlt_rm_childtablemappingid")?.Id ?? Guid.Empty,
                 RelationshipType = e.GetAttributeValue<OptionSetValue>("sanic_smlt_rm_relationshiptype")?.Value ?? 0,
                 LookupColumnOnChild = e.GetAttributeValue<string>("sanic_smlt_rm_lookupcolumnonchild"),
-                IntersectTable = e.GetAttributeValue<string>("sanic_smlt_rm_intersecttable"),
                 ParentDedupColumns = e.GetAttributeValue<string>("sanic_smlt_rm_parentdedupcolumns")
             };
         }

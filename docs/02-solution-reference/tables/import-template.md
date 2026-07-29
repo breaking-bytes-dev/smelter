@@ -37,7 +37,7 @@ roles](../../04-admin-guide/security-and-roles.md), guía operativa de teams).
 | `sanic_smlt_it_hasheaderrow` | Boolean | Sí | ¿Primera fila es encabezado? (default: Sí) |
 | `sanic_smlt_it_delimiter` | String(5) | No | Separador de columnas CSV (default: `,`) |
 | `sanic_smlt_it_chunksize` | Whole Number | No | Filas por invocación de `ProcessChunk`. 0 = usar el default del sistema (1000). Rango válido: 100–10000. Calibrar según el costo total de upserts por fila. |
-| `sanic_smlt_it_status` | OptionSet | Sí | Estado del template |
+| `sanic_smlt_it_status` | OptionSet | Sí | Estado del template. Desde 1.3.0.0 **gatea la ejecución**: solo `Active (1)` puede correr imports |
 
 ## OptionSets
 
@@ -56,6 +56,11 @@ roles](../../04-admin-guide/security-and-roles.md), guía operativa de teams).
 | 0 | Draft |
 | 1 | Active |
 | 2 | Archived |
+
+Desde 1.3.0.0 el status **gatea la ejecución de imports**: `PrepareImport` rechaza los templates en
+`Draft` o `Archived` con el error _"Import Template ... is not Active"_ — solo un template `Active`
+puede correr imports. Los templates importados vía `sanic_capi_smelter_importtemplate` nacen `Active`;
+cuando el import actualiza un template existente, el status no se toca.
 
 ## Volver a
 

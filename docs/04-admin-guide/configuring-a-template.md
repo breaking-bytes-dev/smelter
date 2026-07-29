@@ -263,22 +263,18 @@ un template completo con 10 tablas fallando a la vez.
 
 ---
 
-## ⚠️ Campos sin efecto en v2 / no soportados todavía
+## ⚠️ Campos especiales — estado a 1.3.0.0
 
-Los siguientes campos están visibles en la UI porque existen en el modelo de datos, pero el motor
-de procesamiento v2 **no los lee**. Configurarlos no produce el comportamiento esperado.
-
-> **No son defectos, son "no soportado todavía".** Configurarlos no rompe el import — simplemente no
-> tiene efecto. Quedan documentados como candidatos de roadmap; mientras tanto, dejalos en su valor por
-> defecto y seguí las columnas "Qué hacer" de abajo.
+Estado actualizado de los campos que históricamente no tenían efecto: algunos fueron **eliminados
+del schema** en 1.3.0.0, otro se **implementó**, y otro sigue ignorado por el motor.
 
 | Campo | Estado | Qué hacer |
 |-------|--------|-----------|
-| **IsRetry** (`sanic_smlt_ij_retry` en Import Job) | No implementado. `ImportContextLoader` no lo carga; ni `ProcessChunk` ni `NormalizationEngine` lo leen. No existe "reprocesar solo filas fallidas". | Para reintentar: usar la retry policy automática del Cloud Flow (errores transitorios) o volver el job a `Queued` para re-correr desde cero (el upsert es idempotente). |
-| **Is Junction Table** (`sanic_smlt_tm_isjunctiontable` en Table Mapping) | No implementado. El campo se persiste pero ningún código de procesamiento lo lee. Es un placeholder para N:M, que no está soportado. | Modelar la tabla join como un `TableMapping` adicional con `DedupColumns` y lookups explícitos hacia ambas tablas padre. |
-| **Create If Not Exists** (`sanic_smlt_tm_createifnotexists` en Table Mapping) | No usado en v2. El `UpsertWriter` siempre hace upsert por alternate key independientemente de este flag. Herencia del diseño v1. | Ignorar. El comportamiento real es siempre upsert idempotente cuando `DedupColumns` está configurado. |
-| **Update If Exists** (`sanic_smlt_tm_updateifexists` en Table Mapping) | No usado en v2. Igual que `CreateIfNotExists`: no se lee en ninguna ruta de código. | Ignorar. El upsert siempre actualiza si el registro existe (cuando hay alternate key configurada). |
-| **Relationship Type = ManyToMany** / **Intersect Table** | No implementado. `NormalizationEngine` filtra con `.Where(r => r.IsOneToMany)`: cualquier mapping `ManyToMany` se ignora en silencio. | Solo usar `OneToMany`. Para N:M, ver el ítem Is Junction Table arriba. |
+| **IsRetry** (`sanic_smlt_ij_retry` en Import Job) | **Eliminado del schema en 1.3.0.0.** Nunca estuvo implementado; no existe "reprocesar solo filas fallidas". | Para reintentar: usar la retry policy automática del Cloud Flow (errores transitorios) o volver el job a `Queued` para re-correr desde cero (el upsert es idempotente). |
+| **Is Junction Table** (`sanic_smlt_tm_isjunctiontable` en Table Mapping) | **Sigue ignorado por el motor** — pendiente de eliminación del schema. Placeholder para N:M, que no está soportado; desde 1.3.0.0 el export/import de templates tampoco lo toca. | Modelar la tabla join como un `TableMapping` adicional con `DedupColumns` y lookups explícitos hacia ambas tablas padre. |
+| **Create If Not Exists** (`sanic_smlt_tm_createifnotexists` en Table Mapping) | **Implementado en 1.3.0.0.** Si el registro **no existe** (sin match de dedup): Sí = se crea; No = la fila queda `Skipped` (no se escribe) y suma al contador **Skipped** del job. | Default Sí. Ponerlo en No solo cuando el import debe limitarse a actualizar registros existentes. Requiere `DedupColumns`; sin alternate key el flag se ignora. |
+| **Update If Exists** (`sanic_smlt_tm_updateifexists` en Table Mapping) | **Implementado en 1.3.0.0.** Si el registro **existe** (match de dedup): Sí = se actualiza; No = la fila queda `Skipped` (no se escribe) y suma al contador **Skipped** del job. Con ambos flags en Sí (default) se mantiene el upsert de un solo round-trip. | Default Sí. Ponerlo en No para imports "solo alta" que no deben pisar datos existentes. Requiere `DedupColumns`; sin alternate key el flag se ignora. |
+| **Relationship Type = ManyToMany** / **Intersect Table** | N:M sigue sin soporte. `NormalizationEngine` filtra con `.Where(r => r.IsOneToMany)`: cualquier mapping `ManyToMany` se ignora en silencio. El campo `sanic_smlt_rm_intersecttable` fue **eliminado del schema en 1.3.0.0**. | Solo usar `OneToMany`. Para N:M, ver el ítem Is Junction Table arriba. |
 
 ### Comportamientos implícitos que conviene conocer
 

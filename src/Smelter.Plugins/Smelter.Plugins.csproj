@@ -10,7 +10,7 @@
     <Company>SANIC</Company>
     <Product>Smelter</Product>
     <PackageId>Smelter.Plugins</PackageId>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <Authors>SANIC</Authors>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>

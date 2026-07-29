@@ -54,19 +54,148 @@ namespace Smelter.Plugins.Services
 
             if (!hasAlternateKey)
                 _tracing?.Trace($"UpsertWriter: table '{tableMapping.TargetTable}' has no alternate key columns; " +
-                                "falling back to Create/Update (NOT idempotent — reprocessing may duplicate).");
+                                "falling back to Create/Update (NOT idempotent — reprocessing may duplicate). " +
+                                "CreateIfNotExists/UpdateIfExists need an alternate key and are ignored on this path.");
 
             if (isDryRun)
                 return Simulate(records, tableMapping.TargetTable);
 
+            // Camino por defecto (ambos flags prendidos): UpsertRequest puro, sin probe de
+            // existencia — el match-or-create lo resuelve la plataforma en un solo round-trip.
+            var honorFlags = hasAlternateKey && !(tableMapping.CreateIfNotExists && tableMapping.UpdateIfExists);
+
             var results = new List<ProcessingResult>();
             foreach (var batch in Chunk(records, BatchSize))
             {
-                results.AddRange(hasAlternateKey
-                    ? ExecuteBatch(batch, tableMapping.TargetTable, BuildUpsert(keyColumns), isUpsert: true)
-                    : ExecuteBatch(batch, tableMapping.TargetTable, BuildCreateOrUpdate(), isUpsert: false));
+                results.AddRange(honorFlags
+                    ? ExecuteBatchWithFlags(batch, tableMapping, keyColumns)
+                    : hasAlternateKey
+                        ? ExecuteBatch(batch, tableMapping.TargetTable, BuildUpsert(keyColumns), isUpsert: true)
+                        : ExecuteBatch(batch, tableMapping.TargetTable, BuildCreateOrUpdate(), isUpsert: false));
             }
             return results;
+        }
+
+        /// <summary>
+        /// Honra <see cref="TableMappingConfig.CreateIfNotExists"/> / <see cref="TableMappingConfig.UpdateIfExists"/>
+        /// (1.3.0.0 — hasta entonces los flags se cargaban pero el writer siempre upserteaba):
+        /// <list type="bullet">
+        ///   <item><description>existe + UpdateIfExists=false → <see cref="ImportLogStatus.Skipped"/> (no se escribe nada)</description></item>
+        ///   <item><description>existe + UpdateIfExists=true → <see cref="UpdateRequest"/> por GUID</description></item>
+        ///   <item><description>no existe + CreateIfNotExists=false → <see cref="ImportLogStatus.Skipped"/></description></item>
+        ///   <item><description>no existe + CreateIfNotExists=true → <see cref="CreateRequest"/></description></item>
+        /// </list>
+        /// Cuesta un round-trip extra por batch (el probe de existencia por alternate key) — solo se
+        /// paga cuando algún flag está apagado; el default sigue siendo el upsert de un solo viaje.
+        /// </summary>
+        private List<ProcessingResult> ExecuteBatchWithFlags(List<TargetRecord> batch,
+            TableMappingConfig tableMapping, string[] keyColumns)
+        {
+            var table = tableMapping.TargetTable;
+            var existingIds = ProbeExistence(batch, table, keyColumns);
+
+            var results = new List<ProcessingResult>();
+            var requests = new OrganizationRequestCollection();
+            var requestRecords = new List<TargetRecord>();
+
+            foreach (var record in batch)
+            {
+                var existingId = existingIds.TryGetValue(record, out var id) ? id : (Guid?)null;
+
+                if (existingId.HasValue && !tableMapping.UpdateIfExists)
+                {
+                    results.Add(ProcessingResult.Skipped(record.SourceRowNumber, table, existingId.Value));
+                    continue;
+                }
+                if (!existingId.HasValue && !tableMapping.CreateIfNotExists)
+                {
+                    results.Add(ProcessingResult.Skipped(record.SourceRowNumber, table, Guid.Empty));
+                    continue;
+                }
+
+                var entity = existingId.HasValue
+                    ? new Entity(record.TableLogicalName, existingId.Value)
+                    : new Entity(record.TableLogicalName);
+                foreach (var attr in record.Attributes)
+                    entity[attr.Key] = attr.Value;
+
+                record.ExistingRecordId = existingId; // IsUpdate se deriva de esto
+                requests.Add(existingId.HasValue
+                    ? (OrganizationRequest)new UpdateRequest { Target = entity }
+                    : new CreateRequest { Target = entity });
+                requestRecords.Add(record);
+            }
+
+            if (requests.Count == 0)
+                return results;
+
+            var response = (ExecuteMultipleResponse)_service.Execute(new ExecuteMultipleRequest
+            {
+                Requests = requests,
+                Settings = new ExecuteMultipleSettings { ContinueOnError = true, ReturnResponses = true }
+            });
+            var byIndex = response?.Responses?.ToDictionary(r => r.RequestIndex)
+                          ?? new Dictionary<int, ExecuteMultipleResponseItem>();
+
+            for (var i = 0; i < requestRecords.Count; i++)
+            {
+                var record = requestRecords[i];
+                byIndex.TryGetValue(i, out var item);
+
+                results.Add(item?.Fault != null
+                    ? ProcessingResult.Failure(record.SourceRowNumber, table, item.Fault.Message)
+                    : ResolveSuccess(record, table, item, isUpsert: false));
+            }
+            return results;
+        }
+
+        /// <summary>
+        /// Resuelve la existencia de cada record por su alternate key con un solo
+        /// <c>ExecuteMultipleRequest</c> de <see cref="RetrieveRequest"/>s (<c>ColumnSet(false)</c>).
+        /// Un fault (típicamente "record not found") cuenta como inexistente. Records sin todos los
+        /// valores de la key no se pueden probear y se tratan como inexistentes (mismo criterio que
+        /// el upsert, que crearía).
+        /// </summary>
+        private Dictionary<TargetRecord, Guid> ProbeExistence(List<TargetRecord> batch, string table, string[] keyColumns)
+        {
+            var requests = new OrganizationRequestCollection();
+            var probed = new List<TargetRecord>();
+
+            foreach (var record in batch)
+            {
+                var keys = new KeyAttributeCollection();
+                foreach (var keyColumn in keyColumns)
+                    if (record.Attributes.TryGetValue(keyColumn, out var value) && value != null)
+                        keys[keyColumn] = value;
+                if (keys.Count != keyColumns.Length)
+                    continue;
+
+                requests.Add(new RetrieveRequest
+                {
+                    Target = new EntityReference(table, keys),
+                    ColumnSet = new Microsoft.Xrm.Sdk.Query.ColumnSet(false)
+                });
+                probed.Add(record);
+            }
+
+            var found = new Dictionary<TargetRecord, Guid>();
+            if (requests.Count == 0)
+                return found;
+
+            var response = (ExecuteMultipleResponse)_service.Execute(new ExecuteMultipleRequest
+            {
+                Requests = requests,
+                Settings = new ExecuteMultipleSettings { ContinueOnError = true, ReturnResponses = true }
+            });
+
+            foreach (var item in response?.Responses ?? new ExecuteMultipleResponseItemCollection())
+            {
+                if (item.Fault != null || item.RequestIndex >= probed.Count) continue;
+                var id = (item.Response as RetrieveResponse)?.Entity?.Id;
+                if (id.HasValue && id.Value != Guid.Empty)
+                    found[probed[item.RequestIndex]] = id.Value;
+            }
+            return found;
         }
 
         /// <summary>

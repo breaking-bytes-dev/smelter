@@ -83,6 +83,20 @@ namespace Smelter.Plugins.Tests.Services
         }
 
         [Fact]
+        public void Import_NewTemplate_IsCreatedActive()
+        {
+            // 1.3.0.0: PrepareImport solo ejecuta templates Active — un template importado debe
+            // nacer ejecutable, no depender del default de la columna en la plataforma.
+            var service = Service(out var created);
+
+            new TemplateImporter(service, _ => true).Import(Dto());
+
+            var status = Created(created, TemplateTable).GetAttributeValue<OptionSetValue>("sanic_smlt_it_status");
+            status.Should().NotBeNull();
+            status.Value.Should().Be((int)ImportTemplateStatus.Active);
+        }
+
+        [Fact]
         public void Import_RemapsRefsToNewlyCreatedTableMappingGuids()
         {
             var service = Service(out var created);

@@ -59,12 +59,6 @@ Estos campos se actualizan solos durante y después de la ejecución. Son de sol
 | **Start Time** | Cuándo empezó a procesar el sistema. |
 | **End Time** | Cuándo terminó (o falló). |
 
-### Sección Resumen
-
-| Campo | Qué muestra |
-|-------|-------------|
-| **Error Summary** | Un resumen con los primeros 100 errores del trabajo. Para ver todos los errores en detalle, usá la pestaña **Errores** (ver más abajo). |
-
 ### Pestaña Errores
 
 Dentro del form de un Import Job hay una pestaña llamada **Errores**. Ahí aparece la lista de Import Job Logs correspondientes a las filas que fallaron, con estas columnas:

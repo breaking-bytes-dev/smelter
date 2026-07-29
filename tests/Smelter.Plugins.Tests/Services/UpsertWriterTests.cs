@@ -23,8 +23,13 @@ namespace Smelter.Plugins.Tests.Services
         private static KeyValuePair<string, object> Attr(string k, object v) =>
             new KeyValuePair<string, object>(k, v);
 
-        private static TableMappingConfig Mapping(string table, string dedup) =>
-            new TableMappingConfig { Id = Guid.NewGuid(), TargetTable = table, DedupColumns = dedup };
+        private static TableMappingConfig Mapping(string table, string dedup,
+            bool createIfNotExists = true, bool updateIfExists = true) =>
+            new TableMappingConfig
+            {
+                Id = Guid.NewGuid(), TargetTable = table, DedupColumns = dedup,
+                CreateIfNotExists = createIfNotExists, UpdateIfExists = updateIfExists
+            };
 
         private static ExecuteMultipleResponse OkResponse()
         {
@@ -32,6 +37,49 @@ namespace Smelter.Plugins.Tests.Services
             r["Responses"] = new ExecuteMultipleResponseItemCollection();
             r["IsFaulted"] = false;
             return r;
+        }
+
+        // ── Helpers del probe de existencia (flags CreateIfNotExists/UpdateIfExists, 1.3.0.0) ────
+
+        /// <summary>Respuesta del probe: (index, id) — id null simula el fault "record not found".</summary>
+        private static ExecuteMultipleResponse ProbeResponse(params (int Index, Guid? Id)[] items)
+        {
+            var col = new ExecuteMultipleResponseItemCollection();
+            foreach (var (index, id) in items)
+            {
+                var item = new ExecuteMultipleResponseItem { RequestIndex = index };
+                if (id.HasValue)
+                {
+                    var retrieve = new RetrieveResponse();
+                    retrieve["Entity"] = new Entity("city", id.Value);
+                    item.Response = retrieve;
+                }
+                else
+                {
+                    item.Fault = new OrganizationServiceFault { Message = "record with the specified key values does not exist" };
+                }
+                col.Add(item);
+            }
+            var r = new ExecuteMultipleResponse();
+            r["Responses"] = col;
+            r["IsFaulted"] = true;
+            return r;
+        }
+
+        /// <summary>
+        /// Servicio que responde el 1er ExecuteMultiple (probe de RetrieveRequests) con
+        /// <paramref name="probe"/> y captura los siguientes (batch de escritura) devolviendo OK.
+        /// </summary>
+        private static IOrganizationService FlaggedService(ExecuteMultipleResponse probe, List<ExecuteMultipleRequest> calls)
+        {
+            var service = Substitute.For<IOrganizationService>();
+            service.Execute(Arg.Do<OrganizationRequest>(r => calls.Add((ExecuteMultipleRequest)r)))
+                   .Returns(ci =>
+                   {
+                       var req = (ExecuteMultipleRequest)ci.Arg<OrganizationRequest>();
+                       return req.Requests.OfType<RetrieveRequest>().Any() ? probe : OkResponse();
+                   });
+            return service;
         }
 
         [Fact]
@@ -104,6 +152,85 @@ namespace Smelter.Plugins.Tests.Services
             service.DidNotReceive().Execute(Arg.Any<OrganizationRequest>());
             results.Should().HaveCount(2);
             results.Should().OnlyContain(r => r.IsSuccess);
+        }
+
+        // ── CreateIfNotExists / UpdateIfExists (1.3.0.0 — antes se cargaban pero se ignoraban) ────
+
+        [Fact]
+        public void Write_UpdateIfExistsFalse_ExistingRowSkippedMissingRowCreated()
+        {
+            var existingId = Guid.NewGuid();
+            var calls = new List<ExecuteMultipleRequest>();
+            // "A" (índice 0 del probe) existe; "B" (índice 1) no.
+            var service = FlaggedService(ProbeResponse((0, existingId), (1, null)), calls);
+
+            var writer = new UpsertWriter(service);
+            var results = writer.Write(
+                new List<TargetRecord> { Rec(2, Attr("sanic_name", "A")), Rec(3, Attr("sanic_name", "B")) },
+                Mapping("city", "sanic_name", updateIfExists: false), false);
+
+            results.Should().HaveCount(2);
+            var skipped = results.Single(r => r.Status == ImportLogStatus.Skipped);
+            skipped.RowNumber.Should().Be(2);
+            skipped.RecordId.Should().Be(existingId, "el skip debe reportar el registro existente que NO se tocó");
+            results.Single(r => r.Status == ImportLogStatus.Created).RowNumber.Should().Be(3);
+
+            calls.Should().HaveCount(2, "un probe + un batch de escritura");
+            var writeBatch = calls[1];
+            writeBatch.Requests.OfType<CreateRequest>().Should().ContainSingle()
+                .Which.Target.GetAttributeValue<string>("sanic_name").Should().Be("B");
+            writeBatch.Requests.OfType<UpdateRequest>().Should().BeEmpty("la fila existente se skipea, no se actualiza");
+            writeBatch.Requests.OfType<UpsertRequest>().Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Write_CreateIfNotExistsFalse_MissingRowSkippedExistingRowUpdatedByGuid()
+        {
+            var existingId = Guid.NewGuid();
+            var calls = new List<ExecuteMultipleRequest>();
+            var service = FlaggedService(ProbeResponse((0, existingId), (1, null)), calls);
+
+            var writer = new UpsertWriter(service);
+            var results = writer.Write(
+                new List<TargetRecord> { Rec(2, Attr("sanic_name", "A")), Rec(3, Attr("sanic_name", "B")) },
+                Mapping("city", "sanic_name", createIfNotExists: false), false);
+
+            results.Single(r => r.Status == ImportLogStatus.Skipped).RowNumber.Should().Be(3);
+            results.Single(r => r.Status == ImportLogStatus.Updated).RowNumber.Should().Be(2);
+
+            var writeBatch = calls[1];
+            var update = writeBatch.Requests.OfType<UpdateRequest>().Should().ContainSingle().Subject;
+            ((Entity)update.Target).Id.Should().Be(existingId, "el update va por el GUID que resolvió el probe");
+            writeBatch.Requests.OfType<CreateRequest>().Should().BeEmpty("sin CreateIfNotExists no se crea la fila faltante");
+        }
+
+        [Fact]
+        public void Write_BothFlagsOn_SingleUpsertRoundTripWithoutProbe()
+        {
+            var calls = new List<ExecuteMultipleRequest>();
+            var service = FlaggedService(ProbeResponse(), calls);
+
+            var writer = new UpsertWriter(service);
+            writer.Write(new List<TargetRecord> { Rec(2, Attr("sanic_name", "A")) },
+                Mapping("city", "sanic_name"), false);
+
+            calls.Should().HaveCount(1, "con ambos flags prendidos NO hay probe — un solo round-trip");
+            calls[0].Requests.OfType<UpsertRequest>().Should().ContainSingle();
+        }
+
+        [Fact]
+        public void Write_BothFlagsOff_EverythingSkippedWithoutWriting()
+        {
+            var calls = new List<ExecuteMultipleRequest>();
+            var service = FlaggedService(ProbeResponse((0, Guid.NewGuid()), (1, null)), calls);
+
+            var writer = new UpsertWriter(service);
+            var results = writer.Write(
+                new List<TargetRecord> { Rec(2, Attr("sanic_name", "A")), Rec(3, Attr("sanic_name", "B")) },
+                Mapping("city", "sanic_name", createIfNotExists: false, updateIfExists: false), false);
+
+            results.Should().OnlyContain(r => r.Status == ImportLogStatus.Skipped);
+            calls.Should().HaveCount(1, "solo el probe — no hay nada que escribir");
         }
 
         [Fact]

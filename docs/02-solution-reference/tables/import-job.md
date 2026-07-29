@@ -25,12 +25,11 @@ de progreso, el offset actual y el estado del job.
 | `sanic_smlt_ij_processedrows` | Integer | No | Filas procesadas hasta ahora (acumulado) |
 | `sanic_smlt_ij_successcount` | Integer | No | Operaciones exitosas (create + update) |
 | `sanic_smlt_ij_failedcount` | Integer | No | Operaciones fallidas |
-| `sanic_smlt_ij_skippedcount` | Integer | No | Filas omitidas por dedup (match sin update) |
+| `sanic_smlt_ij_skippedcount` | Integer | No | Filas omitidas por los flags del Table Mapping (desde 1.3.0.0: existe + `UpdateIfExists` = No, o no existe + `CreateIfNotExists` = No). Las filas Skipped se cuentan pero no se loguean. |
 | `sanic_smlt_ij_processingbatch` | Integer | No | **Offset actual** — número de filas ya procesadas; usado por `ProcessChunk` como punto de reanudación. Avanza después de cada chunk. |
 | `sanic_smlt_ij_starttime` | DateTime | No | Inicio del procesamiento (seteado por `PrepareImport`) |
 | `sanic_smlt_ij_endtime` | DateTime | No | Fin del procesamiento (seteado por `ProcessChunk` al completar) |
 | `sanic_smlt_ij_isdryrun` | Boolean | No | Si es `true`, simula el procesamiento sin escribir en Dataverse |
-| `sanic_smlt_ij_errorsummary` | Multiline | No | Resumen de errores fatales del job (ej. excepción del flow) |
 | `ownerid` | Owner (user/team) | Auto | Owner del job. Si el template referenciado es owned por un **team**, `AssignJobOwnerPlugin` (step sync pre-operation del Create) lo setea a ese mismo team; si no, queda el default de la plataforma (el creador). Ver [Ownership](#ownership). |
 
 ## Ownership
@@ -73,15 +72,15 @@ Smelter tiene dos mecanismos de reintento, ambos automáticos:
    a iniciar el procesamiento desde el principio. Es seguro porque el upsert por alternate key es
    idempotente: si un registro ya existe, se actualiza; si no, se crea. No hay duplicados.
 
-### El campo `IsRetry` / retry por fila — no implementado
+### Retry por fila — no existe (campo `IsRetry` eliminado)
 
-El campo `retry` a nivel de job existe en el modelo de datos pero **no está implementado en v2**.
-`ImportContextLoader` no lo carga, y ni `ProcessChunk` ni `NormalizationEngine` lo leen.
+El campo `retry` a nivel de job fue **eliminado del schema en 1.3.0.0** — nunca estuvo implementado
+y ningún componente del motor lo leía.
 
-**No existe el concepto de "reprocesar solo las filas fallidas"** en v2. Las filas con error se
-registran en `ImportJobLog` para revisión manual. Si se necesita reintentar solo una fila, la
-alternativa es corregir el CSV fuente y re-correr un import con ese subset, aprovechando la
-idempotencia del upsert.
+**No existe el concepto de "reprocesar solo las filas fallidas"**: el reintento es re-correr el
+import completo (volver el job a `Queued`), que es seguro por la idempotencia del upsert. Las filas
+con error se registran en `ImportJobLog` para revisión manual; si se necesita reintentar solo un
+subset, la alternativa es corregir el CSV fuente y re-correr un import con ese subset.
 
 ## Trigger del Cloud Flow
 

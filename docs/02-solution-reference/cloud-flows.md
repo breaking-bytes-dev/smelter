@@ -48,7 +48,6 @@ TRIGGER: Import Job status = Queued
       └─► Perform an unbound action: sanic_ProcessChunk  [NO — acá se marca Failed]
             Patch Import Job:
               sanic_smlt_ij_status = 4 (Failed)
-              sanic_smlt_ij_errorsummary = result()?['error']?['message']
 ```
 
 ## Retry Policy en ProcessChunk

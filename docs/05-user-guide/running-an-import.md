@@ -78,8 +78,8 @@ El job pasa por los siguientes estados durante el proceso:
 | **Queued** | El trabajo está en la cola, esperando que el sistema lo tome. |
 | **Processing** | El sistema está procesando el archivo. Los campos **Processed Rows** y **Total Rows** van avanzando. |
 | **Completed** | Todas las filas se procesaron correctamente. No hubo errores. |
-| **CompletedWithErrors** | El proceso terminó, pero algunas filas fallaron. Los campos **Failed** y **Error Summary** tienen el detalle. |
-| **Failed** | El proceso no pudo completarse por un error grave. No se procesaron todas las filas. Conviene revisar el Error Summary y contactar al configurador. |
+| **CompletedWithErrors** | El proceso terminó, pero algunas filas fallaron. El campo **Failed** tiene el conteo; abrí la pestaña **Errores** para ver el detalle de cada fila. |
+| **Failed** | El proceso no pudo completarse por un error grave. No se procesaron todas las filas. Contactá al configurador (el detalle queda en el trace del sistema). |
 
 Para ver el avance en tiempo real:
 - Recargá el form del job (F5 o el botón de refrescar del navegador).

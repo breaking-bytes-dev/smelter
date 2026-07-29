@@ -56,8 +56,8 @@ namespace Smelter.Plugins.Models
         /// <summary>Comma-separated target column logical names that form the alternate key for upsert deduplication.</summary>
         [DataMember(Order = 5)] public string DedupColumns { get; set; }
 
-        /// <summary><c>true</c> when this table mapping represents an N:M intersect (junction) table.</summary>
-        [DataMember(Order = 6)] public bool IsJunctionTable { get; set; }
+        // Order=6 fue IsJunctionTable (feature N:M nunca implementada, campo eliminado en 1.3.0.0).
+        // DataContractJsonSerializer ignora el member al deserializar JSONs viejos que lo traigan.
 
         /// <summary>When <c>true</c>, a new Dataverse record is created if no existing record matches the alternate key.</summary>
         [DataMember(Order = 7)] public bool CreateIfNotExists { get; set; }

@@ -136,34 +136,34 @@ ascendente en `TableMapping`) y resuelve cadenas complejas como País → Estado
 
 - **Errores de fila**: se capturan, se categorizan (`ErrorCategory`) y se loguean en `ImportJobLog`. El procesamiento del resto del chunk continúa.
 - **Errores transitorios de chunk** (excepción no capturada, timeout): la invocación falla y el retry policy del Cloud Flow reintenta la llamada a `ProcessChunk`. Como el offset no avanzó, el chunk se re-procesa sin duplicar (idempotencia por upsert).
-- **Error fatal del flow** (scope catch): el job se marca `Failed` con un resumen en `errorsummary`.
+- **Error fatal del flow** (scope catch): el job se marca `Failed`. El detalle del error se diagnostica desde el **Plugin Trace Log**; los errores por fila quedan en `ImportJobLog`.
 
 ## Limitaciones conocidas y configuración no soportada todavía
 
-Los siguientes campos existen en el modelo de datos y son visibles en la UI, pero el motor v2 no
-los implementa **todavía**. Están documentados aquí para que quede registrado a nivel arquitectura.
+Estado a 1.3.0.0 de los campos que históricamente no tenían efecto: algunos fueron **eliminados del
+schema**, uno se **implementó**, y otro sigue ignorado. Queda registrado a nivel arquitectura.
 
-> **No son defectos, son candidatos de roadmap.** El campo existe en el esquema (heredado del v1 o
-> reservado para una feature futura); configurarlo **no rompe nada** — simplemente no tiene efecto.
-> Si en el futuro se necesita alguno, se implementa; hasta entonces, tratar como "no soportado todavía".
+- **IsRetry (campo `retry` en Import Job):** campo **eliminado del schema en 1.3.0.0**. Nunca
+  existió un mecanismo de "reprocesar solo las filas fallidas". El retry real opera a nivel de
+  chunk (retry policy del Cloud Flow) o a nivel de job completo (volver a `Queued`), ambos seguros
+  por la idempotencia del upsert.
 
-- **IsRetry (campo `retry` en Import Job):** no implementado. `ImportContextLoader` no lo carga;
-  `ProcessChunk` y `NormalizationEngine` no lo leen. No existe un mecanismo de "reprocesar solo
-  las filas fallidas". El retry real opera a nivel de chunk (retry policy del Cloud Flow) o a nivel
-  de job completo (volver a `Queued`), ambos seguros por la idempotencia del upsert.
+- **IsJunctionTable (`sanic_smlt_tm_isjunctiontable`):** sigue sin implementarse. El campo existe
+  en el schema pero el motor lo ignora, y desde 1.3.0.0 el export/import de templates tampoco lo
+  toca. Está **pendiente de eliminación**. Era un placeholder para el soporte de relaciones N:M,
+  que no está implementado.
 
-- **IsJunctionTable (`sanic_smlt_tm_isjunctiontable`):** no implementado. El campo se persiste y
-  se exporta con el template, pero ningún componente del motor lo lee. Es un placeholder para el
-  soporte de relaciones N:M, que no está implementado en v2.
+- **CreateIfNotExists / UpdateIfExists:** **implementados en 1.3.0.0.** El `UpsertWriter` ahora
+  honra ambos flags cuando hay dedup columns (alternate key): si el registro existe y
+  `UpdateIfExists` = No → la fila se marca `Skipped` (no se escribe, cuenta en `skippedcount`);
+  si no existe y `CreateIfNotExists` = No → `Skipped`. Con ambos flags en Sí (default) se mantiene
+  el `UpsertRequest` de un solo round-trip. Sin dedup columns los flags se ignoran — no hay
+  concepto de "existe". Las filas `Skipped` se cuentan pero no se loguean en `ImportJobLog`.
 
-- **CreateIfNotExists / UpdateIfExists:** no usados en v2. El `UpsertWriter` siempre ejecuta
-  `UpsertRequest` por alternate key independientemente del valor de estos flags. Son herencia del
-  diseño v1 y no tienen efecto en ninguna combinación de valores.
-
-- **RelationshipType = ManyToMany / IntersectTable:** no implementado. `NormalizationEngine` filtra
-  con `.Where(r => r.IsOneToMany)`: cualquier Relationship Mapping configurado como `ManyToMany`
-  se ignora en silencio, sin error. Implementar N:M requeriría `AssociateRequest` y desarrollo nuevo.
-  El comentario del propio modelo ya indicaba _"Not yet supported in v1"_.
+- **RelationshipType = ManyToMany / IntersectTable:** N:M sigue sin soporte. `NormalizationEngine`
+  filtra con `.Where(r => r.IsOneToMany)`: cualquier Relationship Mapping configurado como
+  `ManyToMany` se ignora en silencio, sin error. El campo `sanic_smlt_rm_intersecttable` fue
+  **eliminado del schema en 1.3.0.0**. Implementar N:M requeriría `AssociateRequest` y desarrollo nuevo.
 
 ### Categorías de error (`sanic_smlt_ijl_errorcategory`)
 

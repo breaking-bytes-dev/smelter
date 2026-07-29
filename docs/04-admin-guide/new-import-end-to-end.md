@@ -206,9 +206,10 @@ El Import Job se actualiza en tiempo real con el progreso del procesamiento.
 | **Processed Rows** | Filas procesadas hasta el momento |
 | **Success Count** | Operaciones exitosas (Create + Update) |
 | **Failed Count** | Filas con error |
-| **Skipped Count** | Filas omitidas por dedup (registro ya existe, Update If Exists = No) |
-| **Processing Batch** / **Total Batches** | Progreso por chunks |
-| **Error Summary** | Resumen de los primeros 100 errores |
+| **Skipped Count** | Filas omitidas por los flags del Table Mapping (registro ya existe con Update If Exists = No, o no existe con Create If Not Exists = No) |
+| **Processing Batch** | Progreso por chunks — offset de filas ya procesadas |
+
+Para el detalle de las filas que fallaron, usá la subgrilla **Import Job Logs** (ver Fase 6).
 
 Refrescá el formulario periódicamente para ver el avance.
 
@@ -231,11 +232,8 @@ operación (una fila del CSV, una tabla destino).
 |-------|-------------|
 | **Row Number** | Número de fila en el CSV (incluye el encabezado; fila 2 = primera fila de datos) |
 | **Target Table** | Tabla Dataverse donde se intentó escribir |
-| **Status** | `Created`, `Updated`, `Skipped`, `Failed` |
-| **Created Record ID** | GUID del registro creado o actualizado (solo en éxito) |
-| **Error Message** | Detalle del error (solo en fallo) |
-
-Filtrá por `Status = Failed` para ver solo los errores.
+| **Status** | Hoy solo se escribe `Failed` — las filas exitosas y omitidas se reflejan en los contadores del job, no en el log |
+| **Error Message** | Detalle del error, incluyendo la columna que falló |
 
 ### 6.2 — Errores frecuentes y su causa
 

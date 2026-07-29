@@ -127,6 +127,9 @@ namespace Smelter.Plugins
                 $"hasHeader={template?.HasHeaderRow}, delimiter='{template?.Delimiter}', " +
                 $"tableMappings={context.TableMappings.Count}");
 
+            ValidateTemplateStatus(template);
+            _tracing?.Trace("Run: template status is Active OK.");
+
             ValidateTemplateAccess(initiatingUserId, template);
             _tracing?.Trace("Run: template access validated OK.");
 
@@ -141,6 +144,20 @@ namespace Smelter.Plugins
 
             ResetJob(importJobId, totalRows);
             return totalRows;
+        }
+
+        /// <summary>
+        /// Gate de estado (1.3.0.0): solo un template <see cref="ImportTemplateStatus.Active"/> es
+        /// ejecutable. Antes, un template en Draft (a medio configurar) o Archived corría igual —
+        /// el campo status existía pero el motor lo ignoraba.
+        /// </summary>
+        private static void ValidateTemplateStatus(ImportTemplateConfig template)
+        {
+            if (template.Status == (int)ImportTemplateStatus.Active) return;
+
+            throw new InvalidPluginExecutionException(
+                $"Import Template '{template.Name}' ({template.Id}) is not Active " +
+                $"(status={(ImportTemplateStatus)template.Status}). Activate the template before running imports.");
         }
 
         /// <summary>

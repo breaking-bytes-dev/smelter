@@ -84,6 +84,10 @@ namespace Smelter.Plugins.Services
 
             if (templateId == Guid.Empty)
             {
+                // Los templates importados nacen Active: el JSON exportado es un template completo
+                // y el gate de PrepareImport (1.3.0.0) bloquea todo lo que no sea Active. En el
+                // update NO se toca el status — si el admin lo puso en Draft/Archived, se respeta.
+                template["sanic_smlt_it_status"] = new OptionSetValue((int)ImportTemplateStatus.Active);
                 templateId = _service.Create(template);
             }
             else
@@ -115,7 +119,6 @@ namespace Smelter.Plugins.Services
                     ["sanic_smlt_tm_targettable"] = tm.TargetTable,
                     ["sanic_smlt_tm_processingorder"] = tm.ProcessingOrder,
                     ["sanic_smlt_tm_dedupcolumns"] = tm.DedupColumns,
-                    ["sanic_smlt_tm_isjunctiontable"] = tm.IsJunctionTable,
                     ["sanic_smlt_tm_createifnotexists"] = tm.CreateIfNotExists,
                     ["sanic_smlt_tm_updateifexists"] = tm.UpdateIfExists
                 };

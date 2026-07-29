@@ -16,6 +16,8 @@ using Smelter.Plugins.Services;
 using Smelter.Verify;
 
 const string JobTable = "sanic_tbl_smlt_importjob";
+const string TemplateTable = "sanic_tbl_smlt_importtemplate";
+const string TableMappingTable = "sanic_tbl_smlt_tablemapping";
 const string SmokeDomain = "@smelter-smoke.test";
 const string SmokeJobName = "Smoke Test — Smelter.Verify";
 const string SmokeTemplateName = "Smelter Smoke Test";
@@ -59,6 +61,9 @@ try
     // ── [KEY] Alternate keys según KeySpec (key idempotente del Import Job Log) ──
     KeyAssertions.RunAll(client);
 
+    // ── [CLEAN] Atributos muertos eliminados según SchemaCleanupSpec (1.3.0.0) ──
+    CleanupAssertions.RunAll(client);
+
     // ── 2. Pre-cleanup (por si una corrida anterior murió a medias) ────────
     Cleanup(client);
 
@@ -96,6 +101,33 @@ try
     var warnings = (string)importResp["Warnings"];
     Console.WriteLine($"[3] Template '{SmokeTemplateName}' upserteado vía {apiImportTemplate}: {templateId}" +
         (string.IsNullOrEmpty(warnings) ? "" : $" (warnings: {warnings})"));
+
+    // ── 3b. Gate de estado del template (1.3.0.0): un template Draft NO debe poder prepararse. ──
+    client.Update(new Entity(TemplateTable, templateId)
+    {
+        ["sanic_smlt_it_status"] = new OptionSetValue((int)ImportTemplateStatus.Draft),
+    });
+    var jobGate = client.Create(new Entity(JobTable)
+    {
+        ["sanic_smlt_ij_name"] = SmokeJobName,
+        ["sanic_smlt_ij_importtemplateid"] = new EntityReference(TemplateTable, templateId),
+    });
+    try
+    {
+        client.Execute(new OrganizationRequest(apiPrepare) { ["JobId"] = jobGate });
+        Assert(false, "PrepareImport debía fallar con el template en Draft (gate de status)");
+    }
+    catch (System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault> fx)
+    {
+        Assert(FaultChainContains(fx.Detail, "not Active"),
+            $"el fault del gate debía mencionar 'not Active', fue: {fx.Detail.Message}");
+    }
+    client.Delete(JobTable, jobGate);
+    client.Update(new Entity(TemplateTable, templateId)
+    {
+        ["sanic_smlt_it_status"] = new OptionSetValue((int)ImportTemplateStatus.Active),
+    });
+    Console.WriteLine("[3b] Gate de status OK: Draft rechazado, Active restaurado.");
 
     // ── 4. Import Job + CSV (5 filas) ──────────────────────────────────────
     var jobId = client.Create(new Entity(JobTable)
@@ -168,6 +200,30 @@ try
     AssertJob(client, jobId2, expectedSuccess: 5, expectedFailed: 1, expectedStatus: ImportJobStatus.CompletedWithErrors);
     AssertFailureLog(client, jobId2, expectedRowNumber: 7);
     Console.WriteLine("[6b] 2ª corrida OK: el Import Job Log sigue teniendo 1 solo registro (key idempotente).");
+
+    // ── 6c. UpdateIfExists=false (1.3.0.0): las filas que matchean por alternate key se SKIPEAN. ──
+    var tableMapping = client.RetrieveMultiple(new QueryExpression(TableMappingTable)
+    {
+        ColumnSet = new ColumnSet(false),
+        Criteria = { Conditions = { new ConditionExpression("sanic_smlt_tm_importtemplateid", ConditionOperator.Equal, templateId) } },
+    }).Entities.Single();
+    client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_updateifexists"] = false });
+
+    var jobId3 = client.Create(new Entity(JobTable)
+    {
+        ["sanic_smlt_ij_name"] = SmokeJobName,
+        ["sanic_smlt_ij_importtemplateid"] = new EntityReference(TemplateTable, templateId),
+    });
+    UploadFile(client, new EntityReference(JobTable, jobId3), "sanic_smlt_ij_sourcefile", "smoke-skip.csv", csv);
+    RunImport(client, apiPrepare, apiProcessChunk, jobId3, expectTotal: 5);
+    AssertJob(client, jobId3, expectedSuccess: 0, expectedFailed: 0, expectedStatus: ImportJobStatus.Completed);
+    var skipped = client.Retrieve(JobTable, jobId3, new ColumnSet("sanic_smlt_ij_skippedcount"))
+        .GetAttributeValue<int?>("sanic_smlt_ij_skippedcount") ?? -1;
+    Assert(skipped == 5, $"con UpdateIfExists=false los 5 contacts existentes debían quedar Skipped, skippedcount={skipped}");
+    Assert(CountSmokeContacts(client) == 5, "skip no debe crear ni duplicar contacts");
+
+    client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_updateifexists"] = true });
+    Console.WriteLine("[6c] UpdateIfExists=false OK: 5 filas Skipped, nada escrito, flag restaurado.");
 
     Console.WriteLine();
     Console.WriteLine("[OK] SMOKE TEST VERDE: el backend desplegado procesa, completa e idempotente contra Dev.");

@@ -320,7 +320,7 @@ El constructor acepta un `Func<string, bool> entityExists` inyectable (por defec
 
 El objeto de contexto que se construye una vez por invocación y circula por todo el pipeline. Contiene:
 
-- `ImportJobId`, `IsDryRun`, `IsRetry` — identidad y modo de ejecución.
+- `ImportJobId`, `IsDryRun` — identidad y modo de ejecución.
 - `InitialProcessedRows`, `InitialSuccessCount`, `InitialFailedCount`, `InitialSkippedCount`, `InitialProcessingBatch` — estado acumulado del job al comienzo de esta invocación (para sumar los contadores del chunk).
 - `Template` (`ImportTemplateConfig`) — config del template (HasHeaderRow, Delimiter, ChunkSize, SourceType).
 - `TableMappings` (`List<TableMappingConfig>`) — mappings de tabla con sus column mappings anidados.

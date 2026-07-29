@@ -86,6 +86,46 @@ namespace Smelter.Plugins.Tests.Plugins
             m.Service.DidNotReceive().Update(Arg.Any<Entity>());
         }
 
+        // ── 1.3.0.0: gate de estado del template — solo Active es ejecutable ─────────────────────
+
+        [Theory]
+        [InlineData(ImportTemplateStatus.Draft)]
+        [InlineData(ImportTemplateStatus.Archived)]
+        public void Run_TemplateNotActive_ThrowsBeforeAccessCheckDownloadOrUpdate(ImportTemplateStatus status)
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+
+            var ctx = ContextWith(true, "name");
+            ctx.Template.Status = (int)status;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.Build().Run(jobId, userId);
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*not Active*");
+            m.Access.DidNotReceive().HasReadAccess(Arg.Any<Guid>(), Arg.Any<EntityReference>());
+            m.Downloader.DidNotReceive().Download(Arg.Any<EntityReference>(), Arg.Any<string>());
+            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+        }
+
+        [Fact]
+        public void Run_ActiveTemplate_PassesTheStatusGate()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var bytes = new byte[] { 1 };
+
+            var ctx = ContextWith(true, "name");
+            ctx.Template.Status = (int)ImportTemplateStatus.Active;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name" });
+            m.Csv.CountRows(bytes, true, ",").Returns(3);
+
+            m.Build().Run(jobId, Guid.NewGuid()).Should().Be(3);
+        }
+
         // ── Fase 5: validación de acceso al Template (smelter-access-control) ─────────────────────
 
         [Fact]

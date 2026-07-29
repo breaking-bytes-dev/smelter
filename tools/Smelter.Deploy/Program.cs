@@ -94,6 +94,9 @@ StepProvisioner.Run(client, typePorNombre);
 // ── 4c. Alternate keys (KeySpec.cs) — fix de la key del Import Job Log ─────
 KeyProvisioner.Run(client);
 
+// ── 4d. Limpieza de atributos muertos (SchemaCleanupSpec.cs, audit 1.3.0.0) ─
+SchemaCleanupProvisioner.Run(client);
+
 // ── 5. Publicar: refresca la metadata OData del Web API ────────────────────
 Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del Web API) ...");
 client.Execute(new PublishAllXmlRequest());

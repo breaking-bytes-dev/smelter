@@ -20,17 +20,6 @@ namespace Smelter.Plugins.Models
         /// </summary>
         public bool IsDryRun { get; set; }
 
-        /// <summary>
-        /// If true, this is a retry run. Only failed rows (or unprocessed rows) will be processed.
-        /// </summary>
-        public bool IsRetry { get; set; }
-
-        /// <summary>
-        /// Keys of rows that were successfully processed or skipped in previous runs.
-        /// Format: "{TargetTable}_{RowNumber}"
-        /// </summary>
-        public HashSet<string> SuccessfulAndSkippedRowKeys { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
         /// <summary>Cumulative processed-row count loaded from the job record at the start of this invocation.</summary>
         public int InitialProcessedRows { get; set; }
 
@@ -91,11 +80,12 @@ namespace Smelter.Plugins.Models
         /// </summary>
         public int ChunkSize { get; set; }
 
-        /// <summary><c>true</c> when <see cref="SourceType"/> is 0 (CSV).</summary>
-        public bool IsCsv => SourceType == 0;
-
-        /// <summary><c>true</c> when <see cref="SourceType"/> is 1 (Excel). Not yet supported in v1.</summary>
-        public bool IsExcel => SourceType == 1;
+        /// <summary>
+        /// Estado del template (<see cref="ImportTemplateStatus"/>). Solo <see cref="ImportTemplateStatus.Active"/>
+        /// es ejecutable — PrepareImportHandler rechaza Draft/Archived (1.3.0.0). Default Active para
+        /// no bloquear registros legacy sin el atributo poblado.
+        /// </summary>
+        public int Status { get; set; } = (int)ImportTemplateStatus.Active;
     }
 
     /// <summary>
@@ -122,14 +112,15 @@ namespace Smelter.Plugins.Models
         /// </summary>
         public string DedupColumns { get; set; }
 
-        /// <summary><c>true</c> when this table mapping represents an N:M intersect table.</summary>
-        public bool IsJunctionTable { get; set; }
-
         /// <summary>When <c>true</c>, a new record is created if the alternate-key match finds no existing row.</summary>
         public bool CreateIfNotExists { get; set; } = true;
 
-        /// <summary>When <c>true</c>, an existing record matched by alternate key is updated. When <c>false</c>, matched records are skipped.</summary>
-        public bool UpdateIfExists { get; set; }
+        /// <summary>
+        /// When <c>true</c>, an existing record matched by alternate key is updated. When <c>false</c>,
+        /// matched records are skipped (<see cref="ImportLogStatus.Skipped"/>). Default <c>true</c> —
+        /// el comportamiento histórico del motor (siempre actualizaba) para registros sin el flag.
+        /// </summary>
+        public bool UpdateIfExists { get; set; } = true;
 
         /// <summary>
         /// Column mappings belonging to this table mapping.
@@ -198,15 +189,6 @@ namespace Smelter.Plugins.Models
         /// Transform DSL expression. When set, takes priority over raw source column value.
         /// </summary>
         public string TransformExpression { get; set; }
-
-        /// <summary><c>true</c> when a DSL transform expression is configured; takes priority over <see cref="SourceColumn"/>.</summary>
-        public bool HasTransform => !string.IsNullOrWhiteSpace(TransformExpression);
-
-        /// <summary><c>true</c> when <see cref="DataType"/> is <see cref="ColumnDataType.Lookup"/>.</summary>
-        public bool IsLookup => DataType == ColumnDataType.Lookup;
-
-        /// <summary><c>true</c> when <see cref="DataType"/> is <see cref="ColumnDataType.OptionSet"/>.</summary>
-        public bool IsOptionSet => DataType == ColumnDataType.OptionSet;
     }
 
     /// <summary>
@@ -238,20 +220,15 @@ namespace Smelter.Plugins.Models
         public string LookupColumnOnChild { get; set; }
 
         /// <summary>
-        /// For N:M: intersect entity logical name.
-        /// </summary>
-        public string IntersectTable { get; set; }
-
-        /// <summary>
         /// Comma-separated source column names that identify the parent record.
         /// Used to look up the parent's GUID in the dedup cache.
         /// </summary>
         public string ParentDedupColumns { get; set; }
 
-        /// <summary><c>true</c> when <see cref="RelationshipType"/> is 0 (one-to-many).</summary>
+        /// <summary>
+        /// <c>true</c> when <see cref="RelationshipType"/> is 0 (one-to-many). Los mappings N:M
+        /// (valor 1) no están soportados: el engine los filtra por esta propiedad.
+        /// </summary>
         public bool IsOneToMany => RelationshipType == 0;
-
-        /// <summary><c>true</c> when <see cref="RelationshipType"/> is 1 (many-to-many). Not yet supported in v1.</summary>
-        public bool IsManyToMany => RelationshipType == 1;
     }
 }

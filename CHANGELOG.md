@@ -8,6 +8,49 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 _Nada todavía._
 
+## [[1.3.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.3.0.0)] — 2026-07-29
+
+**Audit de campos: semántica implementada + limpieza de schema.** Resultado del audit completo
+metadata↔código: los campos con semántica valiosa ahora FUNCIONAN, y los muertos se eliminaron del
+schema (por SDK, `SchemaCleanupProvisioner`).
+
+### Added
+- **Gate de estado del template**: `sanic_smlt_it_status` ahora gatea la ejecución — `PrepareImport`
+  rechaza templates en `Draft`/`Archived` ("Import Template ... is not Active"). Antes, un template a
+  medio configurar corría igual. Los templates importados vía `sanic_capi_smelter_importtemplate`
+  nacen `Active` (en update no se toca el status). Registros legacy sin el atributo poblado se tratan
+  como `Active` (no se bloquea nada retroactivamente).
+- **`CreateIfNotExists` / `UpdateIfExists` implementados** (`UpsertWriter`): existe + Update=No →
+  fila **Skipped** (no se escribe, suma a `skippedcount`); existe + Update=Sí → Update; no existe +
+  Create=No → Skipped; no existe + Create=Sí → Create. Con ambos en Sí (el default) sigue el upsert
+  de un solo round-trip; el probe de existencia por alternate key solo se paga cuando algún flag está
+  apagado. Sin dedup columns los flags se ignoran (no hay "existe"). El smoke de `Smelter.Verify`
+  cubre el gate de status ([3b]) y el skip ([6c]).
+
+### Removed
+- **6 campos muertos eliminados del schema** (audit: nadie los cargaba, leía ni escribía; el deploy
+  depura forms/vistas y borra por `DeleteAttributeRequest`, verificado por `CleanupAssertions`):
+  `sanic_smlt_tm_sourcesheet` (residuo Excel), `sanic_smlt_ij_isretry` (retry por fila nunca
+  implementado), `sanic_smlt_ij_totalbatches`, `sanic_smlt_ij_errorsummary` (el Cloud Flow nunca lo
+  escribió — el detalle de fallas vive en la pestaña Errores y el Plugin Trace Log),
+  `sanic_smlt_rm_intersecttable` (mitad de la feature N:M nunca implementada) y
+  `sanic_smlt_ijl_createdrecordid` (el log solo registra fallos).
+- **`IsJunctionTable` fuera del motor y del export/import de templates** (la otra mitad de N:M):
+  el JSON exportado ya no lo incluye (los JSONs viejos se importan igual — el member se ignora).
+  El campo `sanic_smlt_tm_isjunctiontable` sigue en el schema, marcado como ignorado.
+- Código muerto asociado: `ImportContext.IsRetry`/`SuccessfulAndSkippedRowKeys`, `IsCsv`/`IsExcel`,
+  `HasTransform`/`IsLookup`/`IsOptionSet`, `IsManyToMany`, `IntersectTable`. Firma de
+  `IImportContextLoader.LoadTemplateConfig` corregida (`templateId`, no `importJobId`).
+
+### Changed
+- ⚠️ **Comportamiento**: templates con `Update If Exists = No` en algún Table Mapping ahora SKIPEAN
+  las filas existentes en vez de actualizarlas (el flag por fin significa lo que dice). Revisá el
+  valor del flag en tus templates: el default de columna es el que manda. `skippedcount` deja de ser
+  siempre 0.
+- Documentación alineada de punta a punta (13 archivos: referencia de tablas, arquitectura, guías de
+  admin/usuario — sin menciones a `Error Summary` ni campos eliminados).
+- `Smelter.Plugins` bump a `1.0.5` (recarga del package en Dataverse).
+
 ## [[1.2.1.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.2.1.0)] — 2026-07-29
 
 **Fix crítico: el Import Job Log quedaba VACÍO ante filas fallidas.** La alternate key
