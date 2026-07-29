@@ -11,7 +11,6 @@
       <grid name="resultset" jump="sanic_smlt_ij_name" select="1" icon="1" preview="1">
         <row name="result" id="sanic_tbl_smlt_importjobid">
           <cell name="sanic_smlt_ij_name" width="300" />
-          <cell name="sanic_smlt_ij_isretry" width="108" />
           <cell name="sanic_smlt_ij_totalrows" width="127" />
           <cell name="sanic_smlt_ij_successcount" width="145" />
           <cell name="sanic_smlt_ij_failedcount" width="123" />
@@ -35,7 +34,6 @@
           <filter type="and">
             <condition attribute="statecode" operator="eq" value="0" />
           </filter>
-          <attribute name="sanic_smlt_ij_isretry" />
           <attribute name="sanic_smlt_ij_totalrows" />
           <attribute name="sanic_smlt_ij_successcount" />
           <attribute name="sanic_smlt_ij_failedcount" />

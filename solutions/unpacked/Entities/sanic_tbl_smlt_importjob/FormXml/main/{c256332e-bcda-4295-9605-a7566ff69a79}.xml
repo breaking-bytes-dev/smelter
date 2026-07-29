@@ -35,14 +35,7 @@
                         <control id="ownerid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="ownerid" />
                       </cell>
                     </row>
-                    <row>
-                      <cell id="{a3b994da-bfca-43de-8572-b87ddd7d4a5b}" locklevel="0" colspan="1" rowspan="1">
-                        <labels>
-                          <label description="[IJ] Is Retry" languagecode="1033" />
-                        </labels>
-                        <control id="sanic_smlt_ij_isretry" classid="{67FAC785-CD58-4F9F-ABB3-4B7DDC6ED5ED}" datafieldname="sanic_smlt_ij_isretry" disabled="false" />
-                      </cell>
-                    </row>
+                    <row />
                     <row>
                       <cell id="{0f37a3eb-be07-4e2c-9db4-d9285b0a36ed}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
@@ -51,14 +44,7 @@
                         <control id="sanic_smlt_ij_totalrows" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_totalrows" disabled="false" />
                       </cell>
                     </row>
-                    <row>
-                      <cell id="{b815d0a9-ac8c-4e30-9821-1e6a1f1fe8e3}" locklevel="0" colspan="1" rowspan="1">
-                        <labels>
-                          <label description="[IJ] Total Batches" languagecode="1033" />
-                        </labels>
-                        <control id="sanic_smlt_ij_totalbatches" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_totalbatches" disabled="false" />
-                      </cell>
-                    </row>
+                    <row />
                     <row>
                       <cell id="{0d1f5512-7925-4272-8ca1-06f28115994b}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
@@ -139,14 +125,7 @@
                         <control id="sanic_smlt_ij_endtime" classid="{5B773807-9FB2-42DB-97C3-7A91EFF8ADFF}" datafieldname="sanic_smlt_ij_endtime" disabled="false" />
                       </cell>
                     </row>
-                    <row>
-                      <cell id="{13a94419-4699-4373-b4db-6d658213e91a}" locklevel="0" colspan="1" rowspan="1">
-                        <labels>
-                          <label description="[IJ] Error Summary" languagecode="1033" />
-                        </labels>
-                        <control id="sanic_smlt_ij_errorsummary" classid="{E0DECE4B-6FC8-4A8F-A065-082708572369}" datafieldname="sanic_smlt_ij_errorsummary" disabled="false" />
-                      </cell>
-                    </row>
+                    <row />
                     <row>
                       <cell id="{b349e397-1b1b-4185-b6d2-52c9a25c21b2}" locklevel="0" colspan="1" rowspan="1">
                         <labels>

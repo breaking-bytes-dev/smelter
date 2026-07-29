@@ -67,14 +67,7 @@
                         <control id="sanic_smlt_rm_parentdedupcolumns" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_rm_parentdedupcolumns" disabled="false" />
                       </cell>
                     </row>
-                    <row>
-                      <cell id="{568a037e-dd34-45d2-bdc7-6fd9a5324392}" locklevel="0" colspan="1" rowspan="1">
-                        <labels>
-                          <label description="[RM] Intersect Table" languagecode="1033" />
-                        </labels>
-                        <control id="sanic_smlt_rm_intersecttable" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_rm_intersecttable" disabled="false" />
-                      </cell>
-                    </row>
+                    <row />
                     <row>
                       <cell id="{3f0666b1-cbf2-4820-b1cf-608bb1c4e6bf}">
                         <labels>
