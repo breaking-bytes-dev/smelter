@@ -155,16 +155,18 @@ try
         + $"\nbad{SmokeDomain},Bad,Row,notanumber";
     UploadFile(client, new EntityReference(JobTable, jobId2), "sanic_smlt_ij_sourcefile", "smoke-badrow.csv", csvConError);
 
+    // RowNumber es la fila FÍSICA del archivo (header = 1, ver CsvParserService): la 6ª fila de
+    // datos es la fila física 7.
     RunImport(client, apiPrepare, apiProcessChunk, jobId2, expectTotal: 6);
     AssertJob(client, jobId2, expectedSuccess: 5, expectedFailed: 1, expectedStatus: ImportJobStatus.CompletedWithErrors);
-    AssertFailureLog(client, jobId2, expectedRowNumber: 6);
+    AssertFailureLog(client, jobId2, expectedRowNumber: 7);
     Assert(CountSmokeContacts(client) == 5, "la fila con TypeError NO debe crear contact (siguen 5)");
-    Console.WriteLine("[6b] 1ª corrida con fila mala OK: CompletedWithErrors 5/1 y el log registró la fila 6.");
+    Console.WriteLine("[6b] 1ª corrida con fila mala OK: CompletedWithErrors 5/1 y el log registró la fila fallida.");
 
     // Idempotencia del LOG: re-correr no debe duplicar el registro (upsert por la key recreada).
     RunImport(client, apiPrepare, apiProcessChunk, jobId2, expectTotal: 6);
     AssertJob(client, jobId2, expectedSuccess: 5, expectedFailed: 1, expectedStatus: ImportJobStatus.CompletedWithErrors);
-    AssertFailureLog(client, jobId2, expectedRowNumber: 6);
+    AssertFailureLog(client, jobId2, expectedRowNumber: 7);
     Console.WriteLine("[6b] 2ª corrida OK: el Import Job Log sigue teniendo 1 solo registro (key idempotente).");
 
     Console.WriteLine();
