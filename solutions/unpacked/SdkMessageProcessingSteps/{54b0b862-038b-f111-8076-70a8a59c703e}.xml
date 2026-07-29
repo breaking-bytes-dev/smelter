@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SdkMessageProcessingStep Name="Smelter.Plugins.AssignJobOwnerPlugin: Create of sanic_tbl_smlt_importjob" SdkMessageProcessingStepId="{54b0b862-038b-f111-8076-70a8a59c703e}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SdkMessageId>9ebdbb1b-ea3e-db11-86a7-000a3a5473e8</SdkMessageId>
+  <PluginTypeExportKey>11C13F1CE1896866D19EA5DCF781AEE99FDE85A59C9BE16A6299989420813559</PluginTypeExportKey>
+  <PrimaryEntity>sanic_tbl_smlt_importjob</PrimaryEntity>
+  <AsyncAutoDelete>0</AsyncAutoDelete>
+  <Description>Pre-operation sync en Create de Import Job: si el template referenciado es owned por un team, el job nace owned por ese mismo team — visibilidad de equipo con Read/Write Basic del rol Operador, sin tocar la matriz de privilegios.</Description>
+  <FilteringAttributes></FilteringAttributes>
+  <InvocationSource>1</InvocationSource>
+  <Mode>0</Mode>
+  <Rank>1</Rank>
+  <EventHandlerTypeCode>4602</EventHandlerTypeCode>
+  <Stage>20</Stage>
+  <IsCustomizable>1</IsCustomizable>
+  <IsHidden>0</IsHidden>
+  <SupportedDeployment>0</SupportedDeployment>
+  <IntroducedVersion>1.1.0.0</IntroducedVersion>
+  <SdkMessageProcessingStepImages />
+</SdkMessageProcessingStep>

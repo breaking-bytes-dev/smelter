@@ -3,6 +3,10 @@
   <IsCustomizable>1</IsCustomizable>
   <IsAutoAssigned>0</IsAutoAssigned>
   <RolePrivileges>
+    <RolePrivilege name="prvAppendsanic_tbl_smlt_importjob" level="Basic" />
+    <RolePrivilege name="prvAppendsanic_tbl_smlt_importjoblog" level="Basic" />
+    <RolePrivilege name="prvAppendTosanic_tbl_smlt_importjob" level="Basic" />
+    <RolePrivilege name="prvAppendTosanic_tbl_smlt_importjoblog" level="Basic" />
     <RolePrivilege name="prvAppendTosanic_tbl_smlt_importtemplate" level="Basic" />
     <RolePrivilege name="prvCreatesanic_tbl_smlt_importjob" level="Global" />
     <RolePrivilege name="prvCreateSharePointData" level="Global" />
@@ -20,6 +24,7 @@
     <RolePrivilege name="prvReadSharePointData" level="Global" />
     <RolePrivilege name="prvReadSharePointDocument" level="Global" />
     <RolePrivilege name="prvWritesanic_tbl_smlt_importjob" level="Basic" />
+    <RolePrivilege name="prvWritesanic_tbl_smlt_importjoblog" level="Basic" />
     <RolePrivilege name="prvWriteSharePointData" level="Global" />
   </RolePrivileges>
 </Role>

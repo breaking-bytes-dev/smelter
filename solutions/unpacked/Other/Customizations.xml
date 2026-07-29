@@ -12,6 +12,7 @@
   <InteractionCentricDashboards />
   <WebResources />
   <CustomControls />
+  <SdkMessageProcessingSteps />
   <AppModuleSiteMaps />
   <AppModules />
   <EntityDataProviders />
