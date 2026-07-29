@@ -149,7 +149,20 @@ namespace Smelter.Plugins.Services
                     if (match.Success) rawValue = match.Groups[1].Value;
                 }
 
-                var coerced = _typeCoercer.Coerce(rawValue, colMapping.DataType);
+                object coerced;
+                try
+                {
+                    coerced = _typeCoercer.Coerce(rawValue, colMapping.DataType);
+                }
+                catch (FormatException ex)
+                {
+                    // Mismo tipo de excepción (la clasificación TypeError de ClassifyBuildException
+                    // depende de FormatException), pero con la COLUMNA en el mensaje: el TypeCoercer
+                    // solo conoce el valor, y "Cannot convert 'X'" sin decir dónde no le sirve de
+                    // nada al operador que tiene 40 columnas mapeadas (1.2.1.0).
+                    throw new FormatException(
+                        $"Column '{colMapping.TargetColumn}' (source '{colMapping.SourceColumn}'): {ex.Message}", ex);
+                }
                 if (coerced == null) continue;
 
                 if (colMapping.DataType == ColumnDataType.Lookup && !string.IsNullOrEmpty(colMapping.LookupTable))

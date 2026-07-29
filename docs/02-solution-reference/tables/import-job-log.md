@@ -9,19 +9,21 @@ fallaron; las filas exitosas y omitidas se contabilizan en los contadores del Im
 
 | Dirección | Tabla relacionada | Tipo | Columna FK |
 |-----------|------------------|------|------------|
-| Hijo de | [Import Job](import-job.md) | N:1 | `sanic_smlt_ijl_id` (vía alternate key) |
+| Hijo de | [Import Job](import-job.md) | N:1 | `sanic_smlt_ijl_importjobid` |
 
 ## Columnas
 
 | Columna | Tipo | Requerido | Descripción |
 |---------|------|-----------|-------------|
-| `sanic_smlt_ijl_importjoblogid` | GUID (PK) | Auto | Clave primaria |
-| `sanic_smlt_ijl_id` | Lookup | Sí | FK → Import Job |
+| `sanic_tbl_smlt_importjoblogid` | GUID (PK) | Auto | Clave primaria |
+| `sanic_smlt_ijl_id` | Autonumber (String 16) | Auto | **Nombre primario** autonumérico (`IJL-{SEQNUM:4}`). ⚠️ NO es un lookup — confundirlo con el FK al job causó el bug de logs vacíos corregido en 1.2.1.0 |
+| `sanic_smlt_ijl_importjobid` | Lookup | Sí | FK → Import Job |
 | `sanic_smlt_ijl_rownumber` | Integer | Sí | Número de fila en el CSV fuente |
-| `sanic_smlt_ijl_targettable` | String(100) | Sí | Logical name de la tabla destino donde falló la operación |
+| `sanic_smlt_ijl_targettable` | String(255) | Sí | Logical name de la tabla destino donde falló la operación |
 | `sanic_smlt_ijl_status` | OptionSet | Sí | Resultado de la operación |
-| `sanic_smlt_ijl_errormessage` | Multiline | No | Detalle del error (nulo en caso de éxito) |
+| `sanic_smlt_ijl_errormessage` | Multiline | No | Detalle del error, incluyendo la columna que falló (nulo en caso de éxito) |
 | `sanic_smlt_ijl_errorcategory` | OptionSet | No | Categoría de error — etapa del pipeline donde ocurrió el fallo |
+| `sanic_smlt_ijl_createdrecordid` | String(50) | No | ID del registro destino creado/actualizado (cuando aplica) |
 
 ## OptionSet — `sanic_smlt_ijl_status`
 
@@ -48,17 +50,25 @@ Indica en qué etapa del pipeline ocurrió el fallo. Facilita el diagnóstico si
 
 ## Alternate Key (idempotencia de logs)
 
-El Import Job Log tiene una **alternate key** compuesta por:
+El Import Job Log tiene la **alternate key** `sanic_smlt_ijl_key_logidempotente`, compuesta por:
 
 | Columna | Descripción |
 |---------|-------------|
-| `sanic_smlt_ijl_id` | Import Job (lookup) |
+| `sanic_smlt_ijl_importjobid` | Import Job (lookup) |
 | `sanic_smlt_ijl_rownumber` | Número de fila en el CSV |
 | `sanic_smlt_ijl_targettable` | Tabla destino |
 
 Esta clave garantiza que si un chunk se re-procesa (retry del Cloud Flow), el log de la misma fila se
 actualiza en lugar de duplicarse. El plugin usa `UpsertRequest` con esta alternate key para escribir los
 logs, lo que hace que la operación sea idempotente.
+
+> **Historia (1.2.1.0):** la key original incluía `sanic_smlt_ijl_id` — que es el nombre primario
+> **autonumber**, no el lookup al job — y esta doc lo documentaba como lookup. Un autonumber generado
+> en cada create jamás puede dar idempotencia, y el plugin (escrito contra esta doc) le pasaba un
+> `EntityReference` → cada upsert fallaba con "Incorrect type of attribute value" y el log quedaba
+> VACÍO. La key se recrea con la composición correcta vía `KeyProvisioner`
+> (`tools/Smelter.Deploy/KeySpec.cs`), verificada por `KeyAssertions` y por el smoke de
+> `Smelter.Verify` (fila fallida real + re-corrida idempotente).
 
 ## Volver a
 

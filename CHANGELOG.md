@@ -8,6 +8,40 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 _Nada todavía._
 
+## [[1.2.1.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.2.1.0)] — 2026-07-29
+
+**Fix crítico: el Import Job Log quedaba VACÍO ante filas fallidas.** La alternate key
+`sanic_smlt_ijl_key_logidempotente` nació mal definida — incluía `sanic_smlt_ijl_id`, que es el nombre
+primario **autonumber** (`IJL-{SEQNUM:4}`), no el lookup al job (la doc lo documentaba como lookup y el
+plugin se escribió contra la doc). Resultado: cada upsert de log fallaba con
+`Incorrect type of attribute value Microsoft.Xrm.Sdk.EntityReference` y el operador se quedaba sin saber
+qué filas ni qué columnas fallaron. El path nunca se había ejercitado E2E: el smoke solo cubría imports
+sin errores.
+
+### Fixed
+- **`ProcessChunkHandler.LogFailures`** (`src/Smelter.Plugins/ProcessChunkPlugin.cs`): la key del upsert
+  ahora usa el FK real `sanic_smlt_ijl_importjobid` (+ `rownumber` + `targettable`) y setea el lookup
+  required como atributo. Los logs de filas fallidas se escriben y son idempotentes ante retries.
+- **Alternate key recreada por SDK**: nuevo `KeyProvisioner` (`tools/Smelter.Deploy/KeySpec.cs` +
+  `KeyProvisioner.cs`, paso `[4c]`) — detecta la composición incorrecta, elimina y recrea la key con
+  las columnas correctas, esperando el índice Active (aborta con mensaje claro si queda Failed por
+  duplicados preexistentes).
+- **Doc corregida** (`docs/02-solution-reference/tables/import-job-log.md`): `sanic_smlt_ijl_id` es el
+  autonumber del nombre primario, NO un lookup; el FK real `sanic_smlt_ijl_importjobid` ahora figura en
+  la tabla de columnas y en la composición de la key (con la historia del bug).
+
+### Added
+- **El mensaje de error ahora NOMBRA la columna** (`NormalizationEngine`): los fallos de coerción de
+  tipo se registran como `Column '<destino>' (source '<fuente>'): Cannot convert '<valor>' ...` — antes
+  solo traían el valor, imposible saber cuál de las columnas mapeadas falló.
+- **Cobertura del path de errores en `Smelter.Verify`**: el smoke ahora incluye un mapping Integer
+  (`numberofchildren`) y un segundo job con una fila no numérica — asserts de `CompletedWithErrors`,
+  del registro en Import Job Log (fila, tabla, categoría TypeError, mensaje con la columna) y de la
+  idempotencia del log al re-correr. `KeyAssertions` valida composición y estado del índice de la key.
+
+### Changed
+- `Smelter.Plugins` bump a `1.0.4` (recarga del package en Dataverse).
+
 ## [[1.2.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.2.0.0)] — 2026-07-28
 
 **Ownership de Import Jobs por team** (`smelter-access-control`, Requirement "Ownership del Import Job

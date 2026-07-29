@@ -91,6 +91,9 @@ foreach (var api in Catalogo.Apis)
 // ── 4b. Upsert de los message steps (StepSpec.cs) ──────────────────────────
 StepProvisioner.Run(client, typePorNombre);
 
+// ── 4c. Alternate keys (KeySpec.cs) — fix de la key del Import Job Log ─────
+KeyProvisioner.Run(client);
+
 // ── 5. Publicar: refresca la metadata OData del Web API ────────────────────
 Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del Web API) ...");
 client.Execute(new PublishAllXmlRequest());

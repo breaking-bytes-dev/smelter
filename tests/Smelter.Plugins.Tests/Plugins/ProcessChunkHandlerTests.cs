@@ -144,6 +144,22 @@ namespace Smelter.Plugins.Tests.Plugins
             log.KeyAttributes.Should().ContainKey("sanic_smlt_ijl_rownumber");
             log.KeyAttributes["sanic_smlt_ijl_rownumber"].Should().Be(2);
             ((OptionSetValue)log["sanic_smlt_ijl_errorcategory"]).Value.Should().Be((int)ErrorCategory.TypeError);
+
+            // Regresión 1.2.1.0: la key usaba sanic_smlt_ijl_id (nombre primario AUTONUMBER, nvarchar)
+            // con un EntityReference → "Incorrect type of attribute value" en CADA upsert y el log
+            // quedaba vacío. La key correcta referencia el FK real del job.
+            log.KeyAttributes.Should().NotContainKey("sanic_smlt_ijl_id",
+                "sanic_smlt_ijl_id es el autonumber del nombre primario, no el lookup al job");
+            log.KeyAttributes.Should().ContainKey(ProcessChunkHandler.LogJobLookupAttribute);
+            var keyRef = log.KeyAttributes[ProcessChunkHandler.LogJobLookupAttribute].Should()
+                .BeOfType<EntityReference>().Subject;
+            keyRef.LogicalName.Should().Be(ProcessChunkHandler.ImportJobTable);
+            keyRef.Id.Should().Be(jobId);
+
+            // El lookup required también viaja como atributo (el create no depende de la copia de KeyAttributes).
+            var attrRef = log.GetAttributeValue<EntityReference>(ProcessChunkHandler.LogJobLookupAttribute);
+            attrRef.Should().NotBeNull();
+            attrRef.Id.Should().Be(jobId);
         }
     }
 }

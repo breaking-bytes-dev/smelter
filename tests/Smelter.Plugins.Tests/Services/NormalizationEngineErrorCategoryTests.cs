@@ -68,6 +68,25 @@ namespace Smelter.Plugins.Tests.Services
         }
 
         [Fact]
+        public void ProcessBatch_TypeCoercionFailure_MessageNamesTheColumn()
+        {
+            // 1.2.1.0: el mensaje del TypeCoercer trae el valor pero no la columna — el engine debe
+            // agregar target y source column, que es lo que el operador necesita para corregir el CSV.
+            var context = ContextWith(new ColumnMappingConfig
+            {
+                Id = Guid.NewGuid(), SourceColumn = "n", TargetColumn = "sanic_n", DataType = ColumnDataType.Integer
+            });
+
+            var results = Engine().ProcessBatch(context,
+                new List<SourceRow> { Row(2, ("key", "K1"), ("n", "abc")) }, PassthroughWriter());
+
+            var failure = OnlyFailure(results);
+            failure.ErrorMessage.Should().Contain("'sanic_n'", "debe nombrar la columna destino");
+            failure.ErrorMessage.Should().Contain("'n'", "debe nombrar la columna fuente del CSV");
+            failure.ErrorMessage.Should().Contain("'abc'", "debe conservar el valor original del TypeCoercer");
+        }
+
+        [Fact]
         public void ProcessBatch_TransformFailure_IsTransformError()
         {
             var context = ContextWith(new ColumnMappingConfig

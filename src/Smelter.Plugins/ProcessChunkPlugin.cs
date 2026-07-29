@@ -90,6 +90,14 @@ namespace Smelter.Plugins
         /// <summary>Logical name of the Import Job Log table (one record per failed row).</summary>
         public const string ImportJobLogTable = "sanic_tbl_smlt_importjoblog";
 
+        /// <summary>
+        /// Lookup del log hacia su Import Job. OJO: el FK es <c>sanic_smlt_ijl_importjobid</c> —
+        /// <c>sanic_smlt_ijl_id</c> NO es un lookup, es el nombre primario autonumber
+        /// (<c>IJL-{SEQNUM:4}</c>). Confundirlos rompía TODA la escritura de logs
+        /// ("Incorrect type of attribute value EntityReference", bug corregido en 1.2.1.0).
+        /// </summary>
+        public const string LogJobLookupAttribute = "sanic_smlt_ijl_importjobid";
+
         /// <summary>Logical name of the file column on the Import Job that stores the source CSV.</summary>
         public const string SourceFileAttribute = "sanic_smlt_ij_sourcefile";
 
@@ -215,9 +223,11 @@ namespace Smelter.Plugins
 
         /// <summary>
         /// Persists a log record for every failed row using an ExecuteMultiple upsert keyed by
-        /// (JobId, RowNumber, TargetTable) — the alternate key on Import Job Log. Upsert ensures
-        /// idempotency if the same chunk is retried. Successes are intentionally NOT logged here;
-        /// only the aggregated counters on the job record track them.
+        /// (<see cref="LogJobLookupAttribute"/>, RowNumber, TargetTable) — la alternate key
+        /// <c>sanic_smlt_ijl_key_logidempotente</c> del Import Job Log (recreada con estas columnas
+        /// por KeyProvisioner en 1.2.1.0). Upsert ensures idempotency if the same chunk is retried.
+        /// Successes are intentionally NOT logged here; only the aggregated counters on the job
+        /// record track them.
         /// </summary>
         private void LogFailures(Guid jobId, IList<ProcessingResult> results)
         {
@@ -229,13 +239,17 @@ namespace Smelter.Plugins
                 _tracing?.Trace($"  FAILED row {failure.RowNumber} [{failure.Category}] " +
                     $"{failure.TargetTable}: {failure.ErrorMessage}");
 
+            var jobRef = new EntityReference(ImportJobTable, jobId);
             var requests = new OrganizationRequestCollection();
             foreach (var failure in failures)
             {
                 var log = new Entity(ImportJobLogTable);
-                log.KeyAttributes["sanic_smlt_ijl_id"] = new EntityReference(ImportJobTable, jobId);
+                log.KeyAttributes[LogJobLookupAttribute] = jobRef;
                 log.KeyAttributes["sanic_smlt_ijl_rownumber"] = failure.RowNumber;
                 log.KeyAttributes["sanic_smlt_ijl_targettable"] = failure.TargetTable ?? string.Empty;
+                // El lookup también va como atributo: es required, y así el create no depende de que
+                // la plataforma copie los KeyAttributes al registro.
+                log[LogJobLookupAttribute] = jobRef;
                 log["sanic_smlt_ijl_status"] = new OptionSetValue((int)ImportLogStatus.Failed);
                 log["sanic_smlt_ijl_errormessage"] = failure.ErrorMessage;
                 if (failure.Category.HasValue)

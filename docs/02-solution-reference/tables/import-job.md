@@ -10,7 +10,7 @@ de progreso, el offset actual y el estado del job.
 | Dirección | Tabla relacionada | Tipo | Columna FK |
 |-----------|------------------|------|------------|
 | Hijo de | [Import Template](import-template.md) | N:1 | `sanic_smlt_ij_importtemplateid` |
-| Padre de | [Import Job Log](import-job-log.md) | 1:N | `sanic_smlt_ijl_id` (alternate key del log) |
+| Padre de | [Import Job Log](import-job-log.md) | 1:N | `sanic_smlt_ijl_importjobid` |
 
 ## Columnas
 

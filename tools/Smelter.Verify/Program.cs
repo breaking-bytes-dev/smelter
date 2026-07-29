@@ -56,6 +56,9 @@ try
     // ── [STEP] Message steps registrados según StepSpec (AssignJobOwner) ───
     StepAssertions.RunAll(client);
 
+    // ── [KEY] Alternate keys según KeySpec (key idempotente del Import Job Log) ──
+    KeyAssertions.RunAll(client);
+
     // ── 2. Pre-cleanup (por si una corrida anterior murió a medias) ────────
     Cleanup(client);
 
@@ -79,6 +82,9 @@ try
                     new ColumnMappingDto { Name = "Email", SourceColumn = "Email", TargetColumn = "emailaddress1", DataType = (int)ColumnDataType.String },
                     new ColumnMappingDto { Name = "FirstName", SourceColumn = "FirstName", TargetColumn = "firstname", DataType = (int)ColumnDataType.String },
                     new ColumnMappingDto { Name = "LastName", SourceColumn = "LastName", TargetColumn = "lastname", DataType = (int)ColumnDataType.String },
+                    // Integer a propósito: permite fabricar una fila fallida determinística (valor no
+                    // numérico → TypeError) para el assert del Import Job Log en [6b].
+                    new ColumnMappingDto { Name = "Children", SourceColumn = "Children", TargetColumn = "numberofchildren", DataType = (int)ColumnDataType.Integer },
                 ]
             }
         ]
@@ -120,8 +126,8 @@ try
         Console.WriteLine("[4b] Ownership OK: template owned por user — el job conserva el owner default (path pass-through del step).");
     }
 
-    var csv = "Email,FirstName,LastName\n" + string.Join("\n",
-        Enumerable.Range(1, 5).Select(i => $"smoke{i}{SmokeDomain},Smoke{i},Verify"));
+    var csv = "Email,FirstName,LastName,Children\n" + string.Join("\n",
+        Enumerable.Range(1, 5).Select(i => $"smoke{i}{SmokeDomain},Smoke{i},Verify,{i}"));
     UploadFile(client, new EntityReference(JobTable, jobId), "sanic_smlt_ij_sourcefile", "smoke.csv", csv);
     Console.WriteLine("[4] CSV subido (5 filas).");
 
@@ -136,6 +142,30 @@ try
     AssertJob(client, jobId, expectedSuccess: 5);
     Assert(CountSmokeContacts(client) == 5, "re-correr el import NO debe duplicar contacts (upsert por alternate key)");
     Console.WriteLine("[6] 2ª corrida OK: idempotente (siguen siendo 5, sin duplicados).");
+
+    // ── 6b. Fila fallida → Import Job Log (regresión 1.2.1.0: la key del log usaba el autonumber
+    // y NINGÚN log se escribía). Job aparte con 5 filas buenas + 1 con Children no numérico. ──────
+    var jobId2 = client.Create(new Entity(JobTable)
+    {
+        ["sanic_smlt_ij_name"] = SmokeJobName,
+        ["sanic_smlt_ij_importtemplateid"] = new EntityReference("sanic_tbl_smlt_importtemplate", templateId),
+    });
+    var csvConError = "Email,FirstName,LastName,Children\n" + string.Join("\n",
+        Enumerable.Range(1, 5).Select(i => $"smoke{i}{SmokeDomain},Smoke{i},Verify,{i}"))
+        + $"\nbad{SmokeDomain},Bad,Row,notanumber";
+    UploadFile(client, new EntityReference(JobTable, jobId2), "sanic_smlt_ij_sourcefile", "smoke-badrow.csv", csvConError);
+
+    RunImport(client, apiPrepare, apiProcessChunk, jobId2, expectTotal: 6);
+    AssertJob(client, jobId2, expectedSuccess: 5, expectedFailed: 1, expectedStatus: ImportJobStatus.CompletedWithErrors);
+    AssertFailureLog(client, jobId2, expectedRowNumber: 6);
+    Assert(CountSmokeContacts(client) == 5, "la fila con TypeError NO debe crear contact (siguen 5)");
+    Console.WriteLine("[6b] 1ª corrida con fila mala OK: CompletedWithErrors 5/1 y el log registró la fila 6.");
+
+    // Idempotencia del LOG: re-correr no debe duplicar el registro (upsert por la key recreada).
+    RunImport(client, apiPrepare, apiProcessChunk, jobId2, expectTotal: 6);
+    AssertJob(client, jobId2, expectedSuccess: 5, expectedFailed: 1, expectedStatus: ImportJobStatus.CompletedWithErrors);
+    AssertFailureLog(client, jobId2, expectedRowNumber: 6);
+    Console.WriteLine("[6b] 2ª corrida OK: el Import Job Log sigue teniendo 1 solo registro (key idempotente).");
 
     Console.WriteLine();
     Console.WriteLine("[OK] SMOKE TEST VERDE: el backend desplegado procesa, completa e idempotente contra Dev.");
@@ -214,16 +244,46 @@ static bool FaultChainContains(Microsoft.Xrm.Sdk.OrganizationServiceFault? fault
     return false;
 }
 
-static void AssertJob(ServiceClient client, Guid jobId, int expectedSuccess)
+static void AssertJob(ServiceClient client, Guid jobId, int expectedSuccess,
+    int expectedFailed = 0, ImportJobStatus expectedStatus = ImportJobStatus.Completed)
 {
     var job = client.Retrieve("sanic_tbl_smlt_importjob", jobId,
         new ColumnSet("sanic_smlt_ij_status", "sanic_smlt_ij_successcount", "sanic_smlt_ij_failedcount"));
     var status = job.GetAttributeValue<OptionSetValue>("sanic_smlt_ij_status")?.Value;
     var success = job.GetAttributeValue<int?>("sanic_smlt_ij_successcount") ?? -1;
     var failed = job.GetAttributeValue<int?>("sanic_smlt_ij_failedcount") ?? -1;
-    Assert(status == (int)ImportJobStatus.Completed, $"el job debía quedar Completed({(int)ImportJobStatus.Completed}), quedó {status}");
+    Assert(status == (int)expectedStatus, $"el job debía quedar {expectedStatus}({(int)expectedStatus}), quedó {status}");
     Assert(success == expectedSuccess, $"successcount debía ser {expectedSuccess}, es {success}");
-    Assert(failed == 0, $"failedcount debía ser 0, es {failed}");
+    Assert(failed == expectedFailed, $"failedcount debía ser {expectedFailed}, es {failed}");
+}
+
+// El corazón del assert de 1.2.1.0: la fila fallida debe quedar REGISTRADA en el Import Job Log
+// (antes del fix, la key mal tipada hacía fallar todos los upserts y el log quedaba vacío), con
+// categoría TypeError y mensaje no vacío — lo que el operador necesita para saber qué columna falló.
+static void AssertFailureLog(ServiceClient client, Guid jobId, int expectedRowNumber)
+{
+    var logs = client.RetrieveMultiple(new QueryExpression("sanic_tbl_smlt_importjoblog")
+    {
+        ColumnSet = new ColumnSet("sanic_smlt_ijl_rownumber", "sanic_smlt_ijl_targettable",
+            "sanic_smlt_ijl_status", "sanic_smlt_ijl_errorcategory", "sanic_smlt_ijl_errormessage"),
+        Criteria = { Conditions = { new ConditionExpression("sanic_smlt_ijl_importjobid", ConditionOperator.Equal, jobId) } },
+    }).Entities;
+
+    Assert(logs.Count == 1, $"debía haber EXACTAMENTE 1 Import Job Log para el job (idempotente), hay {logs.Count}");
+    var log = logs[0];
+    var rowNumber = log.GetAttributeValue<int?>("sanic_smlt_ijl_rownumber");
+    var category = log.GetAttributeValue<OptionSetValue>("sanic_smlt_ijl_errorcategory")?.Value;
+    var message = log.GetAttributeValue<string>("sanic_smlt_ijl_errormessage");
+    Assert(rowNumber == expectedRowNumber, $"el log debía apuntar a la fila {expectedRowNumber}, apunta a {rowNumber}");
+    Assert(log.GetAttributeValue<string>("sanic_smlt_ijl_targettable") == "contact",
+        $"targettable debía ser 'contact', es '{log.GetAttributeValue<string>("sanic_smlt_ijl_targettable")}'");
+    Assert(log.GetAttributeValue<OptionSetValue>("sanic_smlt_ijl_status")?.Value == (int)ImportLogStatus.Failed,
+        "el log debía tener status Failed");
+    Assert(category == (int)ErrorCategory.TypeError, $"errorcategory debía ser TypeError({(int)ErrorCategory.TypeError}), es {category}");
+    Assert(!string.IsNullOrWhiteSpace(message), "errormessage no puede venir vacío — es lo que le dice al operador qué columna falló");
+    Assert(message!.Contains("numberofchildren"),
+        $"errormessage debe NOMBRAR la columna que falló (1.2.1.0) — mensaje actual: '{message}'");
+    Console.WriteLine($"[6b]   log fila {rowNumber}: [{(ErrorCategory)category!}] {message}");
 }
 
 static int CountSmokeContacts(ServiceClient client) => SmokeContacts(client).Count;
