@@ -1157,10 +1157,10 @@
         <EntityKey>
           <Name>sanic_smlt_ijl_key_logidempotente</Name>
           <LogicalName>sanic_smlt_ijl_key_logidempotente</LogicalName>
-          <IntroducedVersion>1.0.0.0</IntroducedVersion>
+          <IntroducedVersion>1.2.0.0</IntroducedVersion>
           <IsCustomizable>0</IsCustomizable>
           <EntityKeyAttributes>
-            <AttributeName>sanic_smlt_ijl_id</AttributeName>
+            <AttributeName>sanic_smlt_ijl_importjobid</AttributeName>
             <AttributeName>sanic_smlt_ijl_rownumber</AttributeName>
             <AttributeName>sanic_smlt_ijl_targettable</AttributeName>
           </EntityKeyAttributes>

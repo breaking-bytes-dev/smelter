@@ -6,7 +6,7 @@
       <LocalizedName description="smlt_core_smelter" languagecode="1033" />
     </LocalizedNames>
     <Descriptions />
-    <Version>1.2.0.0</Version>
+    <Version>1.2.1.0</Version>
     <Managed>0</Managed>
     <Publisher>
       <UniqueName>Sistemas_Abiertos_Nicaragua</UniqueName>
@@ -38,7 +38,7 @@
       <RootComponent type="61" schemaName="sanic_smlt_importtemplate.js" behavior="0" />
       <RootComponent type="62" schemaName="sanic_MDASMLTImportConfigurationdandMoni" behavior="0" />
       <RootComponent type="80" schemaName="sanic_MDASMLTImportConfigurationdandMoni" behavior="0" />
-      <RootComponent type="91" id="{9188915e-5447-f111-bec6-7ced8d6e6b87}" schemaName="Smelter.Plugins, Version=1.0.3.0, Culture=neutral, PublicKeyToken=null" behavior="0" />
+      <RootComponent type="91" id="{9188915e-5447-f111-bec6-7ced8d6e6b87}" schemaName="Smelter.Plugins, Version=1.0.4.0, Culture=neutral, PublicKeyToken=null" behavior="0" />
       <RootComponent type="92" id="{54b0b862-038b-f111-8076-70a8a59c703e}" behavior="0" />
     </RootComponents>
     <MissingDependencies>
