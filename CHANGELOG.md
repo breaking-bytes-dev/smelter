@@ -6,7 +6,17 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
-_Nada todavía._
+### Added
+- **Función `HMAC(val, "nombreKey")` en el Transform DSL**: HMAC-SHA256 en hex minúsculas (64 chars)
+  sobre el valor sin espacios; vacío → vacío. La key se resuelve por nombre vía `IHmacKeyProvider`
+  (el nombre es una etiqueta, nunca el material de la key); los mensajes de error nunca incluyen el
+  valor de entrada ni la key. `TransformEngine` y `NormalizationEngine` aceptan el provider
+  (constructores existentes intactos).
+- **`DataverseHmacKeyProvider` — SOLO DEV**: lee las keys de la tabla `sanic_tbl_smlt_hmackey`
+  (Organization-owned, audit de tabla ON, columna del valor sin audit y fuera de Advanced Find,
+  fuera de todo rol de Smelter y fuera de la solución). La crea `Smelter.Deploy`
+  (`HmacKeyTableProvisioner`) y la verifica `Smelter.Verify` (`HmacKeyAssertions`). PROD debe usar
+  managed identity + Azure Key Vault.
 
 ## [[1.3.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.3.0.0)] — 2026-07-29
 
