@@ -64,6 +64,9 @@ try
     // ── [CLEAN] Atributos muertos eliminados según SchemaCleanupSpec (1.3.0.0) ──
     CleanupAssertions.RunAll(client);
 
+    // ── [HMAC] Tabla DEV-only de keys HMAC según HmacKeyTableSpec ──
+    HmacKeyAssertions.RunAll(client);
+
     // ── 2. Pre-cleanup (por si una corrida anterior murió a medias) ────────
     Cleanup(client);
 

@@ -97,6 +97,9 @@ KeyProvisioner.Run(client);
 // ── 4d. Limpieza de atributos muertos (SchemaCleanupSpec.cs, audit 1.3.0.0) ─
 SchemaCleanupProvisioner.Run(client);
 
+// ── 4e. Tabla DEV-only de keys HMAC (HmacKeyTableSpec.cs) — fuera de roles y de la solución ──
+HmacKeyTableProvisioner.Run(client);
+
 // ── 5. Publicar: refresca la metadata OData del Web API ────────────────────
 Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del Web API) ...");
 client.Execute(new PublishAllXmlRequest());
