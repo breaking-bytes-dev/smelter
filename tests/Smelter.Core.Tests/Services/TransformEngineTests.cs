@@ -313,6 +313,38 @@ namespace Smelter.Plugins.Tests.Services
         }
 
         [Fact]
+        public void Hmac_KeyNameFromColumn_ThrowsWithoutAskingTheProviderNorEchoingTheValue()
+        {
+            // HMAC(x, NumeroCuenta) pondría el PAN en el mensaje de error y en la consulta de la clave.
+            var provider = new FakeKeyProvider("k", SequentialKey());
+            var row = new Dictionary<string, string> { ["NumeroCuenta"] = Pan };
+
+            Action act = () => new TransformEngine(provider).Evaluate("HMAC(NumeroCuenta, NumeroCuenta)", row);
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("HMAC: the key name must be a string literal*")
+                .Which.Message.Should().NotContain(Pan);
+            provider.Requested.Should().BeEmpty();
+        }
+
+        [Theory]
+        [InlineData("4111111111111111")]
+        [InlineData("cm pan")]
+        [InlineData("")]
+        public void Hmac_KeyNameThatIsNotALabel_ThrowsWithoutEchoingIt(string keyName)
+        {
+            var provider = new FakeKeyProvider(keyName, SequentialKey());
+
+            Action act = () => new TransformEngine(provider)
+                .Evaluate($"HMAC(\"{Pan}\", \"{keyName}\")", new Dictionary<string, string>());
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("HMAC: the key name must be a string literal*")
+                .Which.Message.Should().NotContain(Pan);
+            provider.Requested.Should().BeEmpty();
+        }
+
+        [Fact]
         public void Hmac_ErrorMessagesNeverContainTheInputValueNorTheKey()
         {
             var keyHex = BitConverter.ToString(SequentialKey(31)).Replace("-", "").ToLowerInvariant();

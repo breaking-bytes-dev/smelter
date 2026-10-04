@@ -51,6 +51,9 @@ hash, así que sirve como columna de lookup/alternate key.
   resuelve la key.
 - **Exactamente 2 argumentos**: el valor (columna, literal o expresión anidada) y el nombre de la key
   como literal de texto. Cualquier otra cantidad falla con `HMAC expects (value, "keyName").`
+- **El nombre de la key es siempre un literal con forma de etiqueta**: empieza con letra y sigue con letras,
+  dígitos, `-` o `_` (hasta 50). Una columna o una expresión en ese lugar (`HMAC(Pan, Pan)`) falla **antes** de
+  evaluar, sin repetir el valor: si no, el dato sensible terminaría en el log del job y en la consulta de la key.
 - **Composición**: `HMAC(TRIM(Pan), "cm-pan")`, `UPPER(HMAC(Pan, "cm-pan"))`, etc.
 
 ### Fallas
@@ -64,6 +67,7 @@ La fila falla con categoría `TransformError` (el resto del chunk sigue) cuando:
 | El valor guardado de la key no es hex válido (solo provider de DEV) | `HMAC: key 'nombreKey' is not valid hex.` |
 | Hay más de una key activa con ese nombre (solo provider de DEV) | `HMAC: more than one active key named 'nombreKey'.` |
 | Cantidad de argumentos distinta de 2 | `HMAC expects (value, "keyName").` |
+| El nombre de la key no es un literal con forma de etiqueta | `HMAC: the key name must be a string literal label (a letter, then letters, digits, '-' or '_').` |
 
 Los mensajes **nunca incluyen el valor de entrada** (puede ser un PAN) **ni la key**, y el plugin no los
 traza: en el Import Job Log y en el Plugin Trace Log solo aparece el *nombre* de la key.

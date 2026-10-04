@@ -71,6 +71,7 @@ namespace Smelter.Plugins.Services
             }
             if (node is FunctionCallNode func)
             {
+                if (string.Equals(func.FunctionName, "HMAC", StringComparison.OrdinalIgnoreCase)) ValidateHmacKeyName(func);
                 var args = func.Arguments.Select(a => EvaluateNode(a, rowValues)).ToList();
                 return EvaluateFunction(func.FunctionName.ToUpperInvariant(), args);
             }
@@ -131,6 +132,19 @@ namespace Smelter.Plugins.Services
                 default:
                     throw new InvalidOperationException($"Unknown function: {name}");
             }
+        }
+
+        private static readonly Regex HmacKeyNamePattern = new Regex("^[A-Za-z][A-Za-z0-9_-]{0,49}$", RegexOptions.CultureInvariant);
+
+        // El nombre de la clave tiene que ser un literal con forma de etiqueta ("cm-pan"). Si viniera de una
+        // columna (HMAC(x, NumeroCuenta)), el PAN terminaría en el mensaje de error y en la consulta de la clave.
+        // Se valida ANTES de evaluar los argumentos y sin repetir el valor recibido.
+        private static void ValidateHmacKeyName(FunctionCallNode func)
+        {
+            if (func.Arguments.Count != 2) return; // Hmac() informa la cantidad de argumentos
+            if (!(func.Arguments[1] is StringLiteralNode literal) || !HmacKeyNamePattern.IsMatch(literal.Value))
+                throw new InvalidOperationException(
+                    "HMAC: the key name must be a string literal label (a letter, then letters, digits, '-' or '_').");
         }
 
         // HMAC-SHA256 en hex minúsculas, sobre el valor sin espacios (paridad con paso3_backfill.py de Cobranza Movil).
