@@ -18,6 +18,10 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
   (`HmacKeyTableProvisioner`) y la verifica `Smelter.Verify` (`HmacKeyAssertions`). PROD debe usar
   managed identity + Azure Key Vault.
 
+### Changed
+- `Smelter.Plugins` bump a `1.0.6` (recarga del package en Dataverse). Sin el bump, algunos workers del
+  sandbox seguían con 1.0.5 y la carga fallaba de forma intermitente con `Unknown function: HMAC`.
+
 ## [[1.3.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.3.0.0)] — 2026-07-29
 
 **Audit de campos: semántica implementada + limpieza de schema.** Resultado del audit completo
