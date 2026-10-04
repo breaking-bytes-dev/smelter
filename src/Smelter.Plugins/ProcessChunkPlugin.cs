@@ -39,7 +39,8 @@ namespace Smelter.Plugins
                     new ImportContextLoader(service),
                     new FileDownloader(service),
                     new CsvParserService(),
-                    new NormalizationEngine(service, tracing),
+                    // DEV-only key source for the HMAC transform (see DataverseHmacKeyProvider).
+                    new NormalizationEngine(service, tracing, new DataverseHmacKeyProvider(service)),
                     new UpsertWriter(service, tracing),
                     service,
                     tracing);

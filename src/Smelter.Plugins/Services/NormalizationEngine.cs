@@ -45,12 +45,27 @@ namespace Smelter.Plugins.Services
         /// </param>
         /// <param name="tracingService">Optional tracing service; pass <c>null</c> in unit tests.</param>
         public NormalizationEngine(IOrganizationService service, ITracingService tracingService)
+            : this(service, tracingService, null)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="NormalizationEngine"/> with a key source for the
+        /// <c>HMAC</c> transform function.
+        /// </summary>
+        /// <param name="service">See the two-argument constructor.</param>
+        /// <param name="tracingService">Optional tracing service; pass <c>null</c> in unit tests.</param>
+        /// <param name="hmacKeyProvider">
+        /// Resolves HMAC key bytes by name; <c>null</c> leaves <c>HMAC</c> unavailable (any template
+        /// that uses it fails per row with a clear message).
+        /// </param>
+        public NormalizationEngine(IOrganizationService service, ITracingService tracingService, IHmacKeyProvider hmacKeyProvider)
         {
             // 'service' is accepted for signature stability; ProcessBatch writes via IUpsertWriter.
             if (service == null) throw new ArgumentNullException(nameof(service));
             _tracingService = tracingService;
             _typeCoercer = new TypeCoercer();
-            _transformEngine = new TransformEngine();
+            _transformEngine = new TransformEngine(hmacKeyProvider);
         }
 
         public IList<ProcessingResult> ProcessBatch(ImportContext context, IList<SourceRow> rows, IUpsertWriter writer)

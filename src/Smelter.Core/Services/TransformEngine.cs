@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Smelter.Plugins.Services
@@ -11,16 +13,30 @@ namespace Smelter.Plugins.Services
     /// <para>
     /// The DSL supports function calls (<c>CONCAT</c>, <c>UPPER</c>, <c>LOWER</c>, <c>TRIM</c>,
     /// <c>LEFT</c>, <c>RIGHT</c>, <c>DATEPARSE</c>, <c>REPLACE</c>, <c>SPLIT</c>, <c>IF</c>,
-    /// <c>COALESCE</c>, <c>STATIC</c>, <c>MAP</c>), bare column references, string literals
+    /// <c>COALESCE</c>, <c>STATIC</c>, <c>MAP</c>, <c>HMAC</c>), bare column references, string literals
     /// (double-quoted, with <c>""</c> as the escape sequence for a literal quote), and numeric
     /// literals. Functions can be nested arbitrarily.
     /// </para>
     /// <para>
-    /// The engine is stateless: a single instance can be reused across rows and chunks.
+    /// The engine is stateless: a single instance can be reused across rows and chunks. The only
+    /// collaborator is the optional <see cref="IHmacKeyProvider"/> used by <c>HMAC</c>; without one,
+    /// every other function works and <c>HMAC</c> fails with a clear error.
     /// </para>
     /// </summary>
     public class TransformEngine
     {
+        private readonly IHmacKeyProvider _keyProvider;
+
+        /// <summary>Creates an engine without a key provider (<c>HMAC</c> is unavailable).</summary>
+        public TransformEngine() : this(null) { }
+
+        /// <summary>Creates an engine whose <c>HMAC</c> function resolves keys through <paramref name="keyProvider"/>.</summary>
+        /// <param name="keyProvider">Key source for <c>HMAC</c>; may be <c>null</c>.</param>
+        public TransformEngine(IHmacKeyProvider keyProvider)
+        {
+            _keyProvider = keyProvider;
+        }
+
         /// <summary>
         /// Evaluates a single transform expression against one source row's values.
         /// </summary>
@@ -111,8 +127,28 @@ namespace Smelter.Plugins.Services
                     if (matchNum.Success) return matchNum.Groups[1].Value;
                     
                     return "";
+                case "HMAC": return Hmac(args);
                 default:
                     throw new InvalidOperationException($"Unknown function: {name}");
+            }
+        }
+
+        // HMAC-SHA256 en hex minúsculas, sobre el valor sin espacios (paridad con paso3_backfill.py de Cobranza Movil).
+        // Los mensajes de error NUNCA incluyen el valor de entrada.
+        private string Hmac(List<string> args)
+        {
+            if (args.Count != 2) throw new InvalidOperationException("HMAC expects (value, \"keyName\").");
+            var value = args[0].Trim();
+            if (value.Length == 0) return "";
+            if (_keyProvider == null) throw new InvalidOperationException("HMAC: no key provider configured.");
+            var key = _keyProvider.GetKey(args[1]);
+            if (key == null || key.Length < 32)
+                throw new InvalidOperationException($"HMAC: key '{args[1]}' missing or shorter than 32 bytes.");
+            using (var h = new HMACSHA256(key))
+            {
+                var sb = new StringBuilder(64);
+                foreach (var b in h.ComputeHash(Encoding.UTF8.GetBytes(value))) sb.Append(b.ToString("x2"));
+                return sb.ToString();
             }
         }
 
