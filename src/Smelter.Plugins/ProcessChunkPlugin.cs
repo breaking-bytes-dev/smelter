@@ -39,7 +39,7 @@ namespace Smelter.Plugins
                     new ImportContextLoader(service),
                     new FileDownloader(service),
                     new CsvParserService(),
-                    // DEV-only key source for the HMAC transform (see DataverseHmacKeyProvider).
+                    // Key source for the HMAC transform: Dataverse table, accepted risk, Key Vault as future option (see DataverseHmacKeyProvider).
                     new NormalizationEngine(service, tracing, new DataverseHmacKeyProvider(service)),
                     new UpsertWriter(service, tracing),
                     service,

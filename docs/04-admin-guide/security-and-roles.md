@@ -403,6 +403,60 @@ Probá con un usuario **Operador** de prueba (solo el rol Smelter Operador, miem
 
 ---
 
+## Clave HMAC
+
+La función `HMAC(valor, "nombreKey")` del Transform DSL (ver [transform-dsl](../03-developer-guide/transform-dsl.md#hmac))
+necesita una key por nombre. Se guarda en la tabla **TBL | SMLT | HMAC Key** (`sanic_tbl_smlt_hmackey`),
+que es **componente de la solución `smlt_core_smelter`**: el schema viaja a Test/Prod con el managed, pero
+**el valor de la key se carga a mano en cada entorno** (nunca por CI, nunca en el repo, nunca en un GitHub secret).
+
+### Riesgo aceptado
+
+Se decidió conscientemente guardar la key en Dataverse. Riesgos y mitigaciones:
+
+| Riesgo | Detalle | Mitigación actual |
+|--------|---------|-------------------|
+| Lectura por administradores | Cualquier System Administrator del entorno puede leer la key | La tabla está fuera de todo rol de Smelter (solo SYSTEM y System Administrator); limitar quién es System Administrator |
+| Copias y backups | Copiar o restaurar el entorno arrastra la key | Tratar los backups/copias con la misma sensibilidad que prod; al copiar a un entorno inferior, reemplazar la key |
+| Sin audit del valor | La columna del valor no se audita (para no dejar la key en el audit log) | Sí se audita la tabla: se ve quién creó, rotó o borró una key (no su valor) |
+| Advanced Find | — | La columna del valor no es válida para Advanced Find |
+
+**Endurecimiento futuro**: Azure Key Vault con managed identity detrás de `IHmacKeyProvider`. Con la misma
+key los hashes son idénticos, así que migrar no rompe datos existentes.
+
+### Procedimiento MANUAL para cargar la key en un entorno nuevo
+
+1. Tras importar la solución, generá 32 bytes aleatorios en hex (64 caracteres):
+   ```bash
+   openssl rand -hex 32
+   ```
+2. Entrá a [make.powerapps.com](https://make.powerapps.com) en el entorno destino, **como System Administrator**:
+   Tables → **TBL | SMLT | HMAC Key** → editar datos.
+3. Creá **una** fila activa:
+   - **Name** (`[HK] Name`): la etiqueta que usan los templates, p. ej. `cm-pan`.
+   - **Value** (`[HK] Value (hex)`): el hex generado.
+4. Guardá. Probá con un template que use `HMAC(columna, "cm-pan")`.
+
+Reglas de custodia:
+- **Nunca** pegues la key en chats, tickets, mails ni en el repo.
+- Guardala en el gestor de contraseñas (vault) de la organización, con el nombre y el entorno.
+- Si hay dos filas activas con el mismo nombre, el motor falla (`more than one active key`): dejá una sola.
+
+### Rotación
+
+Cambiar la key **cambia todos los hashes**. Si un template hace upsert por una columna HMAC, los registros
+existentes ya no coinciden y se crearían **duplicados**. Rotar requiere una **migración de re-key
+planificada** (recalcular los hashes existentes con la key nueva) antes de volver a importar. No reemplaces
+el valor "en caliente".
+
+### ¿La misma key en todos los entornos?
+
+Por defecto, **una key distinta por entorno** (un compromiso en Dev no afecta a Prod). Usá la misma key solo
+si los hashes deben coincidir entre entornos (p. ej. datos de Prod copiados a Test que se vuelven a
+importar); en ese caso, aplicá a Test la custodia de Prod.
+
+---
+
 ## Resumen
 ```
 1. tools/Smelter.Deploy provisiona TODO lo declarativo: roles + privilegios

@@ -32,6 +32,7 @@ Se promueve siempre el **mismo zip** que pasó por Test.
 - [ ] App Registration (puede ser la misma de Dev o una por entorno) y **application user** en cada entorno destino con rol System Customizer (o System Administrator si el import lo requiere).
 - [ ] En cada entorno destino: crear una conexión Dataverse **propiedad del service principal** (la que será dueña del Cloud Flow) y guardar su id como variable `DATAVERSE_CONNECTION_ID` del environment.
 - [ ] Verificar que el SP puede encender el flow (si falla el post-import, revisar propiedad de la conexión).
+- [ ] Post-import, en cada entorno: cargar la clave HMAC a mano (un System Administrator; nunca por CI ni secret). Ver [Clave HMAC](../docs/04-admin-guide/security-and-roles.md#clave-hmac).
 
 ## Notas
 

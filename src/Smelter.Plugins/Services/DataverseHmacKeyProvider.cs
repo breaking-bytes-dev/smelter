@@ -7,16 +7,19 @@ using Microsoft.Xrm.Sdk.Query;
 namespace Smelter.Plugins.Services
 {
     /// <summary>
-    /// <b>DEV ONLY.</b> Resolves HMAC keys from the protected Dataverse table
-    /// <see cref="Table"/> (primary name = key name, e.g. <c>cm-pan</c>; value = the key as hex).
+    /// Resolves HMAC keys from the Dataverse table <see cref="Table"/> (primary name = key name,
+    /// e.g. <c>cm-pan</c>; value = the key as hex). The table schema ships in the
+    /// <c>smlt_core_smelter</c> solution; the key VALUE is loaded manually in each environment by an
+    /// administrator (never via CI, repo or secrets).
     /// <para>
-    /// A key stored in Dataverse is only as protected as that table: it is not in any Smelter
-    /// security role (only SYSTEM / System Administrator can read it), its value column is not
-    /// auditable nor valid for Advanced Find, but it is still plain data in the environment.
-    /// <b>PRODUCTION must NOT use this class.</b> PROD must use the Power Platform managed identity
-    /// plus Azure Key Vault (<c>IManagedIdentityService</c>) behind an <see cref="IHmacKeyProvider"/>.
-    /// The alternatives were ruled out on the platform: a Custom API plugin cannot receive secure
-    /// configuration, and Key Vault–backed secret environment variables do not reach plugins.
+    /// ACCEPTED RISK: a key stored in Dataverse is only as protected as that table. It is not in any
+    /// Smelter security role (only SYSTEM / System Administrator can read it) and its value column is
+    /// not auditable nor valid for Advanced Find, but any System Administrator of the environment can
+    /// read it and environment copies/backups carry it. Possible future hardening: the Power Platform
+    /// managed identity plus Azure Key Vault (<c>IManagedIdentityService</c>) behind an
+    /// <see cref="IHmacKeyProvider"/> — same key, identical hashes, so the migration is non-breaking.
+    /// Not used today because a Custom API plugin cannot receive secure configuration and Key
+    /// Vault–backed secret environment variables do not reach plugins.
     /// </para>
     /// <para>
     /// Must be built with the SYSTEM <see cref="IOrganizationService"/> (<c>CreateOrganizationService(null)</c>),

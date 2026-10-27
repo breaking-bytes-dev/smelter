@@ -1,7 +1,9 @@
-// Provisión idempotente de la tabla DEV-only de keys HMAC (HmacKeyTableSpec.cs) por SDK:
+// Provisión idempotente de la tabla de keys HMAC (HmacKeyTableSpec.cs) por SDK:
 // CreateEntityRequest (Organization-owned, audit de tabla ON) + CreateAttributeRequest para la
 // columna del valor (sin audit, no válida para Advanced Find). Si la tabla/columna ya existen, no
-// se toca nada (no se reconfigura una tabla viva). NO escribe ni lee valores de keys: las keys las
+// se toca nada (no se reconfigura una tabla viva), salvo la membresía en smlt_core_smelter: si la tabla
+// existe pero no es componente de la solución (caso Dev: se creó en Default), se agrega con
+// AddSolutionComponentRequest. NO escribe ni lee valores de keys: las keys las
 // carga a mano un System Administrator.
 
 using Microsoft.PowerPlatform.Dataverse.Client;
@@ -20,7 +22,7 @@ internal static class HmacKeyTableProvisioner
 
     internal static void Run(ServiceClient client)
     {
-        Console.WriteLine($"[4e] HmacKeyTableProvisioner: tabla DEV-only {HmacKeyTableSpec.Table} (HmacKeyTableSpec.cs) ...");
+        Console.WriteLine($"[4e] HmacKeyTableProvisioner: tabla {HmacKeyTableSpec.Table} (HmacKeyTableSpec.cs) ...");
 
         if (!TableExists(client))
         {
@@ -45,7 +47,7 @@ internal static class HmacKeyTableProvisioner
                 },
                 HasActivities = false,
                 HasNotes = false,
-                // null a propósito: Default solution, no viaja en smlt_core_smelter (ver el spec).
+                // La tabla nace dentro de smlt_core_smelter: su schema viaja a Test/Prod (ver el spec).
                 SolutionUniqueName = HmacKeyTableSpec.SolutionUniqueName,
             });
             Console.WriteLine($"[4e]   tabla {HmacKeyTableSpec.Table} CREADA (Organization-owned, audit de tabla ON).");
@@ -79,11 +81,65 @@ internal static class HmacKeyTableProvisioner
             Console.WriteLine($"[4e]   columna {HmacKeyTableSpec.ValueColumn} ya existe — no se reconfigura.");
         }
 
+        EnsureInSolution(client);
+
         client.Execute(new PublishXmlRequest
         {
             ParameterXml = $"<importexportxml><entities><entity>{HmacKeyTableSpec.Table}</entity></entities></importexportxml>",
         });
-        Console.WriteLine("[4e] HmacKeyTable OK (recordá: las keys las carga a mano un System Administrator; ningún rol de Smelter la lee).");
+        Console.WriteLine("[4e] HmacKeyTable OK (recordá: la key de cada entorno la carga a mano un System Administrator; ningún rol de Smelter la lee).");
+    }
+
+    // Pura: ¿hay que agregar la entidad a la solución? Sí si su MetadataId no está entre los objectid
+    // de los solutioncomponent de tipo Entity de esa solución.
+    internal static bool NeedsSolutionAdd(Guid entityId, IEnumerable<Guid> solutionEntityComponentIds) =>
+        !solutionEntityComponentIds.Contains(entityId);
+
+    // Reconciliación idempotente: la tabla de Dev se creó en Default solution antes de esta decisión.
+    private static void EnsureInSolution(ServiceClient client)
+    {
+        var solutionId = client.RetrieveMultiple(new QueryExpression("solution")
+        {
+            ColumnSet = new ColumnSet("solutionid"),
+            Criteria = { Conditions = { new ConditionExpression("uniquename", ConditionOperator.Equal, HmacKeyTableSpec.SolutionUniqueName) } },
+        }).Entities.SingleOrDefault()?.Id;
+
+        if (solutionId is null)
+            throw new InvalidOperationException(
+                $"Solución '{HmacKeyTableSpec.SolutionUniqueName}' no encontrada: no se puede agregar {HmacKeyTableSpec.Table}.");
+
+        var entityId = RetrieveTable(client).MetadataId
+            ?? throw new InvalidOperationException($"{HmacKeyTableSpec.Table} sin MetadataId.");
+
+        var componentIds = client.RetrieveMultiple(new QueryExpression("solutioncomponent")
+        {
+            ColumnSet = new ColumnSet("objectid"),
+            Criteria =
+            {
+                Conditions =
+                {
+                    new ConditionExpression("solutionid", ConditionOperator.Equal, solutionId.Value),
+                    new ConditionExpression("componenttype", ConditionOperator.Equal, HmacKeyTableSpec.EntityComponentType),
+                    new ConditionExpression("objectid", ConditionOperator.Equal, entityId),
+                },
+            },
+        }).Entities.Select(e => e.GetAttributeValue<Guid>("objectid")).ToList();
+
+        if (!NeedsSolutionAdd(entityId, componentIds))
+        {
+            Console.WriteLine($"[4e]   {HmacKeyTableSpec.Table} ya es componente de '{HmacKeyTableSpec.SolutionUniqueName}'.");
+            return;
+        }
+
+        client.Execute(new AddSolutionComponentRequest
+        {
+            ComponentId = entityId,
+            ComponentType = HmacKeyTableSpec.EntityComponentType,
+            SolutionUniqueName = HmacKeyTableSpec.SolutionUniqueName,
+            AddRequiredComponents = false,
+            DoNotIncludeSubcomponents = false, // las columnas viajan con la tabla
+        });
+        Console.WriteLine($"[4e]   {HmacKeyTableSpec.Table} AGREGADA a '{HmacKeyTableSpec.SolutionUniqueName}' (con sus columnas).");
     }
 
     // RetrieveMetadataChanges devuelve colección vacía si la tabla no existe (RetrieveEntity lanzaría fault).

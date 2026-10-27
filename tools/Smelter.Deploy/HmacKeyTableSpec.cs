@@ -1,19 +1,21 @@
-// Especificación DECLARATIVA de la tabla DEV-only de keys HMAC (función HMAC del Transform DSL).
+// Especificación DECLARATIVA de la tabla de keys HMAC (función HMAC del Transform DSL).
 // Misma filosofía que ApiSpec/KeySpec/SchemaCleanupSpec: fuente única de verdad, consumida por
 // HmacKeyTableProvisioner (deploy) y HmacKeyAssertions (verify).
 //
 // Los nombres duplican las constantes de DataverseHmacKeyProvider (src/Smelter.Plugins): ese
 // assembly es net462 y no se puede referenciar desde acá — si cambian, cambian en los dos lados.
 //
-// DEV ONLY. Esta tabla guarda la key en Dataverse; PROD debe resolverla con managed identity +
-// Azure Key Vault (un Custom API plugin no recibe secure config y los secret env vars de Key Vault
-// no llegan a plugins). Por eso la tabla:
-//   - NO está en SecuritySpec.Tables ni en ningún rol de Smelter: solo SYSTEM (el plugin) y
-//     System Administrator la leen.
-//   - se crea SIN SolutionUniqueName (Default solution): no viaja en el export de smlt_core_smelter,
-//     así que no llega a PROD ni a solutions/unpacked.
-//   - es Organization-owned, con audit de tabla (quién creó/rotó/borró una key) pero SIN audit de la
-//     columna del valor y NO válida para Advanced Find.
+// La tabla ES componente de la solución smlt_core_smelter: su SCHEMA viaja a Test/Prod con la
+// solución managed. El VALOR de la key (la fila) NUNCA viaja: lo carga a mano un administrador en
+// cada entorno (ni CI, ni repo, ni GitHub secret). Procedimiento: docs/04-admin-guide/security-and-roles.md.
+//
+// Riesgo aceptado conscientemente (documentado en security-and-roles.md): cualquier System
+// Administrator del entorno puede leer la key; las copias/backups del entorno la arrastran; la
+// columna del valor no se audita. Mitigaciones: la tabla NO está en SecuritySpec.Tables ni en
+// ningún rol de Smelter (solo SYSTEM —el plugin— y System Administrator), es Organization-owned,
+// tiene audit de tabla (quién creó/rotó/borró una key) pero SIN audit de la columna del valor y NO
+// es válida para Advanced Find. Endurecimiento futuro posible: Azure Key Vault con managed identity
+// detrás de IHmacKeyProvider (misma key => mismos hashes, la migración no rompe nada).
 
 namespace Smelter.Deploy;
 
@@ -30,8 +32,8 @@ internal static class HmacKeyTableSpec
     internal const string TableDisplayName = "TBL | SMLT | HMAC Key";
     internal const string TableDisplayCollectionName = "TBL | SMLT | HMAC Keys";
     internal const string TableDescription =
-        "DEV ONLY. Keys HMAC resueltas por DataverseHmacKeyProvider. Fuera de todo rol de Smelter: " +
-        "solo SYSTEM / System Administrator. En PROD usar managed identity + Azure Key Vault.";
+        "Keys HMAC resueltas por DataverseHmacKeyProvider. El schema viaja en la solucion; el valor " +
+        "se carga a mano en cada entorno. Fuera de todo rol de Smelter: solo SYSTEM / System Administrator.";
 
     internal const string NameDisplayName = "[HK] Name";
     internal const string ValueDisplayName = "[HK] Value (hex)";
@@ -44,6 +46,9 @@ internal static class HmacKeyTableSpec
     internal const bool ValueColumnAudited = false;
     internal const bool ValueColumnValidForAdvancedFind = false;
 
-    /// <summary>null a propósito: la tabla NO se agrega a smlt_core_smelter (DEV-only, no viaja a PROD).</summary>
-    internal static readonly string? SolutionUniqueName = null;
+    /// <summary>La tabla (schema) pertenece a la solución core: viaja a Test/Prod con el managed.</summary>
+    internal const string SolutionUniqueName = Catalogo.SolutionName;
+
+    /// <summary>ComponentType de Entity en solutioncomponent / AddSolutionComponentRequest.</summary>
+    internal const int EntityComponentType = 1;
 }

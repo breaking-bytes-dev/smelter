@@ -1,9 +1,10 @@
-// Asserts E2E de la tabla DEV-only de keys HMAC provisionada por HmacKeyTableProvisioner
-// (HmacKeyTableSpec.cs): existe, Organization-owned, audit de tabla ON, columna del valor SIN audit
+// Asserts E2E de la tabla de keys HMAC provisionada por HmacKeyTableProvisioner
+// (HmacKeyTableSpec.cs): existe, es componente de smlt_core_smelter, Organization-owned, audit de tabla ON, columna del valor SIN audit
 // y fuera de Advanced Find. NO lee ningún valor de key.
 
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk.Metadata;
+using Microsoft.Xrm.Sdk.Query;
 using Smelter.Deploy;
 
 namespace Smelter.Verify;
@@ -12,7 +13,7 @@ internal static class HmacKeyAssertions
 {
     internal static void RunAll(ServiceClient client)
     {
-        Console.WriteLine($"[HMAC] Verificando la tabla DEV-only {HmacKeyTableSpec.Table} (HmacKeyTableSpec.cs) ...");
+        Console.WriteLine($"[HMAC] Verificando la tabla {HmacKeyTableSpec.Table} (HmacKeyTableSpec.cs) ...");
 
         Assert(HmacKeyTableProvisioner.TableExists(client),
             $"la tabla {HmacKeyTableSpec.Table} no existe (¿corriste Smelter.Deploy?)");
@@ -23,6 +24,27 @@ internal static class HmacKeyAssertions
         Assert(table.IsAuditEnabled?.Value == HmacKeyTableSpec.TableAudited,
             "el audit de la tabla no coincide con el spec (se auditan los cambios de keys, no sus valores)");
 
+        var solutionId = client.RetrieveMultiple(new QueryExpression("solution")
+        {
+            ColumnSet = new ColumnSet("solutionid"),
+            Criteria = { Conditions = { new ConditionExpression("uniquename", ConditionOperator.Equal, HmacKeyTableSpec.SolutionUniqueName) } },
+        }).Entities.SingleOrDefault()?.Id;
+        Assert(solutionId is not null, $"no existe la solución {HmacKeyTableSpec.SolutionUniqueName}");
+        var inSolution = client.RetrieveMultiple(new QueryExpression("solutioncomponent")
+        {
+            ColumnSet = new ColumnSet("objectid"),
+            Criteria =
+            {
+                Conditions =
+                {
+                    new ConditionExpression("solutionid", ConditionOperator.Equal, solutionId!.Value),
+                    new ConditionExpression("componenttype", ConditionOperator.Equal, HmacKeyTableSpec.EntityComponentType),
+                    new ConditionExpression("objectid", ConditionOperator.Equal, table.MetadataId!.Value),
+                },
+            },
+        }).Entities.Count > 0;
+        Assert(inSolution, $"{HmacKeyTableSpec.Table} no es componente de {HmacKeyTableSpec.SolutionUniqueName}: su schema no viajaría a Test/Prod");
+
         var value = table.Attributes?.SingleOrDefault(a =>
             string.Equals(a.LogicalName, HmacKeyTableSpec.ValueColumn, StringComparison.OrdinalIgnoreCase));
         Assert(value is not null, $"falta la columna {HmacKeyTableSpec.ValueColumn}");
@@ -31,7 +53,7 @@ internal static class HmacKeyAssertions
         Assert(value.IsValidForAdvancedFind?.Value == HmacKeyTableSpec.ValueColumnValidForAdvancedFind,
             $"{HmacKeyTableSpec.ValueColumn} es válida para Advanced Find");
 
-        Console.WriteLine("[HMAC] OK: Organization-owned, audit de tabla ON, columna del valor sin audit y fuera de Advanced Find.");
+        Console.WriteLine("[HMAC] OK: componente de la solución, Organization-owned, audit de tabla ON, columna del valor sin audit y fuera de Advanced Find.");
     }
 
     private static void Assert(bool condition, string message)

@@ -5,9 +5,9 @@ using Xunit;
 namespace Smelter.Contract.Tests;
 
 /// <summary>
-/// CONTRATO de la tabla DEV-only de keys HMAC (<see cref="HmacKeyTableSpec"/>): la convención de
+/// CONTRATO de la tabla de keys HMAC (<see cref="HmacKeyTableSpec"/>): la convención de
 /// nombres del repo y, sobre todo, las garantías de seguridad que la hacen aceptable en DEV
-/// (ningún rol de Smelter la toca, no vive en SecuritySpec.Tables, no viaja en la solución).
+/// (ningún rol de Smelter la toca, no vive en SecuritySpec.Tables); el schema viaja en la solución.
 /// Datos puros — sin llamar Dataverse.
 /// </summary>
 public class HmacKeyTableSpecContractTests
@@ -43,10 +43,26 @@ public class HmacKeyTableSpecContractTests
     }
 
     [Fact]
-    public void Table_IsNotShippedInTheSmelterSolution()
+    public void Table_IsPartOfTheSmelterSolution_SoItsSchemaTravelsToTestAndProd()
     {
-        // DEV-only: se crea sin SolutionUniqueName (Default solution) para que NO viaje a PROD
-        // con el export de smlt_core_smelter. PROD usa managed identity + Key Vault.
-        HmacKeyTableSpec.SolutionUniqueName.Should().BeNull();
+        // El SCHEMA viaja con la solución managed; el VALOR de la key se carga a mano en cada entorno.
+        HmacKeyTableSpec.SolutionUniqueName.Should().Be(Catalogo.SolutionName);
+        HmacKeyTableSpec.SolutionUniqueName.Should().Be("smlt_core_smelter");
+        HmacKeyTableSpec.EntityComponentType.Should().Be(1);
+    }
+
+    [Fact]
+    public void TableDescription_NoLongerClaimsDevOnly()
+    {
+        HmacKeyTableSpec.TableDescription.Should().NotContain("DEV ONLY");
+    }
+
+    [Fact]
+    public void NeedsSolutionAdd_IsTrueOnlyWhenEntityIsNotYetAComponent()
+    {
+        var entityId = Guid.NewGuid();
+        HmacKeyTableProvisioner.NeedsSolutionAdd(entityId, new[] { Guid.NewGuid() }).Should().BeTrue();
+        HmacKeyTableProvisioner.NeedsSolutionAdd(entityId, Array.Empty<Guid>()).Should().BeTrue();
+        HmacKeyTableProvisioner.NeedsSolutionAdd(entityId, new[] { Guid.NewGuid(), entityId }).Should().BeFalse();
     }
 }

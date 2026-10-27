@@ -12,15 +12,37 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
   (el nombre es una etiqueta, nunca el material de la key); los mensajes de error nunca incluyen el
   valor de entrada ni la key. `TransformEngine` y `NormalizationEngine` aceptan el provider
   (constructores existentes intactos).
-- **`DataverseHmacKeyProvider` — SOLO DEV**: lee las keys de la tabla `sanic_tbl_smlt_hmackey`
-  (Organization-owned, audit de tabla ON, columna del valor sin audit y fuera de Advanced Find,
-  fuera de todo rol de Smelter y fuera de la solución). La crea `Smelter.Deploy`
-  (`HmacKeyTableProvisioner`) y la verifica `Smelter.Verify` (`HmacKeyAssertions`). PROD debe usar
-  managed identity + Azure Key Vault.
+- **`DataverseHmacKeyProvider`**: lee las keys de la tabla `sanic_tbl_smlt_hmackey` (Organization-owned,
+  audit de tabla ON, columna del valor sin audit y fuera de Advanced Find, fuera de todo rol de Smelter).
+  La tabla es **componente de `smlt_core_smelter`**: el schema viaja a Test/Prod con el managed; el
+  **valor de la key se carga a mano en cada entorno** (nunca por CI, repo ni GitHub secret). La crea (o,
+  si ya existía en Default, la agrega a la solución) `Smelter.Deploy` (`HmacKeyTableProvisioner`) y la
+  verifica `Smelter.Verify` (`HmacKeyAssertions`, incluida la pertenencia a la solución).
+- **Workflow `solution-import`** para importar la solución a Test/Prod con GitHub Environments y
+  deployment settings (`deploy/README.md`).
+- Guía "Clave HMAC" en `docs/04-admin-guide/security-and-roles.md`: tabla de riesgo aceptado,
+  procedimiento manual de carga, custodia, rotación y política de keys por entorno.
 
 ### Changed
 - `Smelter.Plugins` bump a `1.0.6` (recarga del package en Dataverse). Sin el bump, algunos workers del
   sandbox seguían con 1.0.5 y la carga fallaba de forma intermitente con `Unknown function: HMAC`.
+- `Smelter.Deploy` exige `SMELTER_ENV=dev` y los pasos destructivos quedan detrás de `--allow-destructive`;
+  los workflows de Dev corren bajo el environment `dev`.
+- `ProcessChunk` re-valida que el template esté `Active` y el job en `Processing` antes de descargar o
+  escribir.
+- El fallo de una key HMAC se cachea por key y el fault de tabla inexistente se traduce a `TransformError`.
+- La función `HMAC` exige el nombre de la key como literal con forma de etiqueta, validado antes de evaluar.
+
+### Fixed
+- El Import Job queda `Failed` si `PrepareImport` falla o el loop del Cloud Flow hace timeout; el deploy
+  ya no deja el flow apagado.
+
+### Security
+- `TypeCoercer`, lookups no resueltos y faults de `UpsertWriter` ya no incluyen el valor de la fila (PII)
+  en el Import Job Log ni en traces.
+- **Riesgo aceptado (HMAC)**: la key vive en Dataverse; cualquier System Administrator del entorno puede
+  leerla, las copias/backups del entorno la arrastran y la columna del valor no se audita. Endurecimiento
+  futuro posible: Azure Key Vault (mismas keys → mismos hashes, migración sin ruptura).
 
 ## [[1.3.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.3.0.0)] — 2026-07-29
 

@@ -64,8 +64,8 @@ La fila falla con categoría `TransformError` (el resto del chunk sigue) cuando:
 |-------|---------|
 | No hay key provider configurado en el motor | `HMAC: no key provider configured.` |
 | La key no existe, o tiene menos de 32 bytes | `HMAC: key 'nombreKey' missing or shorter than 32 bytes.` |
-| El valor guardado de la key no es hex válido (solo provider de DEV) | `HMAC: key 'nombreKey' is not valid hex.` |
-| Hay más de una key activa con ese nombre (solo provider de DEV) | `HMAC: more than one active key named 'nombreKey'.` |
+| El valor guardado de la key no es hex válido  | `HMAC: key 'nombreKey' is not valid hex.` |
+| Hay más de una key activa con ese nombre  | `HMAC: more than one active key named 'nombreKey'.` |
 | Cantidad de argumentos distinta de 2 | `HMAC expects (value, "keyName").` |
 | El nombre de la key no es un literal con forma de etiqueta | `HMAC: the key name must be a string literal label (a letter, then letters, digits, '-' or '_').` |
 
@@ -78,16 +78,20 @@ traza: en el Import Job Log y en el Plugin Trace Log solo aparece el *nombre* de
 > expresión (ni en el template, ni en el CSV): la expresión se guarda en Dataverse, se exporta en el JSON
 > del template y se ve en el Import Job. El motor le pide los bytes al `IHmacKeyProvider` por ese nombre.
 
-| Entorno | Provider | Cómo se carga la key |
-|---------|----------|----------------------|
-| **DEV** | `DataverseHmacKeyProvider` — lee la tabla `sanic_tbl_smlt_hmackey` (nombre = `sanic_smlt_hk_name`, key en hex = `sanic_smlt_hk_value`) con el usuario SYSTEM del plugin | Un System Administrator crea la fila a mano (64 hex = 32 bytes). La tabla no está en ningún rol de Smelter, no audita la columna del valor y no es válida para Advanced Find |
-| **PROD** | Un `IHmacKeyProvider` basado en **managed identity de Power Platform + Azure Key Vault** (`IManagedIdentityService`) | La key vive solo en Key Vault. **No usar la tabla de DEV en PROD** |
+| Provider | Cómo se carga la key |
+|----------|----------------------|
+| `DataverseHmacKeyProvider` — lee la tabla `sanic_tbl_smlt_hmackey` (nombre = `sanic_smlt_hk_name`, key en hex = `sanic_smlt_hk_value`) con el usuario SYSTEM del plugin | **A mano, en cada entorno**: un System Administrator crea la fila (64 hex = 32 bytes). Nunca por CI, repo ni GitHub secret. Procedimiento completo en [Clave HMAC](../04-admin-guide/security-and-roles.md#clave-hmac) |
 
-Por qué no hay otra opción en PROD: un plugin de Custom API no puede recibir *secure configuration*, y
-los *environment variables* de tipo secret respaldados por Key Vault no llegan a los plugins.
+La tabla `sanic_tbl_smlt_hmackey` **es parte de la solución** `smlt_core_smelter`: su *schema* viaja a
+Test/Prod con el managed. El *valor* de la key no viaja nunca. La tabla no está en ningún rol de Smelter,
+no audita la columna del valor y no es válida para Advanced Find.
 
-La tabla de DEV la crea `Smelter.Deploy` (`HmacKeyTableProvisioner`) **fuera** de la solución
-`smlt_core_smelter`: no viaja en el export, así que en PROD no existe.
+**Riesgo aceptado**: cualquier System Administrator del entorno puede leer la key, y las copias/backups del
+entorno la arrastran (ver la tabla de riesgos en la guía de seguridad). **Endurecimiento futuro posible**:
+un `IHmacKeyProvider` basado en managed identity + Azure Key Vault; como la key sería la misma, los hashes
+serían idénticos y la migración no rompe nada. Hoy no es una opción directa porque un plugin de Custom API
+no puede recibir *secure configuration* y los *environment variables* secret respaldados por Key Vault no
+llegan a los plugins.
 
 ## Composición
 
