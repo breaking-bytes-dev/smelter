@@ -21,13 +21,12 @@ internal static partial class E2eRunner
         var templateId = ImportTemplate(env, E2eSpec.Simple.Dto("flow", ImportTemplateStatus.Active));
         var jobId = CreateJob(env, templateId, "flow", E2eSpec.Simple.Csv("flow", E2eSpec.Simple.Rows));
 
+        var queuedAt = DateTime.UtcNow;
         Queue(env, jobId);
         var job = WaitForEnd(env, jobId, "7a");
-        if (job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value != (int)ImportJobStatus.Completed)
-        {
-            DumpLogs(env, jobId); // sin esto el FAIL no dice POR QUÉ quedó con errores
-            DumpConcurrency(env, jobId);
-        }
+        var completed = job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value == (int)ImportJobStatus.Completed;
+        if (!completed) DumpLogs(env, jobId); // sin esto el FAIL no dice POR QUÉ quedó con errores
+        DumpConcurrency(env, jobId, queuedAt); // siempre: 2 corridas del flow en un éxito también delatan la carrera
         Ensure(job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value == (int)ImportJobStatus.Completed,
             $"el Cloud Flow debía dejar el job Completed, lo dejó {StatusName(job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value)}" +
             $"{Reason(job)}");
@@ -97,8 +96,34 @@ internal static partial class E2eRunner
     /// Job y cuántas veces corrieron Prepare/ProcessChunk para ESTE job (Plugin Trace Log)? Un DuplicateRecordEntityKey
     /// en un Upsert por alternate key solo se explica con dos escrituras concurrentes de la misma clave.
     /// </summary>
-    private static void DumpConcurrency(Env env, Guid jobId)
+    private static void DumpConcurrency(Env env, Guid jobId, DateTime queuedAt)
     {
+        try
+        {
+            var runs = env.Client.RetrieveMultiple(new QueryExpression("flowrun")
+            {
+                ColumnSet = new ColumnSet("starttime", "endtime", "status", "triggertype"),
+                Criteria =
+                {
+                    Conditions =
+                    {
+                        new ConditionExpression("workflow", ConditionOperator.Equal, OrchestratorFlowId),
+                        new ConditionExpression("starttime", ConditionOperator.OnOrAfter, queuedAt.AddMinutes(-1)),
+                    },
+                },
+                Orders = { new OrderExpression("starttime", OrderType.Ascending) },
+            }).Entities;
+            Console.WriteLine($"[E2E-7a]  corridas del flow orquestador desde que se encoló: {runs.Count}");
+            foreach (var r in runs)
+                Console.WriteLine($"[E2E-7a]    - start {r.GetAttributeValue<DateTime?>("starttime"):HH:mm:ss.fff} " +
+                    $"end {r.GetAttributeValue<DateTime?>("endtime"):HH:mm:ss.fff} status={r.GetAttributeValue<string>("status")} " +
+                    $"trigger={r.GetAttributeValue<string>("triggertype")}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[E2E-7a]  (no se pudo leer flowrun: {ex.Message})");
+        }
+
         try
         {
             var flows = env.Client.RetrieveMultiple(new QueryExpression("workflow")
@@ -141,6 +166,9 @@ internal static partial class E2eRunner
             Console.Error.WriteLine($"      (no se pudo leer el diagnóstico de concurrencia: {ex.Message})");
         }
     }
+
+    /// <summary>Id del Cloud Flow orquestador de Smelter (Workflows/CloudFlowSmelterSmelterorchestrator-0EB777E3-...).</summary>
+    private static readonly Guid OrchestratorFlowId = new("0eb777e3-6760-f111-ab0c-0022480a5be8");
 
     private static void Queue(Env env, Guid jobId) =>
         env.Client.Update(new Entity(JobTable, jobId) { [StatusAttr] = new OptionSetValue((int)ImportJobStatus.Queued) });
