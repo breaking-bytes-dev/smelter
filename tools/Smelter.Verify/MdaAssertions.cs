@@ -31,17 +31,19 @@ internal static class MdaAssertions
 
         var app = client.RetrieveMultiple(new QueryExpression("appmodule")
         {
-            ColumnSet = new ColumnSet("appmoduleid"),
+            ColumnSet = new ColumnSet("appmoduleid", "appmoduleidunique"),
             Criteria = { Conditions = { new ConditionExpression("uniquename", ConditionOperator.Equal, MdaSpec.AppUniqueName) } },
         }).Entities.SingleOrDefault();
         if (app is null) throw new InvalidOperationException($"ASSERT[MDA]: no existe la app {MdaSpec.AppUniqueName}");
         var appId = app.Id;
+        // appmodulecomponent apunta a appmodule.appmoduleidunique, que es OTRO Guid distinto de appmoduleid.
+        var appIdUnique = app.GetAttributeValue<Guid>("appmoduleidunique");
 
         var tables = RetrieveTables(client, SmelterTables.Append(HmacKeyTableSpec.Table).ToArray());
         var components = client.RetrieveMultiple(new QueryExpression("appmodulecomponent")
         {
             ColumnSet = new ColumnSet("componenttype", "objectid"),
-            Criteria = { Conditions = { new ConditionExpression("appmoduleidunique", ConditionOperator.Equal, appId) } },
+            Criteria = { Conditions = { new ConditionExpression("appmoduleidunique", ConditionOperator.Equal, appIdUnique) } },
         }).Entities.Select(e => (Type: e.GetAttributeValue<OptionSetValue>("componenttype")?.Value ?? -1,
                                  Id: e.GetAttributeValue<Guid>("objectid"))).ToList();
 
