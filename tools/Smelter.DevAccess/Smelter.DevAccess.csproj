@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Smelter.DevAccess</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.2.26" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core: TemplateSerializer/DTOs para armar el template QA con el MISMO serializer del producto. -->
+    <ProjectReference Include="..\..\src\Smelter.Core\Smelter.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Smelter.Contract.Tests" />
+  </ItemGroup>
+
+</Project>

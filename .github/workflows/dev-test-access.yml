@@ -1,0 +1,44 @@
+# Provisiona (o deshace) el acceso de PRUEBA en Dev: 4 usuarios de test con roles Smelter,
+# 2 owner teams QA y 2 templates QA (tools/Smelter.DevAccess). Solo Dev; todo por SDK.
+name: dev-test-access
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "provision = crear/actualizar acceso de test; remove = deshacerlo"
+        type: choice
+        options: [provision, remove]
+        default: provision
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-test-access
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: "10.0.x"
+
+jobs:
+  dev-access:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Smelter.DevAccess (${{ inputs.mode }})
+        env:
+          SMELTER_ENV: dev
+          DATAVERSE_URL: ${{ secrets.DATAVERSE_URL }}
+          PP_CLIENT_ID: ${{ secrets.PP_CLIENT_ID }}
+          PP_CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ "$MODE" = "remove" ]; then ARGS="--remove"; else ARGS=""; fi
+          dotnet run --project tools/Smelter.DevAccess -c Release -- $ARGS
