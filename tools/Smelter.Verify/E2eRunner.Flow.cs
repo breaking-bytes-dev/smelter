@@ -24,7 +24,10 @@ internal static partial class E2eRunner
         Queue(env, jobId);
         var job = WaitForEnd(env, jobId, "7a");
         if (job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value != (int)ImportJobStatus.Completed)
+        {
             DumpLogs(env, jobId); // sin esto el FAIL no dice POR QUÉ quedó con errores
+            DumpConcurrency(env, jobId);
+        }
         Ensure(job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value == (int)ImportJobStatus.Completed,
             $"el Cloud Flow debía dejar el job Completed, lo dejó {StatusName(job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value)}" +
             $"{Reason(job)}");
@@ -89,6 +92,56 @@ internal static partial class E2eRunner
     }
 
     /// <summary>Lo mismo que hace el botón: un Update que pone el status en Queued (dispara el trigger del flow y el plugin ValidateQueueAccess).</summary>
+    /// <summary>
+    /// Diagnóstico de concurrencia (solo ids y horarios, sin datos de filas): ¿cuántos Cloud Flows escuchan el Import
+    /// Job y cuántas veces corrieron Prepare/ProcessChunk para ESTE job (Plugin Trace Log)? Un DuplicateRecordEntityKey
+    /// en un Upsert por alternate key solo se explica con dos escrituras concurrentes de la misma clave.
+    /// </summary>
+    private static void DumpConcurrency(Env env, Guid jobId)
+    {
+        try
+        {
+            var flows = env.Client.RetrieveMultiple(new QueryExpression("workflow")
+            {
+                ColumnSet = new ColumnSet("name", "statecode", "workflowid"),
+                Criteria =
+                {
+                    Conditions =
+                    {
+                        new ConditionExpression("category", ConditionOperator.Equal, 5),
+                        new ConditionExpression("clientdata", ConditionOperator.Like, "%sanic_tbl_smlt_importjob%"),
+                    },
+                },
+            }).Entities;
+            Console.Error.WriteLine($"      Cloud Flows que referencian el Import Job: {flows.Count}");
+            foreach (var f in flows)
+                Console.Error.WriteLine($"        - {f.GetAttributeValue<string>("name")} ({f.Id}) statecode={f.GetAttributeValue<OptionSetValue>("statecode")?.Value}");
+
+            var traces = env.Client.RetrieveMultiple(new QueryExpression("plugintracelog")
+            {
+                ColumnSet = new ColumnSet("typename", "createdon", "correlationid", "depth", "performanceexecutionduration"),
+                Criteria =
+                {
+                    Conditions =
+                    {
+                        new ConditionExpression("messageblock", ConditionOperator.Like, $"%{jobId}%"),
+                        new ConditionExpression("typename", ConditionOperator.Like, "Smelter.Plugins.%"),
+                    },
+                },
+                Orders = { new OrderExpression("createdon", OrderType.Ascending) },
+            }).Entities;
+            Console.Error.WriteLine($"      Ejecuciones de plugins para este job (Plugin Trace Log): {traces.Count}");
+            foreach (var t in traces)
+                Console.Error.WriteLine($"        - {t.GetAttributeValue<DateTime>("createdon"):HH:mm:ss.fff} " +
+                    $"{t.GetAttributeValue<string>("typename")?.Split(',')[0]} corr={t.GetAttributeValue<Guid?>("correlationid")} " +
+                    $"depth={t.GetAttributeValue<int?>("depth")} {t.GetAttributeValue<int?>("performanceexecutionduration")}ms");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"      (no se pudo leer el diagnóstico de concurrencia: {ex.Message})");
+        }
+    }
+
     private static void Queue(Env env, Guid jobId) =>
         env.Client.Update(new Entity(JobTable, jobId) { [StatusAttr] = new OptionSetValue((int)ImportJobStatus.Queued) });
 
