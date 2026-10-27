@@ -104,33 +104,48 @@ internal static class SchemaCleanupProvisioner
         }
     }
 
-    // Borra en lotes de 1000 (ExecuteMultiple) todas las filas que usan la opción. Re-consulta la primera página
-    // cada vuelta: lo borrado ya no aparece, así que no hace falta paging cookie.
+    // Borra TODAS las filas que usan la opción con un BulkDeleteRequest (trabajo asíncrono del servidor) y espera a
+    // que termine. Un ExecuteMultiple de 1000 deletes superaba el timeout de 4 min del cliente con miles de logs.
     private static int PurgeRows(ServiceClient client, OptionCleanupSpec spec)
     {
-        var total = 0;
+        var query = new QueryExpression(spec.EntityLogicalName)
+        {
+            ColumnSet = new ColumnSet(false),
+            Criteria = { Conditions = { new ConditionExpression(spec.AttributeLogicalName, ConditionOperator.Equal, spec.Value) } },
+        };
+        var jobId = ((BulkDeleteResponse)client.Execute(new BulkDeleteRequest
+        {
+            JobName = $"Smelter deploy 4d: purga {spec.EntityLogicalName}.{spec.AttributeLogicalName} = {spec.Value} ({spec.Label})",
+            QuerySet = [query],
+            StartDateTime = DateTime.UtcNow,
+            RecurrencePattern = string.Empty,
+            SendEmailNotification = false,
+            ToRecipients = [],
+            CCRecipients = [],
+        })).JobId;
+
+        var deadline = DateTime.UtcNow.AddMinutes(30);
         while (true)
         {
-            var ids = client.RetrieveMultiple(new QueryExpression(spec.EntityLogicalName)
+            var job = client.Retrieve("asyncoperation", jobId, new ColumnSet("statecode", "statuscode"));
+            var state = job.GetAttributeValue<OptionSetValue>("statecode")?.Value;
+            if (state == 3) // Completed
             {
-                ColumnSet = new ColumnSet(false),
-                TopCount = 1000,
-                Criteria = { Conditions = { new ConditionExpression(spec.AttributeLogicalName, ConditionOperator.Equal, spec.Value) } },
-            }).Entities.Select(e => e.Id).ToList();
-            if (ids.Count == 0) return total;
-
-            var batch = new ExecuteMultipleRequest
-            {
-                Settings = new ExecuteMultipleSettings { ContinueOnError = false, ReturnResponses = false },
-                Requests = new OrganizationRequestCollection(),
-            };
-            foreach (var id in ids)
-                batch.Requests.Add(new DeleteRequest { Target = new EntityReference(spec.EntityLogicalName, id) });
-            var response = (ExecuteMultipleResponse)client.Execute(batch);
-            if (response.IsFaulted)
-                throw new InvalidOperationException(
-                    $"No se pudieron borrar las filas de {spec.EntityLogicalName} que usan la opción {spec.Value} ({spec.Label}).");
-            total += ids.Count;
+                var status = job.GetAttributeValue<OptionSetValue>("statuscode")?.Value;
+                if (status != 30) // 30 = Succeeded
+                    throw new InvalidOperationException($"BulkDelete {jobId} terminó con statuscode {status} (no Succeeded).");
+                var bulk = client.RetrieveMultiple(new QueryExpression("bulkdeleteoperation")
+                {
+                    ColumnSet = new ColumnSet("successcount", "failurecount"),
+                    Criteria = { Conditions = { new ConditionExpression("asyncoperationid", ConditionOperator.Equal, jobId) } },
+                }).Entities.FirstOrDefault();
+                if ((bulk?.GetAttributeValue<int?>("failurecount") ?? 0) > 0)
+                    throw new InvalidOperationException($"BulkDelete {jobId}: {bulk!.GetAttributeValue<int?>("failurecount")} fila(s) no se pudieron borrar.");
+                return bulk?.GetAttributeValue<int?>("successcount") ?? 0;
+            }
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException($"BulkDelete {jobId} no terminó en 30 min; revisar el system job y re-correr el deploy.");
+            Thread.Sleep(TimeSpan.FromSeconds(10));
         }
     }
 
