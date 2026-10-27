@@ -384,7 +384,9 @@ static void UploadFile(ServiceClient client, EntityReference target, string file
         ["FileName"] = fileName,
     });
     var token = (string)init["FileContinuationToken"];
-    var blockId = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+    // BlockId fijo y URL-safe ("MDAwMDAx"): un base64 de Guid aleatorio a veces trae '+' o '/', y el blob
+    // storage lo rechaza con 400 InvalidQueryParameterValue (fallo intermitente). Un solo bloque por archivo.
+    var blockId = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("000001"));
 
     client.Execute(new OrganizationRequest("UploadBlock")
     {
