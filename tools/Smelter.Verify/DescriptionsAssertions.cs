@@ -28,6 +28,9 @@ internal static class DescriptionsAssertions
 
             var custom = (metadata.Attributes ?? [])
                 .Where(a => a.LogicalName.StartsWith("sanic_smlt_", StringComparison.Ordinal))
+                // Columnas virtuales que Dataverse genera solo (p.ej. "<bool>name", "<lookup>name"): no aceptan
+                // Description y no son configurables; la descripción va en la columna real (AttributeOf).
+                .Where(a => string.IsNullOrEmpty(a.AttributeOf))
                 .ToList();
             Assert(custom.Count > 0, $"{table}: sin columnas sanic_smlt_* (¿metadata incompleta?)");
 
