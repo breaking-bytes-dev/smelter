@@ -1,0 +1,15 @@
+{
+  "EnvironmentVariables": [],
+  "ConnectionReferences": [
+    {
+      "LogicalName": "sanic_conn_wfe_dataverse",
+      "ConnectionId": "__DATAVERSE_CONNECTION_ID__",
+      "ConnectorId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+    },
+    {
+      "LogicalName": "wf_sharedcommondataserviceforapps_3bc81",
+      "ConnectionId": "__DATAVERSE_CONNECTION_ID__",
+      "ConnectorId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+    }
+  ]
+}
