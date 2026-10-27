@@ -43,7 +43,7 @@ TRIGGER: Import Job status = Queued
 │                     In:  JobId = <mismo JobId>
 │                     Out: HasMore, ProcessedSoFar
 │
-└─► [Scope: Error Handler]  ← catch del scope anterior
+└─► [Update a row: Failed handler]  ← corre si el Scope falla, se omite (Skipped: p.ej. PrepareImport lanzó) o hace TimedOut
       │
       └─► Perform an unbound action: sanic_ProcessChunk  [NO — acá se marca Failed]
             Patch Import Job:

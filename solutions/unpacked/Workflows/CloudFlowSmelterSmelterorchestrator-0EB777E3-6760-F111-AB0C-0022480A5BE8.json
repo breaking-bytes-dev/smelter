@@ -162,7 +162,9 @@
         "Update_a_row": {
           "runAfter": {
             "Scope": [
-              "Failed"
+              "Failed",
+              "Skipped",
+              "TimedOut"
             ]
           },
           "metadata": {

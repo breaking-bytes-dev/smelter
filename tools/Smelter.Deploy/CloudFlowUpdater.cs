@@ -11,8 +11,8 @@
 // `clientdata` (dentro de la URL de la acción de tipo "OpenApiConnection", p.ej.
 // ".../customapi/sanic_capi_smelter_processchunk") es el comportamiento documentado de los conectores
 // Custom API de Power Automate, pero no es un tipo SDK compilado — no corroborable sin un Cloud Flow
-// real en Dev. Si el replace no encuentra nada, NO se aborta el deploy (falla suave con WARN):
-// confirmarlo contra el flow real en el primer backend-deploy y ajustar si el JSON tiene otra forma.
+// real en Dev. Si el replace no encuentra nada, NO se aborta el deploy (no-op); si la ESCRITURA falla, el deploy falla (con restore del estado
+// del flow). Confirmarlo contra el flow real en el primer backend-deploy y ajustar si el JSON tiene otra forma.
 //
 // La transformación del texto de `clientdata` vive en ClientDataProcessChunkRenamer.cs (lógica PURA,
 // testeada sin Dataverse) — ESTE archivo es solo el I/O (buscar el flow, aplicar el resultado,
@@ -83,10 +83,15 @@ internal static class CloudFlowUpdater
         // Reemplazo por TOKEN exacto (no substring) — ver ClientDataProcessChunkRenamer.cs. Correr
         // esto sobre clientdata YA migrado (todo backend-deploy re-corre CloudFlowUpdater) es un
         // no-op real: Changed=false, nada que escribir, nada de Draft/Activate innecesario.
-        var (updatedClientData, changed) = ClientDataProcessChunkRenamer.Rename(clientData);
+        var (renamedClientData, renamed) = ClientDataProcessChunkRenamer.Rename(clientData);
+
+        // Fix del handler Failed (runAfter Failed/Skipped/TimedOut) — ver ClientDataFailedHandlerFixer.cs.
+        // Ambas transformaciones se aplican en UN solo Draft→Update→Activate.
+        var (updatedClientData, handlerFixed) = ClientDataFailedHandlerFixer.Apply(renamedClientData);
+        var changed = renamed || handlerFixed;
         if (!changed)
         {
-            Console.WriteLine($"[7]   flow '{name}': clientdata ya migrado (o sin '{OldActionUniqueName}' literal) — sin cambios.");
+            Console.WriteLine($"[7]   flow '{name}': clientdata ya migrado y con handler Failed correcto — sin cambios.");
             return;
         }
 
@@ -94,20 +99,60 @@ internal static class CloudFlowUpdater
 
         try
         {
-            if (wasActive)
-                SetState(client, flowId, StateDraft, StatusDraft);
-
-            client.Update(new Entity("workflow", flowId) { ["clientdata"] = updatedClientData });
+            ApplyWithRestore(
+                wasActive,
+                toDraft: () => SetState(client, flowId, StateDraft, StatusDraft),
+                update: () => client.Update(new Entity("workflow", flowId) { ["clientdata"] = updatedClientData }),
+                activate: () => SetState(client, flowId, StateActivated, StatusActivated),
+                log: Console.Error.WriteLine);
             Console.WriteLine($"[7]   flow '{name}' ({flowId}): clientdata actualizado " +
-                $"({OldActionUniqueName} → {ClientDataProcessChunkRenamer.NewActionUniqueName}).");
-
-            if (wasActive)
-                SetState(client, flowId, StateActivated, StatusActivated);
+                $"(rename processchunk: {renamed}; handler Failed Failed/Skipped/TimedOut: {handlerFixed}).");
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[7]   WARN: no se pudo actualizar el flow '{name}' ({flowId}): {ex.Message}. " +
-                "Confirmar manualmente — ver comentario de riesgo al inicio de CloudFlowUpdater.cs.");
+            Console.Error.WriteLine($"[7]   ERROR: no se pudo actualizar el flow '{name}' ({flowId}): {ex.Message}. " +
+                "Ver comentario de riesgo al inicio de CloudFlowUpdater.cs. El deploy falla.");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Draft → update → activate si el flow estaba activo. Si algo falla, intenta RESTAURAR el estado
+    /// original (re-activar un flow que estaba activo) y re-lanza la excepción original: el deploy
+    /// debe fallar, nunca dejar un flow apagado con exit 0. Pura (delegados) para testearla sin Dataverse.
+    /// </summary>
+    internal static void ApplyWithRestore(bool wasActive, Action toDraft, Action update, Action activate, Action<string> log)
+    {
+        var draftSet = false;
+        try
+        {
+            if (wasActive)
+            {
+                toDraft();
+                draftSet = true;
+            }
+
+            update();
+
+            if (wasActive)
+                activate();
+        }
+        catch
+        {
+            if (wasActive && draftSet)
+            {
+                try
+                {
+                    activate();
+                    log("[7]   estado original (activo) restaurado tras el fallo.");
+                }
+                catch (Exception restoreEx)
+                {
+                    log($"[7]   ERROR: no se pudo restaurar el estado activo del flow: {restoreEx.Message}. " +
+                        "El flow puede haber quedado en Draft.");
+                }
+            }
+            throw;
         }
     }
 
