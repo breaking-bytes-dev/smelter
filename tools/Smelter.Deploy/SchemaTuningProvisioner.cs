@@ -44,7 +44,10 @@ internal static class SchemaTuningProvisioner
 
         if (spec.RequiredLevel is { } level && attribute.RequiredLevel?.Value != level)
         {
-            attribute.RequiredLevel = new AttributeRequiredLevelManagedProperty(level);
+            // Se muta el managed property leído (conserva ManagedPropertyLogicalName/CanBeChanged): uno nuevo sin
+            // esos datos se ignoraba en silencio (verificado en Dev: el default se aplicaba, el required level no).
+            if (attribute.RequiredLevel is null) attribute.RequiredLevel = new AttributeRequiredLevelManagedProperty(level);
+            else attribute.RequiredLevel.Value = level;
             changed = true;
         }
 
@@ -94,6 +97,20 @@ internal static class SchemaTuningProvisioner
 
         client.Execute(new UpdateAttributeRequest { EntityName = spec.Entity, Attribute = attribute, MergeLabels = true });
         Publish(client, spec.Entity);
+
+        // No se reporta AJUSTADA sin comprobarlo: el servidor puede ignorar partes del update sin error.
+        if (spec.RequiredLevel is { } expected)
+        {
+            var actual = ((RetrieveAttributeResponse)client.Execute(new RetrieveAttributeRequest
+            {
+                EntityLogicalName = spec.Entity,
+                LogicalName = spec.Attribute,
+                RetrieveAsIfPublished = false,
+            })).AttributeMetadata.RequiredLevel?.Value;
+            if (actual != expected)
+                throw new InvalidOperationException(
+                    $"[4h] {spec.Entity}.{spec.Attribute}: el required level quedó en {actual} tras el update (esperado {expected}).");
+        }
         Console.WriteLine($"[4h]   {spec.Entity}.{spec.Attribute} AJUSTADA ({spec.Reason}).");
     }
 
