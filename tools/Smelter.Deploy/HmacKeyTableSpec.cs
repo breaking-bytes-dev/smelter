@@ -46,6 +46,14 @@ internal static class HmacKeyTableSpec
     internal const bool ValueColumnAudited = false;
     internal const bool ValueColumnValidForAdvancedFind = false;
 
+    /// <summary>
+    /// Column security (AttributeMetadata.IsSecured). Defensa en profundidad: el form muestra ****, y un rol
+    /// que reciba acceso a la tabla por error igual no lee el valor. NO hay field security profile (nadie salvo
+    /// SYSTEM —el plugin— y System Administrator). Limite documentado: la seguridad de columna NO oculta el
+    /// dato a los System Administrators.
+    /// </summary>
+    internal const bool ValueColumnSecured = true;
+
     /// <summary>La tabla (schema) pertenece a la solución core: viaja a Test/Prod con el managed.</summary>
     internal const string SolutionUniqueName = Catalogo.SolutionName;
 

@@ -71,14 +71,16 @@ internal static class HmacKeyTableProvisioner
                     FormatName = StringFormatName.Text,
                     IsAuditEnabled = new BooleanManagedProperty(HmacKeyTableSpec.ValueColumnAudited),
                     IsValidForAdvancedFind = new BooleanManagedProperty(HmacKeyTableSpec.ValueColumnValidForAdvancedFind),
+                    IsSecured = HmacKeyTableSpec.ValueColumnSecured,
                 },
                 SolutionUniqueName = HmacKeyTableSpec.SolutionUniqueName,
             });
-            Console.WriteLine($"[4e]   columna {HmacKeyTableSpec.ValueColumn} CREADA (sin audit, fuera de Advanced Find).");
+            Console.WriteLine($"[4e]   columna {HmacKeyTableSpec.ValueColumn} CREADA (sin audit, fuera de Advanced Find, asegurada).");
         }
         else
         {
-            Console.WriteLine($"[4e]   columna {HmacKeyTableSpec.ValueColumn} ya existe — no se reconfigura.");
+            Console.WriteLine($"[4e]   columna {HmacKeyTableSpec.ValueColumn} ya existe — no se reconfigura salvo column security.");
+            EnsureSecured(client);
         }
 
         EnsureInSolution(client);
@@ -88,6 +90,36 @@ internal static class HmacKeyTableProvisioner
             ParameterXml = $"<importexportxml><entities><entity>{HmacKeyTableSpec.Table}</entity></entities></importexportxml>",
         });
         Console.WriteLine("[4e] HmacKeyTable OK (recordá: la key de cada entorno la carga a mano un System Administrator; ningún rol de Smelter la lee).");
+    }
+
+    // Pura: ¿hay que activar column security? Sí salvo que ya esté asegurada.
+    internal static bool NeedsSecuring(bool? currentIsSecured) => currentIsSecured != true;
+
+    // Reconciliación idempotente de la columna de Dev (creada antes de la decisión): solo IsSecured.
+    // NO crea field security profile: sin perfil, solo SYSTEM y System Administrator leen el valor.
+    private static void EnsureSecured(ServiceClient client)
+    {
+        var attribute = ((RetrieveAttributeResponse)client.Execute(new RetrieveAttributeRequest
+        {
+            EntityLogicalName = HmacKeyTableSpec.Table,
+            LogicalName = HmacKeyTableSpec.ValueColumn,
+            RetrieveAsIfPublished = true,
+        })).AttributeMetadata;
+
+        if (!NeedsSecuring(attribute.IsSecured))
+        {
+            Console.WriteLine($"[4e]   {HmacKeyTableSpec.ValueColumn} ya tiene column security.");
+            return;
+        }
+
+        attribute.IsSecured = HmacKeyTableSpec.ValueColumnSecured;
+        client.Execute(new UpdateAttributeRequest
+        {
+            EntityName = HmacKeyTableSpec.Table,
+            Attribute = attribute,
+            MergeLabels = true,
+        });
+        Console.WriteLine($"[4e]   {HmacKeyTableSpec.ValueColumn} ASEGURADA (IsSecured=true; sin field security profile).");
     }
 
     // Pura: ¿hay que agregar la entidad a la solución? Sí si su MetadataId no está entre los objectid

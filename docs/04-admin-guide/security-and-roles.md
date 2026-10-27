@@ -420,6 +420,14 @@ Se decidió conscientemente guardar la key en Dataverse. Riesgos y mitigaciones:
 | Copias y backups | Copiar o restaurar el entorno arrastra la key | Tratar los backups/copias con la misma sensibilidad que prod; al copiar a un entorno inferior, reemplazar la key |
 | Sin audit del valor | La columna del valor no se audita (para no dejar la key en el audit log) | Sí se audita la tabla: se ve quién creó, rotó o borró una key (no su valor) |
 | Advanced Find | — | La columna del valor no es válida para Advanced Find |
+| Lectura accidental por otros roles | Un rol al que se le otorgue acceso a la tabla por error leería el valor | **Column security**: la columna del valor está asegurada (`IsSecured`). El formulario muestra `****` y ningún rol puede leerla ni escribirla salvo System Administrator y SYSTEM (el plugin). No se crea ningún field security profile: **no hay que dar acceso a nadie** |
+
+**Column security: capa extra, no un blindaje.** Es defensa en profundidad: reduce el daño de un error de permisos,
+pero **no oculta el dato a los System Administrators** (Microsoft: la seguridad de columna no aplica a ese rol), así que
+el riesgo de "lectura por administradores" sigue en pie. El deploy (`Smelter.Deploy`) la activa de forma idempotente
+y `Smelter.Verify` comprueba en cada corrida que está activa y que el plugin (SYSTEM) sigue leyendo la key (smoke E2E
+con una key temporal `smoke-verify` que se borra al terminar). Al cargar la key a mano (procedimiento de abajo) el
+formulario mostrará `****` en vez del hex: es lo esperado.
 
 **Endurecimiento futuro**: Azure Key Vault con managed identity detrás de `IHmacKeyProvider`. Con la misma
 key los hashes son idénticos, así que migrar no rompe datos existentes.

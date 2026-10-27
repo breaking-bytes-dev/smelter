@@ -64,8 +64,11 @@ try
     // ── [CLEAN] Atributos muertos eliminados según SchemaCleanupSpec (1.3.0.0) ──
     CleanupAssertions.RunAll(client);
 
-    // ── [HMAC] Tabla DEV-only de keys HMAC según HmacKeyTableSpec ──
+    // ── [HMAC] Tabla de keys HMAC según HmacKeyTableSpec (incluye column security) ──
     HmacKeyAssertions.RunAll(client);
+
+    // ── [MDA] Salud de la model-driven app a nivel metadata (solo lectura) ──
+    MdaAssertions.RunAll(client);
 
     // ── 2. Pre-cleanup (por si una corrida anterior murió a medias) ────────
     Cleanup(client);
@@ -228,6 +231,54 @@ try
     client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_updateifexists"] = true });
     Console.WriteLine("[6c] UpdateIfExists=false OK: 5 filas Skipped, nada escrito, flag restaurado.");
 
+    // ── 6d. HMAC E2E: prueba que SYSTEM (el plugin) lee la columna ASEGURADA de la key. Key temporal
+    // "smoke-verify" generada en proceso (nunca se imprime); el hash esperado se calcula local. ──────
+    var hmacKeyHex = HmacSmoke.CreateFreshKey(client);
+    var hmacDto = new TemplateExportDto
+    {
+        FormatVersion = "1.0",
+        Template = new TemplateInfoDto
+        {
+            Name = HmacSmoke.TemplateName, SourceType = 0, HasHeaderRow = true, Delimiter = ",", ChunkSize = 0
+        },
+        TableMappings =
+        [
+            new TableMappingDto
+            {
+                Ref = "tm-contact-hmac", Name = "Contact (smoke HMAC)", TargetTable = "contact",
+                ProcessingOrder = 1, DedupColumns = "emailaddress1",
+                CreateIfNotExists = true, UpdateIfExists = true,
+                ColumnMappings =
+                [
+                    new ColumnMappingDto { Name = "Email", SourceColumn = "Email", TargetColumn = "emailaddress1", DataType = (int)ColumnDataType.String },
+                    new ColumnMappingDto { Name = "LastName", SourceColumn = "LastName", TargetColumn = "lastname", DataType = (int)ColumnDataType.String },
+                    new ColumnMappingDto
+                    {
+                        Name = "Hash", SourceColumn = null, TargetColumn = HmacSmoke.TargetColumn, DataType = (int)ColumnDataType.String,
+                        TransformExpression = HmacSmokeSpec.TransformExpression("Email"),
+                    },
+                ]
+            }
+        ]
+    };
+    var hmacTemplateId = (Guid)client.Execute(new OrganizationRequest(apiImportTemplate) { ["Json"] = new TemplateSerializer().Serialize(hmacDto) })["TemplateId"];
+    client.Update(new Entity(TemplateTable, hmacTemplateId)
+    {
+        ["sanic_smlt_it_status"] = new OptionSetValue((int)ImportTemplateStatus.Active),
+    });
+    var hmacJobId = client.Create(new Entity(JobTable)
+    {
+        ["sanic_smlt_ij_name"] = HmacSmoke.JobName,
+        ["sanic_smlt_ij_importtemplateid"] = new EntityReference(TemplateTable, hmacTemplateId),
+    });
+    var hmacCsv = "Email,LastName\n" + string.Join("\n",
+        Enumerable.Range(1, 3).Select(i => $"hmac{i}{HmacSmoke.Domain},Verify{i}"));
+    UploadFile(client, new EntityReference(JobTable, hmacJobId), "sanic_smlt_ij_sourcefile", "smoke-hmac.csv", hmacCsv);
+    RunImport(client, apiPrepare, apiProcessChunk, hmacJobId, expectTotal: 3);
+    AssertJob(client, hmacJobId, expectedSuccess: 3);
+    HmacSmoke.AssertHashes(client, hmacKeyHex, expectedCount: 3);
+    Console.WriteLine("[6d] HMAC E2E OK: SYSTEM leyó la columna asegurada y los 3 hashes coinciden con el cálculo local (key temporal, no logueada).");
+
     Console.WriteLine();
     Console.WriteLine("[OK] SMOKE TEST VERDE: el backend desplegado procesa, completa e idempotente contra Dev.");
     return 0;
@@ -252,7 +303,7 @@ catch (Exception ex)
 }
 finally
 {
-    try { Cleanup(client); Console.WriteLine("[7] Cleanup OK (contacts + jobs de smoke eliminados; el template queda para reuso)."); }
+    try { Cleanup(client); Console.WriteLine("[7] Cleanup OK (contacts + jobs de smoke y key temporal HMAC eliminados; el template queda para reuso)."); }
     catch (Exception ex) { Console.Error.WriteLine($"[WARN] Cleanup incompleto: {ex.Message}"); }
 }
 
@@ -363,6 +414,10 @@ static List<Entity> SmokeContacts(ServiceClient client)
 
 static void Cleanup(ServiceClient client)
 {
+    // Lo sensible primero: la key temporal "smoke-verify" se borra aunque falle lo demás (y también si
+    // una corrida previa murió a medias).
+    HmacSmoke.DeleteKeys(client);
+
     foreach (var c in SmokeContacts(client))
         client.Delete("contact", c.Id);
 
@@ -373,6 +428,9 @@ static void Cleanup(ServiceClient client)
     }).Entities;
     foreach (var j in jobs)
         client.Delete("sanic_tbl_smlt_importjob", j.Id);
+
+    // Smoke HMAC: contacts + jobs de la corrida (la key temporal ya se borró al principio de Cleanup).
+    HmacSmoke.DeleteData(client);
 }
 
 static void UploadFile(ServiceClient client, EntityReference target, string fileAttribute, string fileName, string content)

@@ -1,6 +1,6 @@
 // Asserts E2E de la tabla de keys HMAC provisionada por HmacKeyTableProvisioner
 // (HmacKeyTableSpec.cs): existe, es componente de smlt_core_smelter, Organization-owned, audit de tabla ON, columna del valor SIN audit
-// y fuera de Advanced Find. NO lee ningún valor de key.
+// fuera de Advanced Find y asegurada (IsSecured). NO lee ningún valor de key.
 
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk.Metadata;
@@ -53,7 +53,10 @@ internal static class HmacKeyAssertions
         Assert(value.IsValidForAdvancedFind?.Value == HmacKeyTableSpec.ValueColumnValidForAdvancedFind,
             $"{HmacKeyTableSpec.ValueColumn} es válida para Advanced Find");
 
-        Console.WriteLine("[HMAC] OK: componente de la solución, Organization-owned, audit de tabla ON, columna del valor sin audit y fuera de Advanced Find.");
+        Assert(value.IsSecured == HmacKeyTableSpec.ValueColumnSecured,
+            $"{HmacKeyTableSpec.ValueColumn} no tiene column security (IsSecured={value.IsSecured}): el form mostraría la key en claro");
+
+        Console.WriteLine("[HMAC] OK: componente de la solución, Organization-owned, audit de tabla ON, columna del valor sin audit, fuera de Advanced Find y asegurada (column security).");
     }
 
     private static void Assert(bool condition, string message)

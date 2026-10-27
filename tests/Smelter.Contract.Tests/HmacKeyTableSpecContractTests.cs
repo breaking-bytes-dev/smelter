@@ -33,6 +33,23 @@ public class HmacKeyTableSpecContractTests
     }
 
     [Fact]
+    public void ValueColumn_IsSecured_ColumnSecurityAsDefenseInDepth()
+    {
+        // Seguridad de columna: el form muestra ****, y un rol con acceso a la tabla por error igual no lee
+        // el valor. NO frena a System Administrator (limite documentado) y NO hay field security profile.
+        HmacKeyTableSpec.ValueColumnSecured.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(null, true)]
+    [InlineData(true, false)]
+    public void NeedsSecuring_IsTrueUnlessAlreadySecured(bool? current, bool expected)
+    {
+        HmacKeyTableProvisioner.NeedsSecuring(current).Should().Be(expected);
+    }
+
+    [Fact]
     public void Table_IsNotPartOfTheSixSmelterTablesNorOfAnyRole()
     {
         SecuritySpec.Tables.All.Should().NotContain(HmacKeyTableSpec.Table);
