@@ -139,5 +139,21 @@ namespace Smelter.Plugins.Tests.Services
             result.Warnings.Should().ContainSingle(w => w.Contains("sanic_cuentamora"));
             created.Count(e => e.LogicalName == TmTable).Should().Be(2); // still imported the whole template
         }
+
+        [Fact]
+        public void Import_WritesInsertOnlyFlagToEachTableMapping_DefaultingToFalse()
+        {
+            var service = Service(out var created);
+            var dto = Dto();
+            dto.TableMappings[1].InsertOnly = true;
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            var tms = created.Where(e => e.LogicalName == TmTable).ToList();
+            tms.Single(e => e.GetAttributeValue<string>("sanic_smlt_tm_targettable") == "sanic_cliente")
+                .GetAttributeValue<bool>("sanic_smlt_tm_insertonly").Should().BeFalse();
+            tms.Single(e => e.GetAttributeValue<string>("sanic_smlt_tm_targettable") == "sanic_cuentamora")
+                .GetAttributeValue<bool>("sanic_smlt_tm_insertonly").Should().BeTrue();
+        }
     }
 }

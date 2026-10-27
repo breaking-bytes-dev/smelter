@@ -18,13 +18,41 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
   **valor de la key se carga a mano en cada entorno** (nunca por CI, repo ni GitHub secret). La crea (o,
   si ya existía en Default, la agrega a la solución) `Smelter.Deploy` (`HmacKeyTableProvisioner`) y la
   verifica `Smelter.Verify` (`HmacKeyAssertions`, incluida la pertenencia a la solución).
+- **Cursor de bytes en ProcessChunk (O(N) en vez de O(N²))**: antes cada chunk descargaba el CSV entero y lo
+  re-parseaba desde la fila 0 saltando `offset` filas. Ahora el Import Job guarda en
+  `sanic_smlt_ij_bytecursor` el **byte** del próximo registro sin leer y cada chunk baja solo su rango
+  (`InitializeFileBlocksDownload` + `DownloadBlock`), extendiendo bloque a bloque hasta tener `chunkSize`
+  registros **completos** (un registro puede cruzar bloques y traer saltos de línea entre comillas; el
+  último registro de un segmento que no llega al EOF no se consume). `PrepareImport` fija el cursor en el
+  primer byte de datos (después del BOM y la cabecera). Los offsets son bytes UTF-8 calculados sobre
+  `Parser.CharCount` (no `CountBytes`, que cuenta mal los pares subrogados: 😀 = 6 en vez de 4); el BOM no
+  desplaza nada. Compatibilidad: cursor vacío (job preparado por una versión anterior) o archivo no
+  recorrible por bytes (UTF-16/32, UTF-8 inválido) → ProcessChunk usa el camino anterior (descarga completa
+  + skip de filas). `SourceRowNumber` no cambia. Lógica pura en `Smelter.Core` (`CsvParserService.ReadHeaderInfo`
+  / `ReadChunk`) con tests de CRLF/LF, comillas con saltos y delimitadores, multibyte, BOM, sin newline final,
+  borde de chunk a mitad y justo al final de un registro, y una propiedad "chunks por cursor == ReadAll" para
+  varios tamaños de chunk y de bloque (hasta 1 byte).
+- **Columna `sanic_smlt_ij_bytecursor`** (Import Job, Decimal precisión 0 — un Whole Number es int32, ~2.1 GB, y
+  un File column llega a 10 GB) y **`sanic_smlt_tm_insertonly`** (Table Mapping, Sí/No, default No), provisionadas
+  por SDK en `smlt_core_smelter` (`SchemaAdditionsSpec`/`SchemaAdditionsProvisioner`) y verificadas en
+  `Smelter.Verify` (`AdditionsAssertions`). El cursor no va al form del job; "Solo inserción" va al main form
+  del Table Mapping, después de "Update If Exists".
+- **Gate de idempotencia**: `PrepareImport` y `ProcessChunk` rechazan un template cuyo Table Mapping no tiene
+  dedup columns, salvo que tenga el opt-in **"Solo inserción (permite duplicados)"** (Create sin alternate key,
+  como el camino sin key de antes; la advertencia en el trace se mantiene). El mensaje nombra el mapping y la
+  tabla, nunca valores. Entra en el export/import de templates (`InsertOnly`; los JSON viejos importan `false`).
+  `Smelter.Verify` comprueba que sin dedup y sin flag se rechaza y con el flag se acepta.
+
 - **Workflow `solution-import`** para importar la solución a Test/Prod con GitHub Environments y
   deployment settings (`deploy/README.md`).
 - Guía "Clave HMAC" en `docs/04-admin-guide/security-and-roles.md`: tabla de riesgo aceptado,
   procedimiento manual de carga, custodia, rotación y política de keys por entorno.
 
 ### Changed
-- `Smelter.Plugins` bump a `1.0.7` (1.0.6: HMAC; 1.0.7: fixes de prod-readiness) (recarga del package en Dataverse). Sin el bump, algunos workers del
+- **Los templates con un Table Mapping sin dedup columns ya no corren** salvo que se marque "Solo inserción
+  (permite duplicados)": revisar los templates existentes antes de actualizar (el job falla en
+  `PrepareImport` con un mensaje que indica el mapping).
+- `Smelter.Plugins` bump a `1.0.8` (cursor de bytes + gate de idempotencia; recarga del package). Antes: `1.0.7` (1.0.6: HMAC; 1.0.7: fixes de prod-readiness) (recarga del package en Dataverse). Sin el bump, algunos workers del
   sandbox seguían con 1.0.5 y la carga fallaba de forma intermitente con `Unknown function: HMAC`.
 - `Smelter.Deploy` exige `SMELTER_ENV=dev` y los pasos destructivos quedan detrás de `--allow-destructive`;
   los workflows de Dev corren bajo el environment `dev`.

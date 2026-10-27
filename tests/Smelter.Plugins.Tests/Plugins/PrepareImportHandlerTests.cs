@@ -18,7 +18,7 @@ namespace Smelter.Plugins.Tests.Plugins
             {
                 Template = new ImportTemplateConfig { HasHeaderRow = hasHeader, Delimiter = "," }
             };
-            var tm = new TableMappingConfig { Id = Guid.NewGuid(), TargetTable = "t" };
+            var tm = new TableMappingConfig { Id = Guid.NewGuid(), Name = "Mapping", TargetTable = "t", DedupColumns = "k" };
             foreach (var sc in sourceColumns)
                 tm.ColumnMappings.Add(new ColumnMappingConfig
                 {
@@ -174,6 +174,112 @@ namespace Smelter.Plugins.Tests.Plugins
             m.Access.Received(1).HasReadAccess(userId, Arg.Is<EntityReference>(r =>
                 r.LogicalName == ImportContextLoader.ImportTemplateTable && r.Id == templateId));
             m.Service.Received(1).Update(Arg.Any<Entity>());
+        }
+
+        // ── Cursor de bytes: Prepare lo deja en el primer byte de datos (después de BOM + cabecera) ──
+
+        [Fact]
+        public void Run_Utf8File_ResetsByteCursorToTheFirstDataByte()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var bytes = new byte[] { 1 };
+
+            m.Loader.LoadContext(jobId).Returns(ContextWith(true, "name"));
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name" });
+            m.Csv.CountRows(bytes, true, ",").Returns(3);
+            m.Csv.ReadHeaderInfo(bytes, true, ",").Returns(new CsvHeaderInfo
+            {
+                Supported = true, Headers = new List<string> { "name" }, DataStartOffset = 13
+            });
+
+            m.Build().Run(jobId, Guid.NewGuid());
+
+            m.Service.Received(1).Update(Arg.Is<Entity>(e =>
+                (int)e["sanic_smlt_ij_processingbatch"] == 0
+                && (decimal)e[PrepareImportHandler.ByteCursorAttribute] == 13m));
+        }
+
+        [Fact]
+        public void Run_FileThatCannotBeWalkedByBytes_LeavesTheByteCursorNull_SoProcessChunkFallsBackToLegacy()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var bytes = new byte[] { 1 };
+
+            m.Loader.LoadContext(jobId).Returns(ContextWith(true, "name"));
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name" });
+            m.Csv.CountRows(bytes, true, ",").Returns(3);
+            m.Csv.ReadHeaderInfo(bytes, true, ",").Returns(new CsvHeaderInfo { Supported = false });
+
+            m.Build().Run(jobId, Guid.NewGuid());
+
+            m.Service.Received(1).Update(Arg.Is<Entity>(e =>
+                e.Contains(PrepareImportHandler.ByteCursorAttribute) && e[PrepareImportHandler.ByteCursorAttribute] == null));
+        }
+
+        // ── Gate de idempotencia: todo Table Mapping necesita dedup columns, salvo "Solo inserción" ──
+
+        private const string DedupMessage =
+            "Table Mapping 'Facturas' (invoice) has no dedup columns: Smelter requires an alternate key so " +
+            "reprocessing never duplicates. Set dedup columns or enable 'Insert only (allows duplicates)'.";
+
+        private static ImportContext ContextWithoutDedup(bool insertOnly, string dedup = null)
+        {
+            var ctx = ContextWith(true, "name");
+            ctx.TableMappings.Add(new TableMappingConfig
+            {
+                Id = Guid.NewGuid(), Name = "Facturas", TargetTable = "invoice",
+                DedupColumns = dedup, InsertOnly = insertOnly
+            });
+            return ctx;
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("  ,  ")]
+        public void Run_MappingWithoutDedupColumnsAndNotInsertOnly_IsRejectedBeforeDownloadOrUpdate(string dedup)
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            m.Loader.LoadContext(jobId).Returns(ContextWithoutDedup(insertOnly: false, dedup));
+
+            Action act = () => m.Build().Run(jobId, Guid.NewGuid());
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage(DedupMessage);
+            m.Downloader.DidNotReceive().Download(Arg.Any<EntityReference>(), Arg.Any<string>());
+            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+        }
+
+        [Fact]
+        public void Run_MappingWithoutDedupColumnsButInsertOnly_PassesTheGate()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var bytes = new byte[] { 1 };
+            m.Loader.LoadContext(jobId).Returns(ContextWithoutDedup(insertOnly: true));
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name" });
+            m.Csv.CountRows(bytes, true, ",").Returns(2);
+
+            m.Build().Run(jobId, Guid.NewGuid()).Should().Be(2);
+        }
+
+        [Fact]
+        public void ValidateDedupGate_AllMappingsKeyedOrInsertOnly_DoesNotThrow()
+        {
+            var mappings = new List<TableMappingConfig>
+            {
+                new TableMappingConfig { Name = "A", TargetTable = "a", DedupColumns = "k1,k2" },
+                new TableMappingConfig { Name = "B", TargetTable = "b", InsertOnly = true }
+            };
+
+            Action act = () => PrepareImportHandler.ValidateDedupGate(mappings);
+
+            act.Should().NotThrow();
         }
     }
 }

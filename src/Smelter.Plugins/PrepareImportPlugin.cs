@@ -71,6 +71,12 @@ namespace Smelter.Plugins
         /// <summary>Logical name of the file column on the Import Job that stores the source CSV.</summary>
         public const string SourceFileAttribute = "sanic_smlt_ij_sourcefile";
 
+        /// <summary>
+        /// Import Job column (Decimal, precision 0) with the BYTE offset of the next unread record. Prepare points it
+        /// to the first data byte (after BOM + header); ProcessChunk advances it so each chunk downloads only its range.
+        /// </summary>
+        public const string ByteCursorAttribute = "sanic_smlt_ij_bytecursor";
+
         private readonly IImportContextLoader _loader;
         private readonly IFileDownloader _downloader;
         private readonly ICsvReader _csv;
@@ -133,6 +139,9 @@ namespace Smelter.Plugins
             ValidateTemplateAccess(initiatingUserId, template);
             _tracing?.Trace("Run: template access validated OK.");
 
+            ValidateDedupGate(context.TableMappings);
+            _tracing?.Trace("Run: idempotency gate (dedup columns / insert-only) OK.");
+
             var bytes = _downloader.Download(new EntityReference(ImportJobTable, importJobId), SourceFileAttribute);
             _tracing?.Trace($"Run: downloaded file, {bytes?.Length ?? 0} bytes.");
 
@@ -142,7 +151,15 @@ namespace Smelter.Plugins
             var totalRows = _csv.CountRows(bytes, template.HasHeaderRow, template.Delimiter);
             _tracing?.Trace($"Run: counted {totalRows} data rows. Resetting job state...");
 
-            ResetJob(importJobId, totalRows);
+            // Cursor de bytes: null cuando el archivo no se puede recorrer por bytes (UTF-16/32, UTF-8 inválido) —
+            // ProcessChunk cae entonces al camino legacy (descarga completa + skip de filas).
+            var headerInfo = _csv.ReadHeaderInfo(bytes, template.HasHeaderRow, template.Delimiter);
+            long? byteCursor = headerInfo != null && headerInfo.Supported ? (long?)headerInfo.DataStartOffset : null;
+            _tracing?.Trace(byteCursor.HasValue
+                ? $"Run: byte cursor starts at {byteCursor.Value}."
+                : "Run: file not walkable by bytes; ProcessChunk will use the legacy full-download path.");
+
+            ResetJob(importJobId, totalRows, byteCursor);
             return totalRows;
         }
 
@@ -158,6 +175,23 @@ namespace Smelter.Plugins
             throw new InvalidPluginExecutionException(
                 $"Import Template '{template.Name}' ({template.Id}) is not Active " +
                 $"(status={(ImportTemplateStatus)template.Status}). Activate the template before running imports.");
+        }
+
+        /// <summary>
+        /// Gate de idempotencia: todo Table Mapping necesita dedup columns (la alternate key que hace que reprocesar
+        /// nunca duplique), salvo que tenga el opt-in explícito "Solo inserción (permite duplicados)". El mensaje
+        /// nombra el mapping y la tabla destino — nunca valores de filas. Público: ProcessChunk reusa el mismo gate.
+        /// </summary>
+        public static void ValidateDedupGate(IEnumerable<TableMappingConfig> tableMappings)
+        {
+            foreach (var tm in tableMappings ?? Enumerable.Empty<TableMappingConfig>())
+            {
+                if (tm.InsertOnly || tm.GetDedupColumnNames().Any(c => !string.IsNullOrWhiteSpace(c))) continue;
+
+                throw new InvalidPluginExecutionException(
+                    $"Table Mapping '{tm.Name}' ({tm.TargetTable}) has no dedup columns: Smelter requires an alternate key " +
+                    "so reprocessing never duplicates. Set dedup columns or enable 'Insert only (allows duplicates)'.");
+            }
         }
 
         /// <summary>
@@ -204,12 +238,14 @@ namespace Smelter.Plugins
         /// <summary>
         /// Writes the initial job state back to Dataverse: sets status to
         /// <see cref="ImportJobStatus.Processing"/>, stores the row count, and zeros all counters
-        /// so the Cloud Flow can loop <see cref="ProcessChunkPlugin"/> from offset 0.
+        /// so the Cloud Flow can loop <see cref="ProcessChunkPlugin"/> from offset 0 (and from the first data byte).
         /// </summary>
-        private void ResetJob(Guid jobId, int totalRows)
+        private void ResetJob(Guid jobId, int totalRows, long? byteCursor)
         {
             _service.Update(new Entity(ImportJobTable, jobId)
             {
+                // decimal (Decimal precision 0); null limpia un cursor de una corrida anterior.
+                [ByteCursorAttribute] = byteCursor.HasValue ? (object)(decimal)byteCursor.Value : null,
                 ["sanic_smlt_ij_status"] = new OptionSetValue((int)ImportJobStatus.Processing),
                 ["sanic_smlt_ij_totalrows"] = totalRows,
                 ["sanic_smlt_ij_processingbatch"] = 0,

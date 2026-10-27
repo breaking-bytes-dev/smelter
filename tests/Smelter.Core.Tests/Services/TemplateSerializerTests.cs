@@ -97,5 +97,30 @@ namespace Smelter.Plugins.Tests.Services
             System.Action act = () => _sut.Deserialize(json);
             act.Should().Throw<TemplateFormatException>().WithMessage("*tm-no-existe*");
         }
+
+        [Fact]
+        public void Roundtrip_PreservesInsertOnly()
+        {
+            var dto = SampleDto();
+            dto.TableMappings[1].InsertOnly = true;
+
+            var result = _sut.Deserialize(_sut.Serialize(dto));
+
+            result.TableMappings[0].InsertOnly.Should().BeFalse();
+            result.TableMappings[1].InsertOnly.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Deserialize_JsonWithoutInsertOnly_ImportsAsFalse()
+        {
+            // JSON exportado por una versión anterior: no trae el campo.
+            const string oldJson = "{\"FormatVersion\":\"1.0\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0}," +
+                "\"TableMappings\":[{\"Ref\":\"a\",\"Name\":\"A\",\"TargetTable\":\"x\",\"ProcessingOrder\":1,\"DedupColumns\":\"k\",\"CreateIfNotExists\":true,\"UpdateIfExists\":true,\"ColumnMappings\":[]}]," +
+                "\"RelationshipMappings\":[]}";
+
+            var result = _sut.Deserialize(oldJson);
+
+            result.TableMappings.Should().ContainSingle().Which.InsertOnly.Should().BeFalse();
+        }
     }
 }

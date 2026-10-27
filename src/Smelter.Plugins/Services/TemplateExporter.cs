@@ -89,6 +89,7 @@ namespace Smelter.Plugins.Services
                     DedupColumns = tm.GetAttributeValue<string>("sanic_smlt_tm_dedupcolumns"),
                     CreateIfNotExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_createifnotexists") ?? true,
                     UpdateIfExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_updateifexists") ?? true,
+                    InsertOnly = tm.GetAttributeValue<bool?>("sanic_smlt_tm_insertonly") ?? false,
                     ColumnMappings = LoadColumns(tm.Id)
                 });
             }

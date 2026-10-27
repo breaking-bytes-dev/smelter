@@ -46,6 +46,13 @@ namespace Smelter.Plugins.Models
         public int InitialProcessingBatch { get; set; }
 
         /// <summary>
+        /// Byte (absoluto en el archivo) del próximo registro sin leer, guardado en el job
+        /// (<c>sanic_smlt_ij_bytecursor</c>). <c>null</c> = job preparado por una versión anterior o archivo no
+        /// recorrible por bytes: ProcessChunk cae al camino legacy (descarga completa + skip de filas).
+        /// </summary>
+        public long? InitialByteCursor { get; set; }
+
+        /// <summary>
         /// The Import Template configuration.
         /// </summary>
         public ImportTemplateConfig Template { get; set; }
@@ -128,6 +135,12 @@ namespace Smelter.Plugins.Models
         /// el comportamiento histórico del motor (siempre actualizaba) para registros sin el flag.
         /// </summary>
         public bool UpdateIfExists { get; set; } = true;
+
+        /// <summary>
+        /// Opt-in "Solo inserción (permite duplicados)". Un mapping sin <see cref="DedupColumns"/> solo es válido con
+        /// este flag (gate de idempotencia de PrepareImport/ProcessChunk); el writer lo escribe siempre con Create.
+        /// </summary>
+        public bool InsertOnly { get; set; }
 
         /// <summary>
         /// Column mappings belonging to this table mapping.

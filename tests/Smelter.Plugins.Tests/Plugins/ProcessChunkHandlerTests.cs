@@ -201,5 +201,137 @@ namespace Smelter.Plugins.Tests.Plugins
             attrRef.Should().NotBeNull();
             attrRef.Id.Should().Be(jobId);
         }
+
+        // ── Cursor de bytes: rango en vez de descarga completa ───────────────────────────────────
+
+        private static ImportContext CursorCtx(int offset, long cursor, int chunkSize)
+        {
+            var ctx = Ctx(offset, chunkSize);
+            ctx.InitialByteCursor = cursor;
+            return ctx;
+        }
+
+        private sealed class FakeRangedFile : IRangedFile
+        {
+            public long Length => 1000;
+            public byte[] Read(long offset, int count) => new byte[0];
+        }
+
+        [Fact]
+        public void Run_WithByteCursor_DownloadsOnlyTheRangeAndPersistsTheNextCursor()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var file = new FakeRangedFile();
+            var headers = new List<string> { "name" };
+            var ctx = CursorCtx(offset: 1000, cursor: 5000, chunkSize: 1000);
+            var rows = Enumerable.Range(1001, 1000).Select(Row).ToList();
+
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            m.Downloader.OpenRanged(Arg.Any<EntityReference>(), "sanic_smlt_ij_sourcefile").Returns(file);
+            m.Csv.ReadHeaderInfo(file, true, ",").Returns(new CsvHeaderInfo { Supported = true, Headers = headers, DataStartOffset = 10 });
+            // RowNumber de la primera fila = fila física 2 (cabecera = 1) + offset de filas ya consumidas.
+            m.Csv.ReadChunk(file, 5000, headers, ",", 1002, 1000).Returns(new CsvChunk { Rows = rows, NextOffset = 9000 });
+            m.Engine.ProcessBatch(ctx, Arg.Any<IList<SourceRow>>(), m.Writer).Returns(AllOk(rows));
+
+            var result = m.Build().Run(jobId, 0);
+
+            result.HasMore.Should().BeTrue();
+            m.Downloader.DidNotReceiveWithAnyArgs().Download(null, null);
+            m.Service.Received(1).Update(Arg.Is<Entity>(e =>
+                Offset(e) == 2000 && (decimal)e["sanic_smlt_ij_bytecursor"] == 9000m));
+        }
+
+        [Fact]
+        public void Run_WithByteCursor_PartialChunk_CompletesAndKeepsTheCursor()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var file = new FakeRangedFile();
+            var headers = new List<string> { "name" };
+            var ctx = CursorCtx(offset: 0, cursor: 10, chunkSize: 1000);
+            var rows = Enumerable.Range(2, 400).Select(Row).ToList();
+
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            m.Downloader.OpenRanged(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(file);
+            m.Csv.ReadHeaderInfo(file, true, ",").Returns(new CsvHeaderInfo { Supported = true, Headers = headers, DataStartOffset = 10 });
+            m.Csv.ReadChunk(file, 10, headers, ",", 2, 1000).Returns(new CsvChunk { Rows = rows, NextOffset = 777 });
+            m.Engine.ProcessBatch(ctx, Arg.Any<IList<SourceRow>>(), m.Writer).Returns(AllOk(rows));
+
+            var result = m.Build().Run(jobId, 0);
+
+            result.HasMore.Should().BeFalse();
+            m.Service.Received(1).Update(Arg.Is<Entity>(e =>
+                Status(e) == (int)ImportJobStatus.Completed && (decimal)e["sanic_smlt_ij_bytecursor"] == 777m));
+        }
+
+        [Fact]
+        public void Run_WithByteCursor_NoRows_CompletesWithoutProcessing()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var file = new FakeRangedFile();
+            var headers = new List<string> { "name" };
+            m.Loader.LoadContext(jobId).Returns(CursorCtx(offset: 7, cursor: 999, chunkSize: 1000));
+            m.Downloader.OpenRanged(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(file);
+            m.Csv.ReadHeaderInfo(file, true, ",").Returns(new CsvHeaderInfo { Supported = true, Headers = headers });
+            m.Csv.ReadChunk(file, 999, headers, ",", 9, 1000).Returns(new CsvChunk { Rows = new List<SourceRow>(), NextOffset = 999 });
+
+            m.Build().Run(jobId, 0).HasMore.Should().BeFalse();
+
+            m.Engine.DidNotReceive().ProcessBatch(Arg.Any<ImportContext>(), Arg.Any<IList<SourceRow>>(), Arg.Any<IUpsertWriter>());
+            m.Service.Received(1).Update(Arg.Is<Entity>(e => Status(e) == (int)ImportJobStatus.Completed));
+        }
+
+        [Fact]
+        public void Run_WithoutByteCursor_FallsBackToFullDownloadAndSkip_AndLeavesCursorUntouched()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = Ctx(offset: 0, chunkSize: 1000);
+            var rows = Enumerable.Range(1, 1000).Select(Row).ToList();
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            m.Csv.ReadRange(m.Bytes, true, ",", 0, 1000).Returns(rows);
+            m.Engine.ProcessBatch(ctx, Arg.Any<IList<SourceRow>>(), m.Writer).Returns(AllOk(rows));
+
+            m.Build().Run(jobId, 0);
+
+            m.Downloader.DidNotReceiveWithAnyArgs().OpenRanged(null, null);
+            m.Service.Received(1).Update(Arg.Is<Entity>(e => !e.Contains("sanic_smlt_ij_bytecursor")));
+        }
+
+        // ── Gate de idempotencia también en ProcessChunk ─────────────────────────────────────────
+
+        [Fact]
+        public void Run_MappingWithoutDedupColumnsAndNotInsertOnly_ThrowsBeforeDownloadOrAnyWrite()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = Ctx(offset: 0, chunkSize: 1000);
+            ctx.TableMappings.Add(new TableMappingConfig { Name = "Facturas", TargetTable = "invoice" });
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.Build().Run(jobId, 0);
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*has no dedup columns*");
+            m.Downloader.DidNotReceiveWithAnyArgs().Download(null, null);
+            m.Downloader.DidNotReceiveWithAnyArgs().OpenRanged(null, null);
+            m.Service.DidNotReceiveWithAnyArgs().Update(null);
+        }
+
+        [Fact]
+        public void Run_InsertOnlyMappingWithoutDedupColumns_PassesTheGate()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = Ctx(offset: 0, chunkSize: 1000);
+            ctx.TableMappings.Add(new TableMappingConfig { Name = "Facturas", TargetTable = "invoice", InsertOnly = true });
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            m.Csv.ReadRange(m.Bytes, true, ",", 0, 1000).Returns(new List<SourceRow>());
+
+            Action act = () => m.Build().Run(jobId, 0);
+
+            act.Should().NotThrow();
+        }
     }
 }

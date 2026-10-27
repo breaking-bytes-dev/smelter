@@ -65,6 +65,12 @@ namespace Smelter.Plugins.Models
         /// <summary>When <c>true</c>, an existing record matched by alternate key is updated.</summary>
         [DataMember(Order = 8)] public bool UpdateIfExists { get; set; }
 
+        /// <summary>
+        /// Opt-in "Solo inserción (permite duplicados)": el mapping se escribe con Create, sin alternate key, y no
+        /// requiere <see cref="DedupColumns"/>. Los JSON exportados antes de este campo se importan como <c>false</c>.
+        /// </summary>
+        [DataMember(Order = 10)] public bool InsertOnly { get; set; }
+
         /// <summary>Column mappings belonging to this table mapping.</summary>
         [DataMember(Order = 9)] public List<ColumnMappingDto> ColumnMappings { get; set; } = new List<ColumnMappingDto>();
     }

@@ -137,5 +137,22 @@ namespace Smelter.Plugins.Tests.Services
             rel.ParentRef.Should().Be(parentRef);
             rel.ChildRef.Should().Be(childRef);
         }
+
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        [InlineData(null, false)]
+        public void Export_CarriesInsertOnly_AndTreatsMissingAsFalse(bool? raw, bool expected)
+        {
+            var templateId = Guid.NewGuid();
+            var tm = Tm(Guid.NewGuid(), "Facturas", "invoice", 1);
+            if (raw.HasValue) tm["sanic_smlt_tm_insertonly"] = raw.Value;
+            var service = Service(templateId, new List<Entity> { tm },
+                new Dictionary<Guid, List<Entity>>(), new List<Entity>());
+
+            var dto = new TemplateExporter(service).Export(templateId);
+
+            dto.TableMappings.Single().InsertOnly.Should().Be(expected);
+        }
     }
 }

@@ -137,5 +137,56 @@ namespace Smelter.Plugins.Tests.Services
             config.Id.Should().Be(templateId);
             service.DidNotReceive().Retrieve("sanic_tbl_smlt_importjob", templateId, Arg.Any<ColumnSet>());
         }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData(0)]
+        [InlineData(123456789)]
+        public void LoadContext_LoadsByteCursor_NullWhenJobWasPreparedByAnOlderVersion(int? raw)
+        {
+            var service = Substitute.For<IOrganizationService>();
+            var jobId = Guid.NewGuid();
+            var templateId = Guid.NewGuid();
+            var job = new Entity("sanic_tbl_smlt_importjob", jobId);
+            job["sanic_smlt_ij_importtemplateid"] = new EntityReference("sanic_tbl_smlt_importtemplate", templateId);
+            if (raw.HasValue) job["sanic_smlt_ij_bytecursor"] = (decimal)raw.Value;
+            service.Retrieve("sanic_tbl_smlt_importjob", jobId, Arg.Any<ColumnSet>()).Returns(job);
+            service.Retrieve("sanic_tbl_smlt_importtemplate", templateId, Arg.Any<ColumnSet>())
+                .Returns(new Entity("sanic_tbl_smlt_importtemplate", templateId));
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(new EntityCollection());
+
+            var context = new ImportContextLoader(service).LoadContext(jobId);
+
+            context.InitialByteCursor.Should().Be(raw.HasValue ? (long?)raw.Value : null);
+            service.Received().Retrieve("sanic_tbl_smlt_importjob", jobId,
+                Arg.Is<ColumnSet>(c => c.Columns.Contains("sanic_smlt_ij_bytecursor")));
+        }
+
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        [InlineData(null, false)] // registros previos a 1.0.8: sin valor => false
+        public void LoadContext_LoadsInsertOnlyFlagOfEachTableMapping(bool? raw, bool expected)
+        {
+            var service = Substitute.For<IOrganizationService>();
+            var jobId = Guid.NewGuid();
+            var templateId = Guid.NewGuid();
+            var job = new Entity("sanic_tbl_smlt_importjob", jobId);
+            job["sanic_smlt_ij_importtemplateid"] = new EntityReference("sanic_tbl_smlt_importtemplate", templateId);
+            service.Retrieve("sanic_tbl_smlt_importjob", jobId, Arg.Any<ColumnSet>()).Returns(job);
+            service.Retrieve("sanic_tbl_smlt_importtemplate", templateId, Arg.Any<ColumnSet>())
+                .Returns(new Entity("sanic_tbl_smlt_importtemplate", templateId));
+            var tm = new Entity("sanic_tbl_smlt_tablemapping", Guid.NewGuid());
+            tm["sanic_smlt_tm_name"] = "Facturas";
+            if (raw.HasValue) tm["sanic_smlt_tm_insertonly"] = raw.Value;
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(ci =>
+                ((QueryExpression)ci.Arg<QueryBase>()).EntityName == "sanic_tbl_smlt_tablemapping"
+                    ? new EntityCollection(new List<Entity> { tm })
+                    : new EntityCollection());
+
+            var context = new ImportContextLoader(service).LoadContext(jobId);
+
+            context.TableMappings.Should().ContainSingle().Which.InsertOnly.Should().Be(expected);
+        }
     }
 }

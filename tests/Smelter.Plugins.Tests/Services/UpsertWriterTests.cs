@@ -243,5 +243,38 @@ namespace Smelter.Plugins.Tests.Services
                 .Should().BeEmpty();
             service.DidNotReceive().Execute(Arg.Any<OrganizationRequest>());
         }
+
+        [Fact]
+        public void Write_InsertOnly_UsesCreateEvenWhenDedupColumnsAreConfigured_NoProbeNoUpsert()
+        {
+            var service = Substitute.For<IOrganizationService>();
+            var calls = new List<ExecuteMultipleRequest>();
+            service.Execute(Arg.Do<OrganizationRequest>(r => calls.Add((ExecuteMultipleRequest)r))).Returns(_ => OkResponse());
+            var mapping = Mapping("city", "sanic_name");
+            mapping.InsertOnly = true;
+
+            new UpsertWriter(service).Write(new List<TargetRecord> { Rec(2, Attr("sanic_name", "X")) }, mapping, false);
+
+            calls.Should().ContainSingle("sin probe de existencia");
+            calls[0].Requests.OfType<CreateRequest>().Should().ContainSingle();
+            calls[0].Requests.OfType<UpsertRequest>().Should().BeEmpty();
+            calls[0].Requests.OfType<RetrieveRequest>().Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Write_InsertOnlyWithoutDedupColumns_UsesCreateAndKeepsTheNotIdempotentTraceWarning()
+        {
+            var service = Substitute.For<IOrganizationService>();
+            ExecuteMultipleRequest captured = null;
+            service.Execute(Arg.Do<OrganizationRequest>(r => captured = r as ExecuteMultipleRequest)).Returns(_ => OkResponse());
+            var tracing = Substitute.For<ITracingService>();
+            var mapping = Mapping("city", null);
+            mapping.InsertOnly = true;
+
+            new UpsertWriter(service, tracing).Write(new List<TargetRecord> { Rec(2, Attr("sanic_name", "X")) }, mapping, false);
+
+            captured.Requests.OfType<CreateRequest>().Should().ContainSingle();
+            tracing.Received().Trace(Arg.Is<string>(m => m.Contains("NOT idempotent")));
+        }
     }
 }

@@ -10,13 +10,13 @@ namespace Smelter.Plugins
 {
     /// <summary>
     /// Backing plugin for the Custom API <c>sanic_ProcessChunk</c>.
-    /// Processes ONE chunk per invocation: downloads the CSV, parses only its slice (skip to offset),
+    /// Processes ONE chunk per invocation: downloads only the byte range of its slice (byte cursor; legacy jobs: whole CSV + skip),
     /// upserts in DAG order, logs only failed rows, and advances the offset.
     /// In: JobId (Guid), ChunkSize (int, optional override). Out: HasMore (bool), ProcessedSoFar (int).
     /// </summary>
     public class ProcessChunkPlugin : IPlugin
     {
-        private const string BuildMarker = "Smelter ProcessChunk — BUILD chunked-v2 (tracing)";
+        private const string BuildMarker = "Smelter ProcessChunk — BUILD chunked-v3 (byte-cursor)";
 
         public void Execute(IServiceProvider serviceProvider)
         {
@@ -162,14 +162,34 @@ namespace Smelter.Plugins
             // job/template que Prepare nunca validó o que cambió de estado entre chunks. Fail closed.
             PrepareImportHandler.ValidateTemplateStatus(template);
             ValidateJobStatus(context);
+            PrepareImportHandler.ValidateDedupGate(context.TableMappings);
 
             var chunkSize = ResolveChunkSize(context, chunkSizeOverride);
             var offset = context.InitialProcessingBatch;
             _tracing?.Trace($"Run: offset={offset}, chunkSize={chunkSize}, tableMappings={context.TableMappings.Count}");
 
-            var bytes = _downloader.Download(new EntityReference(ImportJobTable, importJobId), SourceFileAttribute);
-            var rows = _csv.ReadRange(bytes, template.HasHeaderRow, template.Delimiter, offset, chunkSize);
-            _tracing?.Trace($"Run: read {rows.Count} rows from offset {offset}.");
+            long? nextByteCursor = null;
+            IReadOnlyList<SourceRow> rows;
+            if (context.InitialByteCursor.HasValue)
+            {
+                // O(N): baja SOLO el rango del chunk (cursor de bytes) en vez del archivo entero.
+                var file = _downloader.OpenRanged(new EntityReference(ImportJobTable, importJobId), SourceFileAttribute);
+                var headerInfo = _csv.ReadHeaderInfo(file, template.HasHeaderRow, template.Delimiter);
+                // RowNumber físico: cabecera = fila 1, así que los datos arrancan en 2 (en 1 sin cabecera).
+                var firstRowNumber = (template.HasHeaderRow ? 2 : 1) + offset;
+                var chunk = _csv.ReadChunk(file, context.InitialByteCursor.Value, headerInfo.Headers,
+                    template.Delimiter, firstRowNumber, chunkSize);
+                rows = chunk.Rows;
+                nextByteCursor = chunk.NextOffset;
+                _tracing?.Trace($"Run: ranged read from byte {context.InitialByteCursor.Value}; read {rows.Count} rows, next byte {chunk.NextOffset}.");
+            }
+            else
+            {
+                // Job preparado por una versión anterior (o archivo no recorrible por bytes): camino legacy.
+                var bytes = _downloader.Download(new EntityReference(ImportJobTable, importJobId), SourceFileAttribute);
+                rows = _csv.ReadRange(bytes, template.HasHeaderRow, template.Delimiter, offset, chunkSize);
+                _tracing?.Trace($"Run: legacy full download; read {rows.Count} rows from offset {offset}.");
+            }
 
             if (rows.Count == 0)
             {
@@ -177,7 +197,8 @@ namespace Smelter.Plugins
                     ? ImportJobStatus.CompletedWithErrors : ImportJobStatus.Completed;
                 _tracing?.Trace($"Run: no rows. Completing as {doneStatus}.");
                 UpdateJob(importJobId, doneStatus, offset, context.InitialProcessedRows,
-                    context.InitialSuccessCount, context.InitialFailedCount, context.InitialSkippedCount, complete: true);
+                    context.InitialSuccessCount, context.InitialFailedCount, context.InitialSkippedCount, complete: true,
+                    byteCursor: nextByteCursor);
                 return new ProcessChunkResult { HasMore = false, ProcessedSoFar = context.InitialProcessedRows };
             }
 
@@ -208,7 +229,8 @@ namespace Smelter.Plugins
                 ? ImportJobStatus.Processing
                 : (failed > 0 ? ImportJobStatus.CompletedWithErrors : ImportJobStatus.Completed);
 
-            UpdateJob(importJobId, status, newOffset, processed, success, failed, skipped, complete: !hasMore);
+            UpdateJob(importJobId, status, newOffset, processed, success, failed, skipped, complete: !hasMore,
+                byteCursor: nextByteCursor);
             return new ProcessChunkResult { HasMore = hasMore, ProcessedSoFar = processed };
         }
 
@@ -304,7 +326,7 @@ namespace Smelter.Plugins
         /// <c>EndTime</c> when the run is complete.
         /// </summary>
         private void UpdateJob(Guid jobId, ImportJobStatus status, int offset,
-            int processed, int success, int failed, int skipped, bool complete)
+            int processed, int success, int failed, int skipped, bool complete, long? byteCursor)
         {
             var update = new Entity(ImportJobTable, jobId)
             {
@@ -315,6 +337,9 @@ namespace Smelter.Plugins
                 ["sanic_smlt_ij_failedcount"] = failed,
                 ["sanic_smlt_ij_skippedcount"] = skipped
             };
+            // Solo en modo cursor: los jobs legacy (cursor null) no tocan la columna.
+            if (byteCursor.HasValue)
+                update[PrepareImportHandler.ByteCursorAttribute] = (decimal)byteCursor.Value;
             if (complete)
                 update["sanic_smlt_ij_endtime"] = DateTime.UtcNow;
 

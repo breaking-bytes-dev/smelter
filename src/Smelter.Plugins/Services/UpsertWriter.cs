@@ -50,10 +50,12 @@ namespace Smelter.Plugins.Services
                 return new List<ProcessingResult>();
 
             var keyColumns = tableMapping.GetDedupColumnNames();
-            var hasAlternateKey = keyColumns.Length > 0;
+            // "Solo inserción" (opt-in explícito) siempre va por Create, aunque el mapping tenga dedup columns.
+            var hasAlternateKey = keyColumns.Length > 0 && !tableMapping.InsertOnly;
 
             if (!hasAlternateKey)
-                _tracing?.Trace($"UpsertWriter: table '{tableMapping.TargetTable}' has no alternate key columns; " +
+                _tracing?.Trace($"UpsertWriter: table '{tableMapping.TargetTable}' " +
+                                (tableMapping.InsertOnly ? "is insert-only; " : "has no alternate key columns; ") +
                                 "falling back to Create/Update (NOT idempotent — reprocessing may duplicate). " +
                                 "CreateIfNotExists/UpdateIfExists need an alternate key and are ignored on this path.");
 

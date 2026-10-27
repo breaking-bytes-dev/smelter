@@ -64,6 +64,9 @@ try
     // ── [CLEAN] Atributos muertos eliminados según SchemaCleanupSpec (1.3.0.0) ──
     CleanupAssertions.RunAll(client);
 
+    // ── [ADD] Columnas nuevas según SchemaAdditionsSpec (byte cursor del job + "Solo inserción" del mapping) ──
+    AdditionsAssertions.RunAll(client);
+
     // ── [HMAC] Tabla de keys HMAC según HmacKeyTableSpec (incluye column security) ──
     HmacKeyAssertions.RunAll(client);
 
@@ -175,6 +178,14 @@ try
     Assert(CountSmokeContacts(client) == 5, "deben existir exactamente 5 contacts de smoke tras la 1ª corrida");
     Console.WriteLine("[5] 1ª corrida OK: job Completed, 5/5 contacts creados.");
 
+    // ── 5b. Cursor de bytes: Prepare lo dejó en el primer dato y ProcessChunk lo avanzó (por rango, sin
+    // re-descargar el archivo entero) hasta el final del CSV. El CSV no termina en newline: fin == su largo en bytes. ──
+    var finalCursor = client.Retrieve(JobTable, jobId, new ColumnSet("sanic_smlt_ij_bytecursor"))
+        .GetAttributeValue<decimal?>("sanic_smlt_ij_bytecursor");
+    var expectedCursor = System.Text.Encoding.UTF8.GetByteCount(csv);
+    Assert(finalCursor == expectedCursor, $"el cursor de bytes debía terminar en {expectedCursor} (fin del CSV), es {finalCursor?.ToString() ?? "null"}");
+    Console.WriteLine($"[5b] Cursor de bytes OK: terminó en {expectedCursor} (fin del archivo).");
+
     // ── 6. IDEMPOTENCIA: re-correr todo NO debe duplicar ───────────────────
     RunImport(client, apiPrepare, apiProcessChunk, jobId, expectTotal: 5);
     AssertJob(client, jobId, expectedSuccess: 5);
@@ -230,6 +241,30 @@ try
 
     client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_updateifexists"] = true });
     Console.WriteLine("[6c] UpdateIfExists=false OK: 5 filas Skipped, nada escrito, flag restaurado.");
+
+    // ── 6e. Gate de idempotencia (1.0.8): un mapping sin dedup columns es rechazado por PrepareImport salvo que
+    // tenga "Solo inserción". Se reusa el mapping del smoke y se restaura al final (el import del paso 3 lo recrea igual). ──
+    client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_dedupcolumns"] = null, ["sanic_smlt_tm_insertonly"] = false });
+    try
+    {
+        client.Execute(new OrganizationRequest(apiPrepare) { ["JobId"] = jobId3 });
+        Assert(false, "PrepareImport debía rechazar un mapping sin dedup columns y sin 'Solo inserción'");
+    }
+    catch (System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault> fx)
+    {
+        Assert(FaultChainContains(fx.Detail, "has no dedup columns"),
+            $"el fault del gate debía mencionar 'has no dedup columns', fue: {fx.Detail.Message}");
+    }
+
+    client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_insertonly"] = true });
+    var gateTotal = (int)ExecuteWithTransientBlobRetry(client, new OrganizationRequest(apiPrepare) { ["JobId"] = jobId3 })["TotalRows"];
+    Assert(gateTotal == 5, $"con 'Solo inserción' PrepareImport debía aceptar el template y contar 5 filas, contó {gateTotal}");
+
+    client.Update(new Entity(TableMappingTable, tableMapping.Id)
+    {
+        ["sanic_smlt_tm_dedupcolumns"] = "emailaddress1", ["sanic_smlt_tm_insertonly"] = false
+    });
+    Console.WriteLine("[6e] Gate de idempotencia OK: sin dedup + sin flag rechazado; con 'Solo inserción' aceptado; mapping restaurado.");
 
     // ── 6d. HMAC E2E: prueba que SYSTEM (el plugin) lee la columna ASEGURADA de la key. Key temporal
     // "smoke-verify" generada en proceso (nunca se imprime); el hash esperado se calcula local. ──────

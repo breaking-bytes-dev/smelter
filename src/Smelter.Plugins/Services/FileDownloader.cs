@@ -11,6 +11,17 @@ namespace Smelter.Plugins.Services
     public interface IFileDownloader
     {
         byte[] Download(EntityReference target, string fileAttributeName);
+
+        /// <summary>
+        /// Abre el File column para lectura por rangos (un solo <c>InitializeFileBlocksDownload</c>; cada
+        /// <see cref="IRangeSource.Read"/> es un <c>DownloadBlock</c>). No descarga nada hasta que se lee.
+        /// </summary>
+        IRangedFile OpenRanged(EntityReference target, string fileAttributeName);
+    }
+
+    /// <summary>Archivo de Dataverse leíble por rangos de bytes.</summary>
+    public interface IRangedFile : IRangeSource
+    {
     }
 
     /// <inheritdoc />
@@ -70,6 +81,47 @@ namespace Smelter.Plugins.Services
             }
 
             return bytes.ToArray();
+        }
+
+        /// <inheritdoc />
+        public IRangedFile OpenRanged(EntityReference target, string fileAttributeName)
+        {
+            var init = _service.Execute(new OrganizationRequest("InitializeFileBlocksDownload")
+            {
+                ["Target"] = target,
+                ["FileAttributeName"] = fileAttributeName
+            });
+
+            return new DataverseRangedFile(_service, (string)init["FileContinuationToken"], (long)init["FileSizeInBytes"]);
+        }
+
+        private sealed class DataverseRangedFile : IRangedFile
+        {
+            private readonly IOrganizationService _service;
+            private readonly string _token;
+
+            public DataverseRangedFile(IOrganizationService service, string token, long length)
+            {
+                _service = service;
+                _token = token;
+                Length = length;
+            }
+
+            public long Length { get; }
+
+            public byte[] Read(long offset, int count)
+            {
+                if (offset >= Length || count <= 0) return new byte[0];
+                var length = Math.Min((long)count, Length - offset);
+
+                var download = _service.Execute(new OrganizationRequest("DownloadBlock")
+                {
+                    ["Offset"] = offset,
+                    ["BlockLength"] = length,
+                    ["FileContinuationToken"] = _token
+                });
+                return (byte[])download["Data"];
+            }
         }
     }
 }

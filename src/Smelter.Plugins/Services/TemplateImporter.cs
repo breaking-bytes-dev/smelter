@@ -120,7 +120,8 @@ namespace Smelter.Plugins.Services
                     ["sanic_smlt_tm_processingorder"] = tm.ProcessingOrder,
                     ["sanic_smlt_tm_dedupcolumns"] = tm.DedupColumns,
                     ["sanic_smlt_tm_createifnotexists"] = tm.CreateIfNotExists,
-                    ["sanic_smlt_tm_updateifexists"] = tm.UpdateIfExists
+                    ["sanic_smlt_tm_updateifexists"] = tm.UpdateIfExists,
+                    ["sanic_smlt_tm_insertonly"] = tm.InsertOnly
                 };
                 var tmId = _service.Create(tmEntity);
                 if (!string.IsNullOrEmpty(tm.Ref)) refToGuid[tm.Ref] = tmId;
