@@ -4,8 +4,10 @@
 //
 // NO se tocan display names de tablas ni columnas: otras canvas apps los referencian en Power Fx.
 //
-//  - sanic_smlt_it_sourcetype: el choice solo tiene CSV y el motor nunca lo lee. Pasa a no requerido, con default
-//    CSV, y se oculta del main form del template (la columna se conserva: viaja en el export/import).
+//  - sanic_smlt_it_sourcetype: el choice solo tiene CSV y el motor nunca lo lee. Default CSV y oculto del main form
+//    del template (la columna se conserva: viaja en el export/import). El required level NO se toca: el cambio a None
+//    por UpdateAttributeRequest se ignora en silencio (verificado en Dev), y ApplicationRequired solo rige en
+//    formularios, donde el campo está oculto y nace con CSV.
 //  - sanic_smlt_tm_updateifexists: el default del schema era No mientras los docs y el fallback del Loader decían Sí.
 //    Se alinea a Sí. Solo cambia el default de registros NUEVOS; los existentes conservan su valor.
 //  - sanic_smlt_it_chunksize: el motor acota a 100..10000 (0 = default 1000) pero la columna admitía hasta 100000.
@@ -41,7 +43,7 @@ internal static class SchemaTuningCatalogo
     internal static readonly AttributeTuningSpec[] Attributes =
     [
         new(SecuritySpec.Tables.ImportTemplate, "sanic_smlt_it_sourcetype",
-            AttributeRequiredLevel.None, SourceTypeCsv, null,
+            null, SourceTypeCsv, null,
             "inerte: una sola opción que el motor nunca lee"),
         new(SecuritySpec.Tables.TableMapping, "sanic_smlt_tm_updateifexists",
             null, null, UpdateIfExistsDefault,

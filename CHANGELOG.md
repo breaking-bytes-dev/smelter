@@ -47,7 +47,7 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 - **Update If Exists nace en Sí** (`sanic_smlt_tm_updateifexists`, default del schema: antes No): alinea el
   schema con los docs y con el fallback del Loader (`?? true`). Solo cambia el default de mappings NUEVOS;
   los existentes conservan su valor. Aplicado por SDK (`SchemaTuningProvisioner`, paso 4h).
-- **`Source Type` del Import Template**: sin requerir, default CSV y oculto del main form (la columna se
+- **`Source Type` del Import Template**: default CSV y oculto del main form (el required level de formulario se mantiene; no aplica en servidor) (la columna se
   conserva y viaja en el export/import). El importer siempre escribe CSV (0).
 - **`PrepareImport` valida la coherencia del template antes de bajar el archivo** (`TemplateValidator`, en
   `Smelter.Core`): cada Dedup Column debe ser el Target Column de un Column Mapping del mismo Table Mapping;

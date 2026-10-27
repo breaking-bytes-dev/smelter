@@ -33,7 +33,7 @@ roles](../../04-admin-guide/security-and-roles.md), guía operativa de teams).
 | `sanic_smlt_it_importtemplateid` | GUID (PK) | Auto | Clave primaria |
 | `sanic_smlt_it_name` | String(200) | Sí | Nombre del template |
 | `sanic_smlt_it_description` | Multiline | No | Descripción libre |
-| `sanic_smlt_it_sourcetype` | OptionSet | No | Tipo de archivo fuente. Solo existe CSV; desde 1.0.10 no es requerido, nace en CSV y está oculto en el form (el motor no lo lee) |
+| `sanic_smlt_it_sourcetype` | OptionSet | No | Tipo de archivo fuente. Solo existe CSV; desde 1.0.10 nace en CSV y está oculto en el form (requerido solo a nivel de formulario) (el motor no lo lee) |
 | `sanic_smlt_it_hasheaderrow` | Boolean | Sí | ¿Primera fila es encabezado? (default: Sí) |
 | `sanic_smlt_it_delimiter` | String(5) | No | Separador de columnas CSV (default: `,`). Para tabulador (TSV) escribir `\t` o `TAB` (sin distinguir mayúsculas) o pegar el tab real; cualquier otro valor se usa literal |
 | `sanic_smlt_it_chunksize` | Whole Number | No | Filas por invocación de `ProcessChunk`. 0 = usar el default del sistema (1000). La columna acepta 0–10000 (validado en el form desde 1.0.11); el motor acota a 100–10000. Calibrar según el costo total de upserts por fila. |

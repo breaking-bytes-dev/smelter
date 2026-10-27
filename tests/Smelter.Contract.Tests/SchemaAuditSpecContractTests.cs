@@ -45,12 +45,14 @@ public class SchemaAuditSpecContractTests
     }
 
     [Fact]
-    public void SourceType_IsOptionalDefaultsToCsv_AndIsHiddenFromTheTemplateForm()
+    public void SourceType_DefaultsToCsv_AndIsHiddenFromTheTemplateForm()
     {
         var tune = SchemaTuningCatalogo.Attributes.Single(a => a.Attribute == "sanic_smlt_it_sourcetype");
 
         tune.Entity.Should().Be(SecuritySpec.Tables.ImportTemplate);
-        tune.RequiredLevel.Should().Be(AttributeRequiredLevel.None);
+        // El required level NO se toca: UpdateAttributeRequest ignora el cambio a None (verificado en Dev) y
+        // ApplicationRequired solo rige en formularios, donde el campo está oculto y con default CSV.
+        tune.RequiredLevel.Should().BeNull();
         tune.PicklistDefault.Should().Be(0, "0 = CSV, la única opción");
         SchemaTuningCatalogo.HiddenFields.Should().Contain(h =>
             h.Entity == SecuritySpec.Tables.ImportTemplate && h.Field == "sanic_smlt_it_sourcetype" && !h.Visible);
