@@ -6,6 +6,7 @@
 //
 // Sale 0 si todo pasa; 1 con el detalle del assert que falló.
 // Env: DATAVERSE_URL, PP_CLIENT_ID, PP_CLIENT_SECRET (o --interactive).
+// Args: --interactive | --bench (solo el benchmark 100k) | --only <pasos E2E> (solo esos pasos [E2E-n], p. ej. --only 4a,5c; ver E2eSteps.cs).
 
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
@@ -29,6 +30,20 @@ string ApiName(string pluginType) => Catalogo.Apis.Single(a => a.PluginTypeName.
 string apiImportTemplate = ApiName("ImportTemplatePlugin");
 string apiPrepare = ApiName("PrepareImportPlugin");
 string apiProcessChunk = Catalogo.Apis.Single(a => a.UniqueName == "sanic_capi_smelter_processchunk").UniqueName;
+var e2eApis = new E2eApis(apiImportTemplate, ApiName("ExportTemplatePlugin"), apiPrepare, apiProcessChunk);
+
+// --only <pasos>: se valida ANTES de conectar (un paso mal escrito no debería costar un login).
+string? onlySteps;
+try
+{
+    onlySteps = E2eSteps.OnlyArgument(args);
+    if (onlySteps is not null) E2eSteps.Select(onlySteps);
+}
+catch (ArgumentException ex)
+{
+    Console.Error.WriteLine($"[FATAL] {ex.Message}");
+    return 2;
+}
 
 bool interactive = args.Contains("--interactive") || args.Contains("--user");
 var url = Environment.GetEnvironmentVariable("DATAVERSE_URL")
@@ -61,6 +76,26 @@ if (args.Contains("--bench"))
     {
         Console.Error.WriteLine($"[FAIL] {ex.Message}");
         return 1;
+    }
+}
+
+// ── --only: SOLO los pasos E2E pedidos (depuración); no corre los asserts de metadata ni el smoke principal ──
+if (onlySteps is not null)
+{
+    try
+    {
+        E2eRunner.Run(client, e2eApis, onlySteps);
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[FAIL] {ex.Message}");
+        return 1;
+    }
+    finally
+    {
+        try { Cleanup(client); Console.WriteLine("[E2E] Cleanup OK."); }
+        catch (Exception ex) { Console.Error.WriteLine($"[WARN] Cleanup incompleto: {ex.Message}"); }
     }
 }
 
@@ -344,6 +379,10 @@ try
     // ── [CHUNK] Multi-chunk: 250 filas por el cursor de bytes en 3 chunks (el último parcial), newline embebido + multibyte ──
     ChunkSmoke.Run(client, apiImportTemplate, apiPrepare, apiProcessChunk);
 
+    // ── [E2E-n] Cobertura E2E de cada campo ✅ de la MDA (E2eRunner*.cs): opciones del template, tipos de dato, required/default,
+    // relaciones, formatos de CSV, Archived, Cloud Flow, dry run, roundtrip export/import, transforms, ManyToMany ──
+    E2eRunner.Run(client, e2eApis, null);
+
     Console.WriteLine();
     Console.WriteLine("[OK] SMOKE TEST VERDE: el backend desplegado procesa, completa e idempotente contra Dev.");
     return 0;
@@ -499,6 +538,9 @@ static void Cleanup(ServiceClient client)
 
     // Smoke HMAC: contacts + jobs de la corrida (la key temporal ya se borró al principio de Cleanup).
     HmacSmoke.DeleteData(client);
+
+    // Pasos [E2E-n]: contacts (hijos primero), jobs y templates con el prefijo/dominio E2E. Nunca lanza.
+    E2eRunner.DeleteData(client);
 }
 
 static void UploadFile(ServiceClient client, EntityReference target, string fileAttribute, string fileName, string content)

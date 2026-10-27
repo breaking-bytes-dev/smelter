@@ -326,7 +326,7 @@ El objeto de contexto que se construye una vez por invocación y circula por tod
 - `TableMappings` (`List<TableMappingConfig>`) — mappings de tabla con sus column mappings anidados.
 - `RelationshipMappings` (`List<RelationshipMappingConfig>`) — aristas del DAG.
 
-**`ImportTemplateConfig`:** Id, Name, SourceType (0=CSV, 1=Excel), HasHeaderRow, Delimiter, ChunkSize. `IsCsv`/`IsExcel` son propiedades calculadas.
+**`ImportTemplateConfig`:** Id, Name, SourceType (0=CSV, única opción), HasHeaderRow, Delimiter, ChunkSize. `IsCsv`/`IsExcel` son propiedades calculadas.
 
 **`TableMappingConfig`:** incluye `GetDedupColumnNames()` que parsea el string `DedupColumns` separado por comas.
 
