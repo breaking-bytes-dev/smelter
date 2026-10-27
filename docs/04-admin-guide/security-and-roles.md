@@ -134,9 +134,13 @@ custom nuevos) — Requirement "Gating de Custom APIs por ExecutePrivilegeName":
 > identidad de su conexión, así que `InitiatingUserId` en `PrepareImport` es esa identidad y este check
 > valida al dueño de la conexión, no a quien hizo click. El control por usuario se movió a antes de
 > encolar: el botón corre con los privilegios del usuario, poner el job en Queued exige **Write** sobre
-> el job (lo hace cumplir Dataverse) y el botón verifica que el usuario pueda **leer** el Import
-> Template (si no, no encola). Límite conocido: esa lectura del template es un chequeo de cliente; un
-> usuario con Write sobre el job podría poner `status = 0` por API sin pasar por el botón.
+> el job (lo hace cumplir Dataverse) y, **del lado servidor**, el plugin `ValidateQueueAccessPlugin`
+> (step sync Pre-operation sobre Create y sobre Update de `sanic_smlt_ij_status` del Import Job) verifica
+> que `InitiatingUserId` (la persona, no la conexión del flow) pueda **leer** el Import Template del job
+> cada vez que el status pasa a Queued, vía el mismo `PrincipalAccessChecker` (incluye acceso por teams).
+> Sin acceso falla con "No tenés acceso al Import Template de este job: no se puede poner en cola." Cubre
+> botón, API y canvas apps que crean el job directamente en Queued. No bloquea al flow: nunca setea
+> Queued (solo Processing/Completed/Failed).
 
 Además de la matriz de privilegios, `PrepareImportHandler.Run` valida — ANTES de descargar el archivo o
 tocar el job — que `InitiatingUserId` (quien realmente invocó la Custom API, no el service account) tenga

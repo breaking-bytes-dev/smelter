@@ -69,6 +69,24 @@ namespace Smelter.Plugins.Tests.Plugins
         }
 
         [Fact]
+        public void Run_ResetsJob_ClearsStaleEndTime()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var bytes = new byte[] { 1 };
+
+            m.Loader.LoadContext(jobId).Returns(ContextWith(true, "name"));
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name" });
+            m.Csv.CountRows(bytes, true, ",").Returns(1);
+
+            m.Build().Run(jobId, Guid.NewGuid());
+
+            m.Service.Received(1).Update(Arg.Is<Entity>(e =>
+                e.Contains("sanic_smlt_ij_endtime") && e["sanic_smlt_ij_endtime"] == null));
+        }
+
+        [Fact]
         public void Run_MissingMappedHeader_ThrowsAndDoesNotStart()
         {
             var m = new Mocks();

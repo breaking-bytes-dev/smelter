@@ -28,6 +28,30 @@ public class StepSpecContractTests
     }
 
     [Fact]
+    public void ValidateQueueAccess_Update_IsSyncPreOperationFilteredByStatus()
+    {
+        var step = StepCatalogo.Steps.Single(s =>
+            s.PluginTypeName == "Smelter.Plugins.ValidateQueueAccessPlugin" && s.Message == "Update");
+
+        step.PrimaryEntity.Should().Be(SecuritySpec.Tables.ImportJob);
+        step.Stage.Should().Be(StepStage.PreOperation, "tiene que poder abortar la transacción antes de persistir Queued");
+        step.Mode.Should().Be(StepMode.Synchronous);
+        step.FilteringAttributes.Should().Be("sanic_smlt_ij_status",
+            "sin filtro correría en cada update del flow (cada chunk)");
+    }
+
+    [Fact]
+    public void ValidateQueueAccess_Create_IsSyncPreOperationOnImportJob()
+    {
+        var step = StepCatalogo.Steps.Single(s =>
+            s.PluginTypeName == "Smelter.Plugins.ValidateQueueAccessPlugin" && s.Message == "Create");
+
+        step.PrimaryEntity.Should().Be(SecuritySpec.Tables.ImportJob);
+        step.Stage.Should().Be(StepStage.PreOperation);
+        step.Mode.Should().Be(StepMode.Synchronous);
+    }
+
+    [Fact]
     public void Steps_PluginTypeNames_LiveInSmelterPluginsNamespace()
     {
         StepCatalogo.Steps.Should().OnlyContain(s => s.PluginTypeName.StartsWith("Smelter.Plugins."));

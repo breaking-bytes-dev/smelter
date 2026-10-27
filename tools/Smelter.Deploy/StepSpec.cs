@@ -53,5 +53,27 @@ internal static class StepCatalogo
             Mode: StepMode.Synchronous,
             Rank: 1,
             FilteringAttributes: ""),
+        new(
+            Name: "Smelter.Plugins.ValidateQueueAccessPlugin: Create of sanic_tbl_smlt_importjob",
+            Description: "Pre-operation sync en Create de Import Job: si nace en Queued, el usuario " +
+                "iniciador debe poder leer el Import Template (el flow corre con otra identidad).",
+            PluginTypeName: "Smelter.Plugins.ValidateQueueAccessPlugin",
+            Message: "Create",
+            PrimaryEntity: SecuritySpec.Tables.ImportJob,
+            Stage: StepStage.PreOperation,
+            Mode: StepMode.Synchronous,
+            Rank: 2,
+            FilteringAttributes: ""),
+        new(
+            Name: "Smelter.Plugins.ValidateQueueAccessPlugin: Update of sanic_tbl_smlt_importjob",
+            Description: "Pre-operation sync en Update de sanic_smlt_ij_status: al poner el job en " +
+                "Queued, el usuario iniciador debe poder leer el Import Template.",
+            PluginTypeName: "Smelter.Plugins.ValidateQueueAccessPlugin",
+            Message: "Update",
+            PrimaryEntity: SecuritySpec.Tables.ImportJob,
+            Stage: StepStage.PreOperation,
+            Mode: StepMode.Synchronous,
+            Rank: 1,
+            FilteringAttributes: "sanic_smlt_ij_status"),
     ];
 }

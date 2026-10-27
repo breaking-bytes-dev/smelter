@@ -253,7 +253,9 @@ namespace Smelter.Plugins
                 ["sanic_smlt_ij_successcount"] = 0,
                 ["sanic_smlt_ij_failedcount"] = 0,
                 ["sanic_smlt_ij_skippedcount"] = 0,
-                ["sanic_smlt_ij_starttime"] = DateTime.UtcNow
+                ["sanic_smlt_ij_starttime"] = DateTime.UtcNow,
+                // Un Reintentar no debe arrastrar el fin de la corrida anterior.
+                ["sanic_smlt_ij_endtime"] = null
             });
         }
     }

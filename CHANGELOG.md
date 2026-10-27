@@ -6,6 +6,17 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+### Security
+- **Encolar un Import Job ahora valida acceso al template del lado servidor**: nuevo
+  `ValidateQueueAccessPlugin` (sync Pre-operation, Create y Update de `sanic_smlt_ij_status` sobre
+  Import Job, registrado vía `StepSpec`/`StepProvisioner`). Cuando el status pasa a Queued, el usuario
+  iniciador (`InitiatingUserId`) debe poder leer el Import Template (`PrincipalAccessChecker`, incluye
+  teams); si no, falla con "No tenés acceso al Import Template de este job: no se puede poner en cola.".
+  Cierra el hueco por el que cualquiera con Write sobre un job podía poner `status = 0` por API y que el
+  flow lo ejecutara con su propia identidad. `Smelter.Verify` ([STEP]) asserta ambos steps.
+- `PrepareImport` ahora limpia `sanic_smlt_ij_endtime` al resetear el job (un Reintentar arrastraba el fin
+  de la corrida anterior). Plugins 1.0.9.
+
 ### Changed
 - **Botones Ejecutar/Reintentar de Import Job: un solo camino de ejecución (Cloud Flow)**: antes corrían
   `PrepareImport` + el loop de `ProcessChunk` desde el navegador (cerrar la pestaña dejaba el job en

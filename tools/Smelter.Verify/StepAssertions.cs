@@ -52,7 +52,9 @@ internal static class StepAssertions
             Assert(mode == step.Mode, $"step '{step.Name}': mode es {mode}, esperado {step.Mode} (Synchronous=0)");
             Assert(actual.GetAttributeValue<int?>("rank") == step.Rank,
                 $"step '{step.Name}': rank es {actual.GetAttributeValue<int?>("rank")}, esperado {step.Rank}");
-            Assert(state == 0, $"step '{step.Name}' está DESHABILITADO (statecode={state}) — el ownership por team no corre");
+            Assert(state == 0, $"step '{step.Name}' está DESHABILITADO (statecode={state}) — el plugin '{step.PluginTypeName}' no corre");
+            Assert((actual.GetAttributeValue<string>("filteringattributes") ?? "") == (step.FilteringAttributes ?? ""),
+                $"step '{step.Name}': filteringattributes es '{actual.GetAttributeValue<string>("filteringattributes")}', esperado '{step.FilteringAttributes}'");
 
             Console.WriteLine($"[STEP]   '{step.Name}': stage={stage}, mode={mode}, rank={actual.GetAttributeValue<int?>("rank")}, habilitado. OK.");
         }
