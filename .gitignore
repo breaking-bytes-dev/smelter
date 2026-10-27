@@ -51,3 +51,6 @@ Thumbs.db
 tmp/
 scratch/
 .atl/
+
+# Sesiones de navegador (credenciales vivas) — nunca al repo
+local/
