@@ -24,7 +24,7 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
   procedimiento manual de carga, custodia, rotación y política de keys por entorno.
 
 ### Changed
-- `Smelter.Plugins` bump a `1.0.6` (recarga del package en Dataverse). Sin el bump, algunos workers del
+- `Smelter.Plugins` bump a `1.0.7` (1.0.6: HMAC; 1.0.7: fixes de prod-readiness) (recarga del package en Dataverse). Sin el bump, algunos workers del
   sandbox seguían con 1.0.5 y la carga fallaba de forma intermitente con `Unknown function: HMAC`.
 - `Smelter.Deploy` exige `SMELTER_ENV=dev` y los pasos destructivos quedan detrás de `--allow-destructive`;
   los workflows de Dev corren bajo el environment `dev`.
