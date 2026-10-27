@@ -82,6 +82,12 @@ internal static class SchemaCleanupProvisioner
                 TopCount = 1,
                 Criteria = { Conditions = { new ConditionExpression(spec.AttributeLogicalName, ConditionOperator.Equal, spec.Value) } },
             }).Entities.Count > 0;
+            if (inUse && spec.PurgeRowsInUse)
+            {
+                var purged = PurgeRows(client, spec);
+                Console.WriteLine($"[4d]   opción {label}: {purged} fila(s) de diagnóstico que la usaban BORRADAS.");
+                inUse = false;
+            }
             if (inUse)
                 throw new InvalidOperationException(
                     $"No se elimina la opción {label}: existen filas que la usan (se consulta sin filtrar por estado). " +
@@ -95,6 +101,36 @@ internal static class SchemaCleanupProvisioner
             });
             PublishEntity(client, spec.EntityLogicalName);
             Console.WriteLine($"[4d]   opción {label} ELIMINADA ({spec.Reason}).");
+        }
+    }
+
+    // Borra en lotes de 1000 (ExecuteMultiple) todas las filas que usan la opción. Re-consulta la primera página
+    // cada vuelta: lo borrado ya no aparece, así que no hace falta paging cookie.
+    private static int PurgeRows(ServiceClient client, OptionCleanupSpec spec)
+    {
+        var total = 0;
+        while (true)
+        {
+            var ids = client.RetrieveMultiple(new QueryExpression(spec.EntityLogicalName)
+            {
+                ColumnSet = new ColumnSet(false),
+                TopCount = 1000,
+                Criteria = { Conditions = { new ConditionExpression(spec.AttributeLogicalName, ConditionOperator.Equal, spec.Value) } },
+            }).Entities.Select(e => e.Id).ToList();
+            if (ids.Count == 0) return total;
+
+            var batch = new ExecuteMultipleRequest
+            {
+                Settings = new ExecuteMultipleSettings { ContinueOnError = false, ReturnResponses = false },
+                Requests = new OrganizationRequestCollection(),
+            };
+            foreach (var id in ids)
+                batch.Requests.Add(new DeleteRequest { Target = new EntityReference(spec.EntityLogicalName, id) });
+            var response = (ExecuteMultipleResponse)client.Execute(batch);
+            if (response.IsFaulted)
+                throw new InvalidOperationException(
+                    $"No se pudieron borrar las filas de {spec.EntityLogicalName} que usan la opción {spec.Value} ({spec.Label}).");
+            total += ids.Count;
         }
     }
 

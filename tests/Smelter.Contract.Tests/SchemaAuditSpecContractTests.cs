@@ -75,4 +75,15 @@ public class SchemaAuditSpecContractTests
                 .Should().BeTrue($"{t.Attribute} debe cambiar algo");
         }
     }
+
+    [Fact]
+    public void OptionCleanup_PurgaFilas_SoloEnElImportJobLog()
+    {
+        // Purgar filas que usan una opción muerta solo vale para datos de diagnóstico descartables; en una tabla de
+        // configuración (p.ej. ManyToMany en Relationship Mapping) borraría configuración real.
+        OptionCleanupCatalogo.Options.Where(o => o.PurgeRowsInUse)
+            .Should().OnlyContain(o => o.EntityLogicalName == SecuritySpec.Tables.ImportJobLog);
+        OptionCleanupCatalogo.Options.Single(o => o.AttributeLogicalName == "sanic_smlt_rm_relationshiptype")
+            .PurgeRowsInUse.Should().BeFalse();
+    }
 }
