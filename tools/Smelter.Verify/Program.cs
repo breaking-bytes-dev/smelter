@@ -85,6 +85,15 @@ try
     // ── [TUNE] Ajustes de columnas/forms existentes según SchemaTuningSpec (1.0.10) ──
     TuningAssertions.RunAll(client);
 
+    // ── [DESC] Toda columna custom de las 6 tablas tiene Description (ColumnDescriptionsSpec.cs) ──
+    DescriptionsAssertions.RunAll(client);
+
+    // ── [POLISH] Forms y vistas según FormPolishSpec (job read-only + logs, log form, filtro del RM) ──
+    FormPolishAssertions.RunAll(client);
+
+    // ── [SITEMAP] Etiquetas de la MDA en español, sin prefijos técnicos (SiteMapSpec.cs) ──
+    SiteMapAssertions.RunAll(client);
+
     // ── [HMAC] Tabla de keys HMAC según HmacKeyTableSpec (incluye column security) ──
     HmacKeyAssertions.RunAll(client);
 

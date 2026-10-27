@@ -6,6 +6,32 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+### Added (auditoría de campos, tanda 2)
+- **Import Job**: los campos de salida (Status, contadores, Processing Batch, Starttime/Endtime) pasan a **solo
+  lectura** en el form; quedan editables nombre, template, archivo e Is Dry Run. Nueva pestaña **Logs de
+  importación** con los Import Job Logs del job.
+- **Motivo de la falla**: columna `sanic_smlt_ij_failurereason` (multilínea, 4000) en el Import Job, en solo lectura en
+  el form. El Cloud Flow, además de `status = 4`, escribe el mensaje de la acción que falló (Prepare o ProcessChunk;
+  PII-free). Nuevo transformer idempotente `ClientDataFailureReasonWriter` (paso 7 del deploy, mismo
+  Draft→Update→Activate) y el flow desempaquetado del repo ya lo trae.
+- **Import Job Log**: el main form muestra en solo lectura job, fila, tabla, estado, categoría y mensaje; la vista
+  default suma Error Category (`FormPolishSpec`, paso 4j; `ViewXmlEditor`).
+- **Relationship Mapping**: el form muestra Import Template y los lookups de Parent/Child Table Mapping se filtran por
+  él (related-records filtering).
+- **Description en TODAS las columnas custom** de las 6 tablas (`ColumnDescriptionsSpec`, paso 4i, solo toca la
+  Description; sin cambiar display names). `Chunk Size` limitado a 0–10000 en la columna (`SchemaTuningSpec`).
+- **Etiquetas de la MDA en español** (`SiteMapSpec`, paso 4k): app "Smelter — Configuración de importaciones"; área
+  "Smelter"; grupos "Configuración", "Ejecución y monitoreo", "Diagnóstico"; subareas "Templates de importación",
+  "Import Jobs", "Panel de Smelter", "Logs de importación". Sin prefijos `TBL |` / `SMLT |`.
+- `Smelter.Verify`: `[DESC]`, `[POLISH]`, `[SITEMAP]`.
+
+### Changed (auditoría de campos, tanda 2)
+- **Export/import de templates formato 1.1** (compatible con 1.0): `Description` y `Status` viajan en el JSON. El
+  import crea con el Status del JSON (Active si no viene) y, al actualizar, solo lo aplica si viene. Status fuera de
+  0/1/2 se rechaza. Plugins 1.0.11.
+- Docs: Solo inserción (`insertonly`), motivo de falla y formularios en `docs/02-solution-reference/tables/*.md` y
+  `docs/05-user-guide/monitoring-and-retry.md`.
+
 ### Security
 - **Encolar un Import Job ahora valida acceso al template del lado servidor**: nuevo
   `ValidateQueueAccessPlugin` (sync Pre-operation, Create y Update de `sanic_smlt_ij_status` sobre

@@ -26,6 +26,12 @@ construir el DAG de procesamiento (orden padre→hijo) y por la resolución de l
 | `sanic_smlt_rm_lookupcolumnonchild` | String(100) | Sí | Logical name de la columna lookup en la tabla hija. `PrepareImport` rechaza el template si falta |
 | `sanic_smlt_rm_parentdedupcolumns` | String(500) | Sí | Columnas del CSV (separadas por coma) que identifican al registro padre, emparejadas **por posición** con las `Dedup Columns` del padre. Deben ser tantas como dedup columns tiene el padre (`PrepareImport` lo valida). El valor se calcula con el **mismo transform / default / tipo** que el Table Mapping padre aplica a esa columna destino (p. ej. un padre keyed por `HMAC(Pan, "k")` resuelve para sus hijos). |
 
+## Form (desde 1.0.11)
+
+El form muestra **Import Template** (debajo del nombre) y los lookups de Parent/Child Table Mapping se **filtran por ese
+template** (related-records filtering: solo se ofrecen mappings del mismo template). Elegí primero el template.
+Column Mapping no lleva este filtro: pertenece a un único Table Mapping.
+
 ## OptionSet — `sanic_smlt_rm_relationshiptype`
 
 | Valor | Label | Descripción |

@@ -69,6 +69,12 @@ internal static class SchemaAdditionsProvisioner
                     new OptionMetadata(new Label("Yes", Lcid), 1),
                     new OptionMetadata(new Label("No", Lcid), 0)),
             },
+            SchemaColumnKind.Memo => new MemoAttributeMetadata
+            {
+                MaxLength = SchemaAdditionsCatalogo.FailureReasonMaxLength,
+                Format = StringFormat.TextArea,
+                ImeMode = ImeMode.Auto,
+            },
             _ => throw new InvalidOperationException($"Kind no soportado: {spec.Kind}"),
         };
 
@@ -112,7 +118,8 @@ internal static class SchemaAdditionsProvisioner
                 continue;
 
             var doc = XDocument.Parse(formXml);
-            if (!FormXmlEditor.TryAddCellAfter(doc, placement.AfterField, spec.SchemaName, placement.Label))
+            if (!FormXmlEditor.TryAddCellAfter(doc, placement.AfterField, spec.SchemaName, placement.Label,
+                    placement.ClassId, placement.ReadOnly ? true : null))
                 continue;
 
             client.Update(new Entity("systemform", form.Id) { ["formxml"] = doc.ToString(SaveOptions.DisableFormatting) });

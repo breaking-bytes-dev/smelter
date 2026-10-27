@@ -27,7 +27,7 @@ namespace Smelter.Plugins.Services
         /// Consumers check only the major version; increment the major when making breaking changes
         /// to the DTO structure, increment the minor for additive changes.
         /// </summary>
-        public const string FormatVersion = "1.0";
+        public const string FormatVersion = "1.1";
 
         private readonly IOrganizationService _service;
 
@@ -59,7 +59,9 @@ namespace Smelter.Plugins.Services
                     SourceType = t.GetAttributeValue<OptionSetValue>("sanic_smlt_it_sourcetype")?.Value ?? 0,
                     HasHeaderRow = t.GetAttributeValue<bool?>("sanic_smlt_it_hasheaderrow") ?? true,
                     Delimiter = t.GetAttributeValue<string>("sanic_smlt_it_delimiter") ?? ",",
-                    ChunkSize = t.GetAttributeValue<int?>("sanic_smlt_it_chunksize") ?? 0
+                    ChunkSize = t.GetAttributeValue<int?>("sanic_smlt_it_chunksize") ?? 0,
+                    Description = t.GetAttributeValue<string>("sanic_smlt_it_description"),
+                    Status = t.GetAttributeValue<OptionSetValue>("sanic_smlt_it_status")?.Value
                 }
             };
 

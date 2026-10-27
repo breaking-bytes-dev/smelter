@@ -28,7 +28,7 @@ namespace Smelter.Plugins.Services
         /// version exceeds this value is rejected to prevent silent data loss when new required
         /// fields are added in future versions.
         /// </summary>
-        public const string SupportedFormatVersion = "1.0";
+        public const string SupportedFormatVersion = "1.1";
 
         /// <summary>
         /// Serializes a <see cref="TemplateExportDto"/> to a UTF-8 JSON string using
@@ -83,6 +83,11 @@ namespace Smelter.Plugins.Services
             if (ParseMajor(dto.FormatVersion) > ParseMajor(SupportedFormatVersion))
                 throw new TemplateFormatException(
                     $"Unsupported formatVersion '{dto.FormatVersion}'. Expected {SupportedFormatVersion} or lower.");
+
+            var status = dto.Template.Status;
+            if (status.HasValue && !Enum.IsDefined(typeof(ImportTemplateStatus), status.Value))
+                throw new TemplateFormatException(
+                    $"Template JSON is invalid: status {status.Value} is not a valid template status (0=Draft, 1=Active, 2=Archived).");
 
             var refs = new HashSet<string>(
                 (dto.TableMappings ?? new List<TableMappingDto>())

@@ -44,6 +44,24 @@ public class SchemaAdditionsSpecContractTests
     }
 
     [Fact]
+    public void FailureReason_IsA4000CharMultilineOnTheJob_ShownReadOnlyRightAfterStatus()
+    {
+        var c = Column("sanic_smlt_ij_failurereason");
+
+        c.EntityLogicalName.Should().Be(SecuritySpec.Tables.ImportJob);
+        c.Kind.Should().Be(SchemaColumnKind.Memo);
+        SchemaAdditionsCatalogo.FailureReasonMaxLength.Should().Be(4000);
+        c.Description.Should().NotBeNullOrWhiteSpace();
+        c.Form.Should().NotBeNull();
+        c.Form!.AfterField.Should().Be("sanic_smlt_ij_status");
+        c.Form.ReadOnly.Should().BeTrue("lo escribe el Cloud Flow, el usuario no lo edita");
+        c.Form.ClassId.Should().Be("{E0DECE4B-6FC8-4A8F-A065-082708572369}", "control de texto multilínea");
+        // El handler del flow escribe exactamente este parámetro: la spec y el transformer no pueden divergir.
+        ClientDataFailureReasonWriter.ReasonParameter.Should().Be("item/" + c.SchemaName);
+        ClientDataFailureReasonWriter.MaxLength.Should().Be(SchemaAdditionsCatalogo.FailureReasonMaxLength);
+    }
+
+    [Fact]
     public void Columns_FollowTheNamingConventionAndLiveInTheSmelterTables()
     {
         foreach (var c in SchemaAdditionsCatalogo.Columns)

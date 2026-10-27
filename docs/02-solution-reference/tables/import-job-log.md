@@ -24,6 +24,12 @@ fallaron; las filas exitosas y omitidas se contabilizan en los contadores del Im
 | `sanic_smlt_ijl_errormessage` | Multiline | No | Detalle del error, incluyendo la columna que falló (nulo en caso de éxito) |
 | `sanic_smlt_ijl_errorcategory` | OptionSet | No | Categoría de error — etapa del pipeline donde ocurrió el fallo |
 
+## Form y vista (desde 1.0.11)
+
+El main form muestra, en **solo lectura**, el ID, el Import Job, Row Number, Target Table, Status, Error Category y
+Error Message. La vista default (`Active TBL | SMLT | Import Job Logs`, también la del subgrid del job) incluye
+**Error Category** junto a Status.
+
 ## OptionSet — `sanic_smlt_ijl_status`
 
 | Valor | Label | Descripción |

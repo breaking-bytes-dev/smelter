@@ -70,6 +70,22 @@ internal static class SchemaTuningProvisioner
             }
         }
 
+        if (spec.IntMin.HasValue || spec.IntMax.HasValue)
+        {
+            var integer = attribute as IntegerAttributeMetadata
+                ?? throw new InvalidOperationException($"{spec.Entity}.{spec.Attribute} debía ser Integer, es {attribute.AttributeType}");
+            if (spec.IntMin is { } min && integer.MinValue != min)
+            {
+                integer.MinValue = min;
+                changed = true;
+            }
+            if (spec.IntMax is { } max && integer.MaxValue != max)
+            {
+                integer.MaxValue = max;
+                changed = true;
+            }
+        }
+
         if (!changed)
         {
             Console.WriteLine($"[4h]   {spec.Entity}.{spec.Attribute} ya está ajustada — nada que hacer.");

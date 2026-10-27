@@ -83,12 +83,20 @@ namespace Smelter.Plugins.Services
                 ["sanic_smlt_it_chunksize"] = dto.Template.ChunkSize
             };
 
-            if (templateId == Guid.Empty)
+            var isCreate = templateId == Guid.Empty;
+
+            // Description solo viaja en exports 1.1+: null (export 1.0) no pisa la descripción existente.
+            if (dto.Template.Description != null)
+                template["sanic_smlt_it_description"] = dto.Template.Description;
+
+            // Status (ver TemplateImportPolicy): create => el del JSON o Active (el gate de PrepareImport exige Active);
+            // update => el del JSON si viene; sin él se respeta el status actual (Draft/Archived puesto por el admin).
+            var status = TemplateImportPolicy.ResolveStatus(dto.Template.Status, isCreate);
+            if (status.HasValue)
+                template["sanic_smlt_it_status"] = new OptionSetValue(status.Value);
+
+            if (isCreate)
             {
-                // Los templates importados nacen Active: el JSON exportado es un template completo
-                // y el gate de PrepareImport (1.3.0.0) bloquea todo lo que no sea Active. En el
-                // update NO se toca el status — si el admin lo puso en Draft/Archived, se respeta.
-                template["sanic_smlt_it_status"] = new OptionSetValue((int)ImportTemplateStatus.Active);
                 templateId = _service.Create(template);
             }
             else

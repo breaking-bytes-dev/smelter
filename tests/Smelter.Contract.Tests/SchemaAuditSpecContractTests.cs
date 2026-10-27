@@ -71,7 +71,7 @@ public class SchemaAuditSpecContractTests
         foreach (var t in SchemaTuningCatalogo.Attributes)
         {
             SecuritySpec.Tables.All.Should().Contain(t.Entity);
-            (t.RequiredLevel is not null || t.PicklistDefault is not null || t.BooleanDefault is not null)
+            (t.RequiredLevel is not null || t.PicklistDefault is not null || t.BooleanDefault is not null || t.IntMin is not null || t.IntMax is not null)
                 .Should().BeTrue($"{t.Attribute} debe cambiar algo");
         }
     }

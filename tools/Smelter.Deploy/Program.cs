@@ -127,6 +127,15 @@ MdaComponentsProvisioner.Run(client);
 // ── 4h. Ajustes de columnas/forms existentes (SchemaTuningSpec.cs): sourcetype opcional/oculto, UpdateIfExists default Sí ──
 SchemaTuningProvisioner.Run(client);
 
+// ── 4i. Description de TODAS las columnas custom (ColumnDescriptionsSpec.cs): tooltips en la MDA ──
+ColumnDescriptionsProvisioner.Run(client);
+
+// ── 4j. Forms y vistas (FormPolishSpec.cs): job read-only + logs, log form, filtro de lookups del RM, errorcategory en la vista ──
+FormPolishProvisioner.Run(client);
+
+// ── 4k. Etiquetas de la MDA en español (SiteMapSpec.cs): títulos del sitemap + nombre de la app ──
+SiteMapProvisioner.Run(client);
+
 // ── 5. Publicar: refresca la metadata OData del Web API ────────────────────
 Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del Web API) ...");
 client.Execute(new PublishAllXmlRequest());

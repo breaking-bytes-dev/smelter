@@ -148,5 +148,54 @@ namespace Smelter.Plugins.Tests.Services
 
             act.Should().Throw<TemplateFormatException>().WithMessage("*NM*ManyToMany*not supported*");
         }
+
+        [Fact]
+        public void Roundtrip_PreservesDescriptionAndStatus()
+        {
+            var dto = SampleDto();
+            dto.Template.Description = "Carga mensual de cobranza";
+            dto.Template.Status = (int)ImportTemplateStatus.Draft;
+
+            var result = _sut.Deserialize(_sut.Serialize(dto));
+
+            result.Template.Description.Should().Be("Carga mensual de cobranza");
+            result.Template.Status.Should().Be((int)ImportTemplateStatus.Draft);
+        }
+
+        [Fact]
+        public void Deserialize_JsonWithoutDescriptionNorStatus_LeavesThemNull()
+        {
+            // JSON 1.0 (anterior al bump 1.1): sin el campo => null, distinto de "Draft" (0) o "" ; el importer usa el null
+            // para decidir el default (Active en create, sin tocar en update).
+            const string oldJson = "{\"FormatVersion\":\"1.0\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0}," +
+                "\"TableMappings\":[],\"RelationshipMappings\":[]}";
+
+            var result = _sut.Deserialize(oldJson);
+
+            result.Template.Description.Should().BeNull();
+            result.Template.Status.Should().BeNull();
+        }
+
+        [Fact]
+        public void Deserialize_StatusOutsideTheChoice_IsRejected()
+        {
+            const string json = "{\"FormatVersion\":\"1.1\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0,\"Status\":9}," +
+                "\"TableMappings\":[],\"RelationshipMappings\":[]}";
+
+            Action act = () => _sut.Deserialize(json);
+
+            act.Should().Throw<TemplateFormatException>().WithMessage("*status*9*");
+        }
+
+        [Fact]
+        public void Deserialize_MinorVersion1_1_IsAccepted()
+        {
+            var dto = SampleDto();
+            dto.FormatVersion = "1.1";
+
+            Action act = () => _sut.Deserialize(_sut.Serialize(dto));
+
+            act.Should().NotThrow();
+        }
     }
 }

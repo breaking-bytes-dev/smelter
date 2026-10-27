@@ -35,6 +35,15 @@ namespace Smelter.Plugins.Models
 
         /// <summary>Number of source rows to process per <c>sanic_ProcessChunk</c> invocation. 0 = use system default.</summary>
         [DataMember(Order = 5)] public int ChunkSize { get; set; }
+
+        /// <summary>Free-text description of the template (format 1.1+). <c>null</c> = absent in the JSON (older export).</summary>
+        [DataMember(Order = 6, EmitDefaultValue = false)] public string Description { get; set; }
+
+        /// <summary>
+        /// Template status (<see cref="ImportTemplateStatus"/>; format 1.1+). <c>null</c> = absent in the JSON (older export):
+        /// import creates the template Active and leaves an existing template's status untouched.
+        /// </summary>
+        [DataMember(Order = 7, EmitDefaultValue = false)] public int? Status { get; set; }
     }
 
     /// <summary>Portable representation of a Table Mapping and its child column mappings.</summary>

@@ -8,7 +8,7 @@ Esta guía explica cómo hacer seguimiento de los trabajos de carga y qué hacer
 
 ## El dashboard
 
-La pantalla de inicio de Smelter es el **Smelter Dashboard**. Muestra un panorama general del estado de los trabajos:
+La pantalla de inicio de Smelter es el **Panel de Smelter** (el dashboard). Muestra un panorama general del estado de los trabajos:
 
 - **Jobs por Estado**: cuántos trabajos están en cada estado ahora mismo. Si hay muchos en `Failed` o `CompletedWithErrors`, es señal de que algo requiere atención.
 - **Jobs por Template**: qué templates se usan más. Sirve para entender el volumen de trabajo.
@@ -21,13 +21,26 @@ El dashboard se puede usar para detectar problemas antes de que alguien los repo
 
 ## Las vistas de Import Jobs
 
-Desde **Ejecución y Monitoreo → Import Jobs** podés cambiar entre distintas vistas:
+Desde **Ejecución y monitoreo → Import Jobs** podés cambiar entre distintas vistas:
 
 | Vista | Para qué sirve |
 |-------|----------------|
 | **Jobs Activos** | Ver los trabajos que están en cola o procesando. Muestra el progreso. |
 | **Completados con Errores** | Ver los trabajos que terminaron pero con filas fallidas. Desde acá podés abrir cada uno para revisar los errores. |
 | **Todos los Jobs** | Historial completo, ordenado por fecha de creación. |
+
+---
+
+## Qué hacer cuando un job termina en Failed
+
+`Failed` significa que falló el **proceso** del import (no una fila puntual): por ejemplo, el template no está
+`Active`, el encabezado del CSV no coincide, o el procesamiento se cortó. El motivo queda en el campo
+**Failure Reason** del job (solo lectura, debajo de Status): es el mensaje del paso que falló (preparación o
+procesamiento) y nunca incluye datos del archivo. Si dice que revises el historial de ejecuciones del flujo, el
+error vino de la plataforma y lo ve quien administra el Cloud Flow. Corregí la causa y usá **Reintentar**.
+
+> Los contadores, el estado, el offset (**Processing Batch**) y las fechas del job son de solo lectura en el
+> form: los escribe el motor. Solo se editan el nombre, el template, el archivo y **Is Dry Run**.
 
 ---
 
@@ -39,7 +52,7 @@ Desde la vista **Completados con Errores**, hacé click en el job que querés re
 
 ### 2. Ver los errores del job
 
-El detalle de los errores está en la pestaña **Errores** dentro del form del job.
+El detalle de los errores está en la pestaña **Logs de importación** dentro del form del job.
 
 Ahí aparece la lista de **Import Job Logs**, una entrada por cada fila que falló, con estas columnas:
 
@@ -50,7 +63,7 @@ Ahí aparece la lista de **Import Job Logs**, una entrada por cada fila que fall
 | **Error Category** | El tipo de error. Ver la sección siguiente para entender cada categoría. |
 | **Error Message** | El mensaje de error específico del sistema, incluyendo la columna exacta que falló. |
 
-También podés ir a **Diagnóstico → Import Job Logs** para ver todos los errores de todos los jobs, con opción de filtrar y agrupar por categoría. Es útil para detectar patrones.
+También podés ir a **Diagnóstico → Logs de importación** para ver todos los errores de todos los jobs, con opción de filtrar y agrupar por categoría. Es útil para detectar patrones.
 
 ---
 

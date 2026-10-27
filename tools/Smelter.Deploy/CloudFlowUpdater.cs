@@ -86,12 +86,15 @@ internal static class CloudFlowUpdater
         var (renamedClientData, renamed) = ClientDataProcessChunkRenamer.Rename(clientData);
 
         // Fix del handler Failed (runAfter Failed/Skipped/TimedOut) — ver ClientDataFailedHandlerFixer.cs.
-        // Ambas transformaciones se aplican en UN solo Draft→Update→Activate.
-        var (updatedClientData, handlerFixed) = ClientDataFailedHandlerFixer.Apply(renamedClientData);
-        var changed = renamed || handlerFixed;
+        // Las transformaciones se aplican en UN solo Draft→Update→Activate.
+        var (fixedClientData, handlerFixed) = ClientDataFailedHandlerFixer.Apply(renamedClientData);
+
+        // Motivo de falla en el job (sanic_smlt_ij_failurereason) — ver ClientDataFailureReasonWriter.cs.
+        var (updatedClientData, reasonWritten) = ClientDataFailureReasonWriter.Apply(fixedClientData);
+        var changed = renamed || handlerFixed || reasonWritten;
         if (!changed)
         {
-            Console.WriteLine($"[7]   flow '{name}': clientdata ya migrado y con handler Failed correcto — sin cambios.");
+            Console.WriteLine($"[7]   flow '{name}': clientdata ya migrado, con handler Failed correcto y motivo de falla — sin cambios.");
             return;
         }
 
@@ -106,7 +109,7 @@ internal static class CloudFlowUpdater
                 activate: () => SetState(client, flowId, StateActivated, StatusActivated),
                 log: Console.Error.WriteLine);
             Console.WriteLine($"[7]   flow '{name}' ({flowId}): clientdata actualizado " +
-                $"(rename processchunk: {renamed}; handler Failed Failed/Skipped/TimedOut: {handlerFixed}).");
+                $"(rename processchunk: {renamed}; handler Failed Failed/Skipped/TimedOut: {handlerFixed}; motivo de falla: {reasonWritten}).");
         }
         catch (Exception ex)
         {

@@ -33,6 +33,12 @@ internal static class TuningAssertions
             if (spec.BooleanDefault is { } flag)
                 Assert((attribute as BooleanAttributeMetadata)?.DefaultValue == flag,
                     $"{spec.Attribute}: default {(attribute as BooleanAttributeMetadata)?.DefaultValue}, esperado {flag}");
+            if (spec.IntMin is { } iMin)
+                Assert((attribute as IntegerAttributeMetadata)?.MinValue == iMin,
+                    $"{spec.Attribute}: MinValue {(attribute as IntegerAttributeMetadata)?.MinValue}, esperado {iMin}");
+            if (spec.IntMax is { } iMax)
+                Assert((attribute as IntegerAttributeMetadata)?.MaxValue == iMax,
+                    $"{spec.Attribute}: MaxValue {(attribute as IntegerAttributeMetadata)?.MaxValue}, esperado {iMax}");
             Console.WriteLine($"[TUNE]   {spec.Entity}.{spec.Attribute}: OK.");
         }
 

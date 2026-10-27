@@ -50,6 +50,12 @@ internal static class AdditionsAssertions
                     Assert(boolean!.DefaultValue == SchemaAdditionsCatalogo.InsertOnlyDefault,
                         $"{spec.SchemaName}: default {boolean.DefaultValue}, esperado {SchemaAdditionsCatalogo.InsertOnlyDefault}");
                     break;
+                case SchemaColumnKind.Memo:
+                    var memo = attribute as MemoAttributeMetadata;
+                    Assert(memo is not null, $"{spec.SchemaName} debía ser Memo, es {attribute.AttributeType}");
+                    Assert(memo!.MaxLength >= SchemaAdditionsCatalogo.FailureReasonMaxLength,
+                        $"{spec.SchemaName}: MaxLength {memo.MaxLength} < {SchemaAdditionsCatalogo.FailureReasonMaxLength}");
+                    break;
             }
 
             var inSolution = client.RetrieveMultiple(new QueryExpression("solutioncomponent")

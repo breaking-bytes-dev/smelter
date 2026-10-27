@@ -9,16 +9,21 @@
 //  - sanic_smlt_tm_insertonly (Table Mapping): opt-in "Solo inserción (permite duplicados)". Sin dedup columns,
 //    PrepareImport/ProcessChunk rechazan el template salvo que el mapping tenga este flag. Va al main form,
 //    justo después de "Update If Exists".
+//  - sanic_smlt_ij_failurereason (Import Job): motivo de la falla, texto multilínea 4000. Lo escribe SOLO el handler
+//    "Failed" del Cloud Flow (ClientDataFailureReasonWriter) con el mensaje PII-free de la acción que falló. Va al
+//    main form del job en solo lectura, justo después de Status.
 //
 // Las columnas nacen DENTRO de smlt_core_smelter (SolutionUniqueName): viajan a Test/Prod con el managed.
 // Un atributo que ya existe NO se reconfigura (idempotente).
 
 namespace Smelter.Deploy;
 
-internal enum SchemaColumnKind { Decimal, Boolean }
+internal enum SchemaColumnKind { Decimal, Boolean, Memo }
 
 /// <summary>Ubicación en el main form: se clona la fila del campo ancla y se inserta justo después.</summary>
-internal sealed record FormPlacement(string AfterField, string Label);
+/// <param name="ClassId">classid del control si no es el del ancla (p.ej. multilínea); null = el del ancla.</param>
+/// <param name="ReadOnly">el control nace <c>disabled="true"</c>.</param>
+internal sealed record FormPlacement(string AfterField, string Label, string? ClassId = null, bool ReadOnly = false);
 
 internal sealed record SchemaColumnSpec(
     string EntityLogicalName,
@@ -37,6 +42,12 @@ internal static class SchemaAdditionsCatalogo
     internal const decimal ByteCursorMax = 100_000_000_000m;
 
     internal const bool InsertOnlyDefault = false;
+
+    /// <summary>Largo máximo del motivo de falla; el Cloud Flow trunca a este valor.</summary>
+    internal const int FailureReasonMaxLength = 4000;
+
+    /// <summary>classid del control de texto multilínea en formxml.</summary>
+    internal const string MemoControlClassId = "{E0DECE4B-6FC8-4A8F-A065-082708572369}";
 
     internal const string SolutionUniqueName = Catalogo.SolutionName;
 
@@ -58,5 +69,13 @@ internal static class SchemaAdditionsCatalogo
             Description: "Opt-in: el mapping se escribe siempre con Create, sin alternate key (reprocesar puede duplicar). " +
                          "Sin esto, un mapping sin Dedup Columns es rechazado por PrepareImport.",
             Form: new FormPlacement("sanic_smlt_tm_updateifexists", "[TM] Solo inserción (permite duplicados)")),
+        new(
+            EntityLogicalName: SecuritySpec.Tables.ImportJob,
+            SchemaName: "sanic_smlt_ij_failurereason",
+            Kind: SchemaColumnKind.Memo,
+            DisplayName: "[IJ] Failure Reason",
+            Description: "Motivo por el que el job quedo en Failed (mensaje del paso que fallo: preparacion o procesamiento). " +
+                         "Lo escribe el Cloud Flow; vacio si el job no fallo. El detalle por fila esta en los Import Job Logs.",
+            Form: new FormPlacement("sanic_smlt_ij_status", "[IJ] Failure Reason", SchemaAdditionsCatalogo.MemoControlClassId, ReadOnly: true)),
     ];
 }

@@ -29,8 +29,18 @@ de progreso, el offset actual y el estado del job.
 | `sanic_smlt_ij_processingbatch` | Integer | No | **Offset actual** — número de filas ya procesadas; usado por `ProcessChunk` como punto de reanudación. Avanza después de cada chunk. |
 | `sanic_smlt_ij_starttime` | DateTime | No | Inicio del procesamiento (seteado por `PrepareImport`) |
 | `sanic_smlt_ij_endtime` | DateTime | No | Fin del procesamiento (seteado por `ProcessChunk` al completar) |
-| `sanic_smlt_ij_isdryrun` | Boolean | No | Si es `true`, simula el procesamiento sin escribir en Dataverse |
+| `sanic_smlt_ij_isdryrun` | Boolean | No | Si es `true`, valida parseo, tipos y transforms de todas las filas **sin escribir** en Dataverse ni simular omitidos (Skipped) o claves existentes |
+| `sanic_smlt_ij_failurereason` | Multiline (4000) | No | **Motivo de la falla** (desde 1.0.11). Lo escribe el handler `Failed` del Cloud Flow con el mensaje de la acción que falló (`PrepareImport`/`ProcessChunk`, o un texto genérico que remite al historial del flujo). Mensajes PII-free (excepciones de plugin, sin valores del CSV); truncado a 4000. Vacío si el job no falló |
+| `sanic_smlt_ij_bytecursor` | Decimal (sin form) | No | Byte del próximo registro sin leer; lo gobierna el motor, no está en el form |
 | `ownerid` | Owner (user/team) | Auto | Owner del job. Si el template referenciado es owned por un **team**, `AssignJobOwnerPlugin` (step sync pre-operation del Create) lo setea a ese mismo team; si no, queda el default de la plataforma (el creador). Ver [Ownership](#ownership). |
+
+## Form (desde 1.0.11)
+
+- **Solo lectura** en el main form (`disabled`): Status, Total/Processed Rows, Success/Skipped/Fail Count,
+  Processing Batch, Starttime/Endtime y Failure Reason. Es UX, no seguridad: el motor y el Cloud Flow escriben por API.
+  Editables: Name, Import Template, Source File e Is Dry Run.
+- Pestaña **Logs de importación**: subgrid de los Import Job Logs del job (vista default del log).
+- El Cloud Flow, ante una falla, setea `status = 4` **y** `failurereason` (ver [Monitoreo](../../05-user-guide/monitoring-and-retry.md)).
 
 ## Ownership
 

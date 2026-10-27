@@ -26,6 +26,8 @@ Table Mappings para normalizar una fuente plana en varias tablas relacionadas.
 | `sanic_smlt_tm_createifnotexists` | Boolean | Sí | Si el registro **no existe** (sin match de dedup): Sí = Create, No = fila `Skipped` (default: Sí) |
 | `sanic_smlt_tm_updateifexists` | Boolean | Sí | Si el registro **existe** (match de dedup): Sí = Update, No = fila `Skipped`. Default del schema: **Sí** desde 1.0.10 (antes No, en contradicción con estos docs; los mappings existentes conservan su valor) |
 
+| `sanic_smlt_tm_insertonly` | Boolean | No | **Solo inserción (permite duplicados)**, desde 1.0.8. Sí = el mapping se escribe siempre con `Create`, sin alternate key: reprocesar el mismo CSV **puede duplicar** registros y los flags Create/Update If Exists no aplican. Es el opt-in explícito para un mapping sin Dedup Columns (sin él, `PrepareImport` rechaza el template). Default: No. Va en el form justo después de Update If Exists. |
+
 > **`sanic_smlt_tm_isjunctiontable` fue eliminado (1.0.10)** del form y del schema por SDK
 > (`SchemaCleanupSpec`): era un placeholder de N:M que ningún componente leía. Un JSON de export viejo que
 > lo traiga sigue importando (se ignora). Ver [Relationship Mapping](relationship-mapping.md).

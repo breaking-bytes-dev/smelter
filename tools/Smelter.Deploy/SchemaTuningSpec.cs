@@ -8,6 +8,9 @@
 //    CSV, y se oculta del main form del template (la columna se conserva: viaja en el export/import).
 //  - sanic_smlt_tm_updateifexists: el default del schema era No mientras los docs y el fallback del Loader decían Sí.
 //    Se alinea a Sí. Solo cambia el default de registros NUEVOS; los existentes conservan su valor.
+//  - sanic_smlt_it_chunksize: el motor acota a 100..10000 (0 = default 1000) pero la columna admitía hasta 100000.
+//    Se limita a 0..10000 para que el formulario lo rechace en vez de acotar en silencio. Los valores ya guardados no
+//    se tocan.
 
 using Microsoft.Xrm.Sdk.Metadata;
 
@@ -19,7 +22,9 @@ internal sealed record AttributeTuningSpec(
     AttributeRequiredLevel? RequiredLevel,
     int? PicklistDefault,
     bool? BooleanDefault,
-    string Reason);
+    string Reason,
+    int? IntMin = null,
+    int? IntMax = null);
 
 internal sealed record FormFieldVisibilitySpec(string Entity, string Field, bool Visible, string Reason);
 
@@ -30,6 +35,9 @@ internal static class SchemaTuningCatalogo
 
     internal const bool UpdateIfExistsDefault = true;
 
+    /// <summary>Chunk Size admite 0 (= default del sistema) y como máximo 10000 (tope del motor).</summary>
+    internal const int ChunkSizeMin = 0, ChunkSizeMax = 10000;
+
     internal static readonly AttributeTuningSpec[] Attributes =
     [
         new(SecuritySpec.Tables.ImportTemplate, "sanic_smlt_it_sourcetype",
@@ -38,6 +46,10 @@ internal static class SchemaTuningCatalogo
         new(SecuritySpec.Tables.TableMapping, "sanic_smlt_tm_updateifexists",
             null, null, UpdateIfExistsDefault,
             "default alineado con los docs y con el fallback del Loader (antes No)"),
+        new(SecuritySpec.Tables.ImportTemplate, "sanic_smlt_it_chunksize",
+            null, null, null,
+            "el motor acota a 100..10000 (0 = default): el form lo valida en vez de acotar en silencio",
+            IntMin: ChunkSizeMin, IntMax: ChunkSizeMax),
     ];
 
     internal static readonly FormFieldVisibilitySpec[] HiddenFields =

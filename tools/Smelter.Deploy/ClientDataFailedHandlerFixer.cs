@@ -62,7 +62,7 @@ internal static class ClientDataFailedHandlerFixer
         return changed;
     }
 
-    private static bool IsFailedStatusUpdate(JsonObject action)
+    internal static bool IsFailedStatusUpdate(JsonObject action)
     {
         if (action["type"]?.GetValueKind() != JsonValueKind.String || action["type"]!.GetValue<string>() != "OpenApiConnection")
             return false;

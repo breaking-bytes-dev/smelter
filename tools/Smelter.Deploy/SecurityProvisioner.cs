@@ -485,7 +485,7 @@ internal static class SecurityProvisioner
             new System.Xml.Linq.XElement("Titles",
                 new System.Xml.Linq.XElement("Title",
                     new System.Xml.Linq.XAttribute("LCID", "1033"),
-                    new System.Xml.Linq.XAttribute("Title", SecuritySpec.DashboardName))));
+                    new System.Xml.Linq.XAttribute("Title", SiteMapCatalogo.Labels.Single(l => l.Id == subAreaId).Title))));
 
         // Append al FINAL del Group: el XSD del sitemap exige <Titles> del grupo primero y
         // después los <SubArea> — AddFirst lo rompía ("Group has invalid child element Titles",
