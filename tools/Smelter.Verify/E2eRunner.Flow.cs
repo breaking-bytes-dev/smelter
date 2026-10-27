@@ -207,7 +207,8 @@ internal static partial class E2eRunner
                     Conditions =
                     {
                         new ConditionExpression("workflow", ConditionOperator.Equal, OrchestratorFlowId),
-                        new ConditionExpression("starttime", ConditionOperator.OnOrAfter, queuedAt.AddMinutes(-1)),
+                        // GreaterEqual (no OnOrAfter): OnOrAfter compara solo la FECHA y traía todas las corridas del día.
+                        new ConditionExpression("starttime", ConditionOperator.GreaterEqual, queuedAt.AddSeconds(-5)),
                     },
                 },
                 Orders = { new OrderExpression("starttime", OrderType.Ascending) },
