@@ -121,6 +121,9 @@ HmacKeyTableProvisioner.Run(client);
 // ── 4f. Columnas nuevas (SchemaAdditionsSpec.cs): byte cursor del Import Job + "Solo inserción" del Table Mapping ──
 SchemaAdditionsProvisioner.Run(client);
 
+// ── 4g. Pin de forms y vistas Smelter en la MDA (MdaComponentsSpec.cs): sin esto ValidateApp avisa "all forms and views" ──
+MdaComponentsProvisioner.Run(client);
+
 // ── 5. Publicar: refresca la metadata OData del Web API ────────────────────
 Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del Web API) ...");
 client.Execute(new PublishAllXmlRequest());

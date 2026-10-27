@@ -4,6 +4,7 @@
 //      con >= 1 main form activo, vistas/forms referenciados existentes, hmackey FUERA de app y sitemap.
 //   3. Forms y vistas de las 6 tablas no referencian atributos inexistentes (p.ej. los 6 eliminados en 1.3.0.0).
 //   4. Web resources (libraries de forms y JS del command bar) existentes.
+//   5. Forms y vistas de MdaComponentsSpec pineados en la app (y ValidateApp sin el warning "all forms and views").
 // Cada check imprime "[MDA] OK" o "[MDA] FAIL <qué> @ <dónde>"; los FAIL se acumulan y al final lanzan.
 // El parseo puro vive en Smelter.Deploy/MdaXml.cs (testeado en Contract tests).
 
@@ -51,6 +52,7 @@ internal static class MdaAssertions
         Check(fails, "2 componentes+sitemap", () => CheckAppStructure(client, tables, components));
         Check(fails, "3 forms/vistas->atributos", () => CheckAttributes(client, tables));
         Check(fails, "4 web resources", () => CheckWebResources(client, tables));
+        Check(fails, "5 forms/vistas pineados", () => CheckPinnedComponents(components));
 
         if (fails.Count > 0)
             throw new InvalidOperationException("ASSERT[MDA]: " + fails.Count + " check(s) fallidos (ver [MDA] FAIL arriba).");
@@ -64,7 +66,8 @@ internal static class MdaAssertions
         var issues = resp.AppValidationResponse?.ValidationIssueList ?? Array.Empty<ValidationIssue>();
         foreach (var w in issues.Where(i => i.ErrorType == ErrorType.Warning))
             Console.WriteLine($"[MDA] WARN ValidateApp: {w.Message} @ {w.DisplayName ?? w.ComponentId.ToString()}");
-        return issues.Where(i => i.ErrorType == ErrorType.Error)
+        // Con los forms/vistas pineados (MdaComponentsSpec) NO debe quedar el warning "App users will see all forms and views".
+        return issues.Where(i => i.ErrorType == ErrorType.Error || (i.ErrorType == ErrorType.Warning && MdaComponentsCatalogo.IsUnpinnedWarning(i.Message)))
             .Select(i => $"ValidateApp: {i.Message} @ {i.DisplayName ?? i.ComponentId.ToString()}").ToList();
     }
 
@@ -223,6 +226,20 @@ internal static class MdaAssertions
         foreach (var o in own.Where(o => !found.Contains(o.Key)))
             errors.Add($"web resource inexistente '{o.Key}' @ {o.Value}");
         Console.WriteLine($"[MDA]   web resources propios referenciados: {own.Count}");
+        return errors;
+    }
+
+    // ── 5 ──────────────────────────────────────────────────────────────────
+    // Cada form/vista de MdaComponentsSpec es componente de la app (appmodulecomponent por appmoduleidunique).
+    // Que EXISTAN como forms/vistas lo cubre el check 2 (ExistAll sobre los componentes de la app).
+    private static List<string> CheckPinnedComponents(List<(int Type, Guid Id)> components)
+    {
+        var pinned = components.ToHashSet();
+        var errors = MdaComponentsCatalogo.All
+            .Where(c => !pinned.Contains((c.ComponentType, c.Id)))
+            .Select(c => $"{c.Kind} '{c.Name}' ({c.Id}) @ {c.Table}: no está pineado en la app")
+            .ToList();
+        Console.WriteLine($"[MDA]   forms/vistas pineados: {MdaComponentsCatalogo.All.Count - errors.Count}/{MdaComponentsCatalogo.All.Count}");
         return errors;
     }
 

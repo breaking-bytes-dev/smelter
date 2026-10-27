@@ -49,6 +49,21 @@ if (!client.IsReady)
 }
 Console.WriteLine($"[1] Conectado. Org: {client.ConnectedOrgFriendlyName}");
 
+// ── --bench: SOLO el benchmark de 100k filas en dry run (no forma parte del verify por defecto) ──
+if (args.Contains("--bench"))
+{
+    try
+    {
+        BenchRunner.Run(client, apiImportTemplate, apiPrepare, apiProcessChunk);
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[FAIL] {ex.Message}");
+        return 1;
+    }
+}
+
 try
 {
     // ── [SEC] Seguridad + UX provisionadas (Fases 3/4/6) — corre antes del smoke funcional: si
@@ -314,6 +329,9 @@ try
     HmacSmoke.AssertHashes(client, hmacKeyHex, expectedCount: 3);
     Console.WriteLine("[6d] HMAC E2E OK: SYSTEM leyó la columna asegurada y los 3 hashes coinciden con el cálculo local (key temporal, no logueada).");
 
+    // ── [CHUNK] Multi-chunk: 250 filas por el cursor de bytes en 3 chunks (el último parcial), newline embebido + multibyte ──
+    ChunkSmoke.Run(client, apiImportTemplate, apiPrepare, apiProcessChunk);
+
     Console.WriteLine();
     Console.WriteLine("[OK] SMOKE TEST VERDE: el backend desplegado procesa, completa e idempotente contra Dev.");
     return 0;
@@ -463,6 +481,9 @@ static void Cleanup(ServiceClient client)
     }).Entities;
     foreach (var j in jobs)
         client.Delete("sanic_tbl_smlt_importjob", j.Id);
+
+    // Smoke multi-chunk: contacts + jobs (el bench se limpia solo, en BenchRunner).
+    ChunkSmoke.DeleteData(client);
 
     // Smoke HMAC: contacts + jobs de la corrida (la key temporal ya se borró al principio de Cleanup).
     HmacSmoke.DeleteData(client);

@@ -32,6 +32,8 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
   lectura del template bajo el usuario que hace click).
 
 ### Added
+- **Forms y vistas fijados en la MDA** (paso 4g de `Smelter.Deploy`): main form, vista por defecto, lookup, asociada y Quick Find de cada tabla, más las 3 vistas propias de Import Job. ValidateApp ya no avisa "App users will see all forms and views".
+- **Verify**: check `[MDA] 5` de los 33 componentes fijados; smoke `[CHUNK]` de 250 filas en 3 chunks por el cursor de bytes (newline embebido y multibyte en los bordes); modo `--bench` (100k filas en dry run, falla si algún chunk tarda ≥ 60 s) con input `bench` en `backend-verify`.
 - **Función `HMAC(val, "nombreKey")` en el Transform DSL**: HMAC-SHA256 en hex minúsculas (64 chars)
   sobre el valor sin espacios; vacío → vacío. La key se resuelve por nombre vía `IHmacKeyProvider`
   (el nombre es una etiqueta, nunca el material de la key); los mensajes de error nunca incluyen el

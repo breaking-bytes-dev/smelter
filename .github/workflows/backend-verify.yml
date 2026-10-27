@@ -1,6 +1,6 @@
 # Smoke test E2E del backend desplegado en Dev (tools/Smelter.Verify) — un botón.
 # Importa un template (vía Custom API), corre un import de 5 filas contra `contact`,
-# verifica resultados + idempotencia, y limpia. Verde = el runtime desplegado funciona.
+# verifica resultados + idempotencia + multi-chunk, y limpia. Input `bench`: benchmark 100k dry-run aparte. Verde = el runtime desplegado funciona.
 name: backend-verify
 
 on:
@@ -11,6 +11,10 @@ on:
         type: choice
         options: [none, provision, remove]
         default: none
+      bench:
+        description: "Benchmark opcional: 100.000 filas en dry run (ProcessChunk directo, falla si algún chunk tarda >= 60 s). Corre DESPUÉS del smoke; no escribe en contact"
+        type: boolean
+        default: false
 
 # Branch policy: se configura en el environment `dev` (deployment branches), no acá.
 permissions:
@@ -51,3 +55,11 @@ jobs:
           PP_CLIENT_ID: ${{ secrets.PP_CLIENT_ID }}
           PP_CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
         run: dotnet run --project tools/Smelter.Verify -c Release
+
+      - name: Benchmark 100k dry-run contra Dev
+        if: ${{ inputs.bench }}
+        env:
+          DATAVERSE_URL: ${{ secrets.DATAVERSE_URL }}
+          PP_CLIENT_ID: ${{ secrets.PP_CLIENT_ID }}
+          PP_CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+        run: dotnet run --project tools/Smelter.Verify -c Release -- --bench
