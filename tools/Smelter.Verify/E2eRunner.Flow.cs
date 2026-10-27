@@ -23,6 +23,8 @@ internal static partial class E2eRunner
 
         Queue(env, jobId);
         var job = WaitForEnd(env, jobId, "7a");
+        if (job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value != (int)ImportJobStatus.Completed)
+            DumpLogs(env, jobId); // sin esto el FAIL no dice POR QUÉ quedó con errores
         Ensure(job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value == (int)ImportJobStatus.Completed,
             $"el Cloud Flow debía dejar el job Completed, lo dejó {StatusName(job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value)}" +
             $"{Reason(job)}");

@@ -6,7 +6,8 @@
 //
 // Fuente del mensaje (PII-free: son los mensajes de InvalidPluginExecutionException / errores de plataforma, nunca
 // datos de filas — el detalle por fila va al Import Job Log):
-//   - Prepare falló (Perform_an_unbound_action_2): el Scope queda Skipped, el error está en esa acción.
+//   - Prepare falló (Perform_an_unbound_action_2): el Scope queda Skipped, el error está en esa acción
+//     (outputs.body.error.message; actions()['error'] como respaldo).
 //   - ProcessChunk falló (Perform_an_unbound_action, dentro de Scope/Do_until): el error está en esa acción.
 // El `if` solo evalúa la rama elegida, así no se referencia una acción interna que nunca corrió.
 
@@ -31,8 +32,13 @@ internal static class ClientDataFailureReasonWriter
 
     internal static readonly string ReasonExpression =
         $"@take(if(equals(actions('{PrepareAction}')?['status'], 'Failed'), " +
-        $"coalesce(actions('{PrepareAction}')?['error']?['message'], '{PrepareFallback}'), " +
-        $"coalesce(actions('{ProcessChunkAction}')?['error']?['message'], '{ProcessFallback}')), {MaxLength})";
+        $"coalesce({Message(PrepareAction)}, '{PrepareFallback}'), " +
+        $"coalesce({Message(ProcessChunkAction)}, '{ProcessFallback}')), {MaxLength})";
+
+    // El conector de Dataverse deja el error del plugin (InvalidPluginExecutionException) en el BODY de la respuesta;
+    // actions(x)['error'] suele venir vacío en las OpenApiConnection (verificado en Dev: caía siempre en el respaldo).
+    private static string Message(string action) =>
+        $"actions('{action}')?['outputs']?['body']?['error']?['message'], actions('{action}')?['error']?['message']";
 
     private static readonly JsonSerializerOptions WriteOptions = new()
     {
