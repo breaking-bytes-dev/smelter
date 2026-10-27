@@ -23,8 +23,15 @@ Esto hace que el flow sea stateless y no necesite variables de iteración para e
 | Filtro de columna | `sanic_smlt_ij_status` |
 | Filtro de fila | `sanic_smlt_ij_status eq 0` (Queued) |
 
-El trigger dispara exactamente cuando un Import Job pasa al estado `Queued`. Tanto la creación del job
-(Canvas App) como un eventual retry manual (cambiar status a Queued desde MDA) disparan el mismo flow.
+El trigger dispara exactamente cuando un Import Job pasa al estado `Queued`. Este es el **único camino
+de ejecución**: los botones **Ejecutar** y **Reintentar** del form de la MDA no procesan nada en el
+navegador, solo ponen `sanic_smlt_ij_status = 0` (Queued) y el flow hace el resto. Por eso cerrar la
+pestaña no afecta al job, y un error en `PrepareImport` deja el job en `Failed` (handler del flow).
+
+> **Identidad y acceso:** el flow corre con la identidad de su conexión, por lo que `InitiatingUserId`
+> en `PrepareImport` es esa identidad y no la persona que hizo click. El acceso del operador se
+> controla antes de encolar: poner el job en Queued requiere Write sobre el job y el botón verifica
+> que el usuario pueda leer el Import Template. Ver `docs/04-admin-guide/security-and-roles.md`.
 
 ## Estructura del Flow
 

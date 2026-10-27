@@ -5,6 +5,12 @@ name: backend-verify
 
 on:
   workflow_dispatch:
+    inputs:
+      dev_access:
+        description: "Acceso de PRUEBA en Dev (tools/Smelter.DevAccess): none = solo smoke; provision/remove = roles, teams y templates QA"
+        type: choice
+        options: [none, provision, remove]
+        default: none
 
 # Branch policy: se configura en el environment `dev` (deployment branches), no acá.
 permissions:
@@ -26,6 +32,18 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Smelter.DevAccess (${{ inputs.dev_access }})
+        if: ${{ inputs.dev_access != 'none' }}
+        env:
+          SMELTER_ENV: dev
+          DATAVERSE_URL: ${{ secrets.DATAVERSE_URL }}
+          PP_CLIENT_ID: ${{ secrets.PP_CLIENT_ID }}
+          PP_CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+          MODE: ${{ inputs.dev_access }}
+        run: |
+          if [ "$MODE" = "remove" ]; then ARGS="--remove"; else ARGS=""; fi
+          dotnet run --project tools/Smelter.DevAccess -c Release -- $ARGS
 
       - name: Smoke test contra Dev
         env:

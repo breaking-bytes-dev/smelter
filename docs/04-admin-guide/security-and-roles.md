@@ -130,6 +130,14 @@ custom nuevos) — Requirement "Gating de Custom APIs por ExecutePrivilegeName":
 
 ## Validación runtime en `PrepareImportPlugin` (Fase 5)
 
+> **Desde que Ejecutar/Reintentar solo encolan (Cloud Flow como único camino):** el flow corre con la
+> identidad de su conexión, así que `InitiatingUserId` en `PrepareImport` es esa identidad y este check
+> valida al dueño de la conexión, no a quien hizo click. El control por usuario se movió a antes de
+> encolar: el botón corre con los privilegios del usuario, poner el job en Queued exige **Write** sobre
+> el job (lo hace cumplir Dataverse) y el botón verifica que el usuario pueda **leer** el Import
+> Template (si no, no encola). Límite conocido: esa lectura del template es un chequeo de cliente; un
+> usuario con Write sobre el job podría poner `status = 0` por API sin pasar por el botón.
+
 Además de la matriz de privilegios, `PrepareImportHandler.Run` valida — ANTES de descargar el archivo o
 tocar el job — que `InitiatingUserId` (quien realmente invocó la Custom API, no el service account) tenga
 **Read** access sobre el Template del job, vía `RetrievePrincipalAccessRequest`

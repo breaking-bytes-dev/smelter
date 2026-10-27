@@ -122,12 +122,13 @@ Por ejemplo: si el CSV tiene una columna "País" y esa columna se resuelve contr
 
 ## Cómo reintentar
 
-Cuando un job terminó con `CompletedWithErrors` o `Failed`, podés volver a correrlo con el botón **↻ Reintentar** en la barra de comandos del job.
+Cuando un job terminó (`Completed`, `CompletedWithErrors` o `Failed`), podés volver a correrlo con el botón **↻ Reintentar** en la barra de comandos del job. El botón está deshabilitado mientras el job está en Queued o Processing.
 
 Al hacer click en Reintentar:
 
-1. Los contadores se resetean (Processed Rows, Success, Failed, Skipped vuelven a cero).
-2. El job pasa a estado **Queued** y el proceso arranca de nuevo desde el principio.
+1. El botón guarda cambios pendientes y vuelve a poner el job en estado **Queued** (es el mismo y único camino que **Ejecutar**: el procesamiento corre en el servidor vía Cloud Flow, podés cerrar la pestaña).
+2. El flow arranca de nuevo y la preparación resetea los contadores (Processed Rows, Success, Failed, Skipped vuelven a cero) y el avance interno: el proceso corre desde el principio.
+3. Si la preparación falla (p. ej. falta una columna en el CSV), el job queda en **Failed** y el detalle está en el trace del sistema.
 
 ### Por qué es seguro reintentar
 

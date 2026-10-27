@@ -6,6 +6,20 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+### Changed
+- **Botones Ejecutar/Reintentar de Import Job: un solo camino de ejecución (Cloud Flow)**: antes corrían
+  `PrepareImport` + el loop de `ProcessChunk` desde el navegador (cerrar la pestaña dejaba el job en
+  Processing para siempre, y un fallo de Prepare desde el botón no marcaba Failed). Ahora solo guardan el
+  form, validan archivo + template (y que el usuario pueda leer el template), ponen el job en Queued y
+  muestran un aviso; el flow orquestador hace Prepare + ProcessChunk y su handler marca Failed. El form se
+  auto-refresca mientras el job está Queued/Processing. Enable rules: Ejecutar solo con status vacío
+  (nunca corrió), Reintentar solo en Completed/CompletedWithErrors/Failed, ambos deshabilitados en
+  Queued/Processing y en registros sin guardar. `Smelter.Verify` falla si el web resource desplegado
+  vuelve a referenciar processchunk/prepareimport o faltan las enable rules.
+- **Nota de seguridad**: como el flow corre con la identidad de su conexión, `InitiatingUserId` en
+  `PrepareImport` es esa identidad; el control por usuario se hace al encolar (Write sobre el job +
+  lectura del template bajo el usuario que hace click).
+
 ### Added
 - **Función `HMAC(val, "nombreKey")` en el Transform DSL**: HMAC-SHA256 en hex minúsculas (64 chars)
   sobre el valor sin espacios; vacío → vacío. La key se resuelve por nombre vía `IHmacKeyProvider`

@@ -65,9 +65,12 @@ Hacé click en **Guardar** para registrar el job. Todavía no empezó a procesar
 
 Hacé click en el botón **▶ Ejecutar** en la barra de comandos.
 
-El sistema valida que haya un template y un archivo seleccionados. Si falta alguno, muestra un mensaje de error.
+El botón guarda los cambios pendientes del formulario, valida que haya un template y un archivo cargado
+(si falta alguno, muestra un mensaje de error) y pone el job en estado **Queued**. Aparece el aviso
+"Import en cola: el procesamiento corre en el servidor; podés cerrar esta ventana."
 
-Si todo está bien, el job pasa a estado **Queued** y el procesamiento arranca automáticamente en segundos.
+El procesamiento lo hace el servidor (Cloud Flow), no tu navegador: **podés cerrar la pestaña** y el
+job sigue. El botón solo está habilitado en jobs que nunca se ejecutaron y en registros ya guardados.
 
 ### 8. Seguir el progreso
 
@@ -82,7 +85,8 @@ El job pasa por los siguientes estados durante el proceso:
 | **Failed** | El proceso no pudo completarse por un error grave. No se procesaron todas las filas. Contactá al configurador (el detalle queda en el trace del sistema). |
 
 Para ver el avance en tiempo real:
-- Recargá el form del job (F5 o el botón de refrescar del navegador).
+- Con el form abierto, se actualiza solo cada pocos segundos mientras el job está en Queued o Processing.
+- Si lo cerraste, volvé a abrir el job (o recargá con F5).
 - O seguilo desde el **dashboard**, en la lista "Jobs en Proceso".
 
 Los campos **Processed Rows** y **Total Rows** te dicen cuánto avanzó. Por ejemplo: `1.500 / 5.000` significa que se procesaron 1.500 filas de un total de 5.000.

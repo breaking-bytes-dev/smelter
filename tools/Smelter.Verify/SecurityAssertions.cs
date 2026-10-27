@@ -33,8 +33,9 @@ internal static class SecurityAssertions
         AssertExecutePrivileges(client);
         AssertAppModuleRolesOnlyConfigurador(client, roleIds[SecuritySpec.ConfiguradorRoleName]);
         AssertProcessChunkCloudFlowReferencesNewApi(client);
+        AssertImportJobButtonsQueueOnly(client);
 
-        Console.WriteLine("[SEC] OK: roles, cascade, executeprivilegename, AppModuleRoles, Cloud Flow — todo alineado.");
+        Console.WriteLine("[SEC] OK: roles, cascade, executeprivilegename, AppModuleRoles, Cloud Flow, botones Import Job — todo alineado.");
     }
 
     // ── 7.1 / 7.2: roles + privilegios (Configurador CRUD Org, Operador == SecuritySpec) ────────
@@ -232,6 +233,37 @@ internal static class SecurityAssertions
         }
         Console.WriteLine($"[SEC]   Cloud Flow(s) processchunk: {flows.Count} referencian " +
             $"'{ClientDataProcessChunkRenamer.NewActionUniqueName}' como token exacto, sin restos de la API vieja ni corrupción. OK.");
+    }
+
+    // ── 7.7: botones Ejecutar/Reintentar solo encolan (único camino = Cloud Flow) ──────────────
+    private static void AssertImportJobButtonsQueueOnly(ServiceClient client)
+    {
+        const string webResourceName = "sanic_smlt_importjob_actions.js";
+        var wr = client.RetrieveMultiple(new QueryExpression("webresource")
+        {
+            ColumnSet = new ColumnSet("content"),
+            Criteria = { Conditions = { new ConditionExpression("name", ConditionOperator.Equal, webResourceName) } },
+        }).Entities.FirstOrDefault();
+        Assert(wr is not null, $"Falta el web resource '{webResourceName}'.");
+        var js = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(wr!.GetAttributeValue<string>("content") ?? ""));
+        Assert(!js.Contains("processchunk", StringComparison.OrdinalIgnoreCase),
+            $"'{webResourceName}' desplegado TODAVÍA referencia processchunk: el loop del navegador debe estar removido (único camino = Cloud Flow).");
+        Assert(!js.Contains("prepareimport", StringComparison.OrdinalIgnoreCase),
+            $"'{webResourceName}' desplegado TODAVÍA referencia prepareimport: los botones solo deben encolar el job.");
+
+        var ribbon = (RetrieveEntityRibbonResponse)client.Execute(new RetrieveEntityRibbonRequest
+        {
+            EntityName = SecuritySpec.Tables.ImportJob,
+            RibbonLocationFilter = RibbonLocationFilters.All,
+        });
+        using var zip = new System.IO.Compression.ZipArchive(new MemoryStream(ribbon.CompressedEntityXml));
+        var entry = zip.GetEntry("RibbonXml.xml");
+        Assert(entry is not null, "El ribbon de Import Job no trae RibbonXml.xml.");
+        using var reader = new StreamReader(entry!.Open());
+        var ribbonXml = reader.ReadToEnd();
+        foreach (var rule in new[] { "sanic.smlt.EjecutarImportJob.EnableRule", "sanic.smlt.ReintentarImportJob.EnableRule" })
+            Assert(ribbonXml.Contains(rule, StringComparison.Ordinal), $"Falta la enable rule '{rule}' en el ribbon de Import Job.");
+        Console.WriteLine("[SEC]   Botones Import Job: web resource sin processchunk/prepareimport y enable rules presentes. OK.");
     }
 
     private static void Assert(bool condition, string message)
