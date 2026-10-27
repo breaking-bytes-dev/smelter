@@ -143,7 +143,7 @@ namespace Smelter.Plugins.Services
                 byIndex.TryGetValue(i, out var item);
 
                 results.Add(item?.Fault != null
-                    ? ProcessingResult.Failure(record.SourceRowNumber, table, item.Fault.Message)
+                    ? ProcessingResult.Failure(record.SourceRowNumber, table, FaultMessage(item.Fault))
                     : ResolveSuccess(record, table, item, isUpsert: false));
             }
             return results;
@@ -271,7 +271,7 @@ namespace Smelter.Plugins.Services
 
                 if (item?.Fault != null)
                 {
-                    results.Add(ProcessingResult.Failure(record.SourceRowNumber, table, item.Fault.Message));
+                    results.Add(ProcessingResult.Failure(record.SourceRowNumber, table, FaultMessage(item.Fault)));
                     continue;
                 }
 
@@ -303,6 +303,14 @@ namespace Smelter.Plugins.Services
             var created = (item?.Response as CreateResponse)?.id ?? Guid.Empty;
             return ProcessingResult.Success(record.SourceRowNumber, table, created, isUpdate: false);
         }
+
+        /// <summary>
+        /// Mensaje seguro para el Import Job Log: solo el ErrorCode del fault. Fault.Message suele traer
+        /// el valor de la clave duplicada ("A record with this key already exists: 4111...") — PII que no
+        /// debe quedar en el log. El código alcanza para diagnosticar (se busca en el Plugin Trace Log).
+        /// </summary>
+        internal static string FaultMessage(OrganizationServiceFault fault) =>
+            $"Dataverse rejected the write (ErrorCode 0x{(fault?.ErrorCode ?? 0):X8}).";
 
         /// <summary>
         /// Dry-run path: returns a synthetic success result for every record without touching

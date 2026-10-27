@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ServiceModel;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 
@@ -37,6 +38,9 @@ namespace Smelter.Plugins.Services
 
         private readonly IOrganizationService _service;
         private readonly Dictionary<string, byte[]> _cache = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        // Fallos de Load cacheados por nombre: sin esto, cada fila de un CSV de 100k reintenta el
+        // RetrieveMultiple (y falla igual) cuando la tabla no existe en el entorno.
+        private readonly Dictionary<string, Exception> _failures = new Dictionary<string, Exception>(StringComparer.Ordinal);
 
         /// <summary>
         /// Initializes a new instance of <see cref="DataverseHmacKeyProvider"/>.
@@ -53,7 +57,8 @@ namespace Smelter.Plugins.Services
         /// </summary>
         /// <exception cref="InvalidOperationException">
         /// More than one active row has the name, or the stored value is not valid hex. The message
-        /// carries the key name only, never the stored value.
+        /// carries the key name only, never the stored value; or the key table is unavailable (Dataverse fault).
+        /// Failures are cached per key name for the lifetime of the instance.
         /// </exception>
         public byte[] GetKey(string keyName)
         {
@@ -61,9 +66,24 @@ namespace Smelter.Plugins.Services
 
             if (_cache.TryGetValue(keyName, out var cached)) return cached;
 
-            var key = Load(keyName);
-            _cache[keyName] = key;
-            return key;
+            if (_failures.TryGetValue(keyName, out var failure)) throw failure;
+
+            try
+            {
+                var key = Load(keyName);
+                _cache[keyName] = key;
+                return key;
+            }
+            catch (Exception ex)
+            {
+                // Tabla inexistente (entorno sin la tabla de keys) u otro fault de Dataverse: se traduce a
+                // InvalidOperationException (→ TransformError) sin el mensaje del fault.
+                var wrapped = ex is FaultException<OrganizationServiceFault>
+                    ? new InvalidOperationException($"HMAC: key store not available in this environment ('{keyName}').")
+                    : ex;
+                _failures[keyName] = wrapped;
+                throw wrapped;
+            }
         }
 
         private byte[] Load(string keyName)

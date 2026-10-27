@@ -157,6 +157,12 @@ namespace Smelter.Plugins
         {
             var context = _loader.LoadContext(importJobId);
             var template = context.Template;
+
+            // Re-chequeo de gates: el Cloud Flow podría llamar a ProcessChunk directo (o reintentar) sobre un
+            // job/template que Prepare nunca validó o que cambió de estado entre chunks. Fail closed.
+            PrepareImportHandler.ValidateTemplateStatus(template);
+            ValidateJobStatus(context);
+
             var chunkSize = ResolveChunkSize(context, chunkSizeOverride);
             var offset = context.InitialProcessingBatch;
             _tracing?.Trace($"Run: offset={offset}, chunkSize={chunkSize}, tableMappings={context.TableMappings.Count}");
@@ -204,6 +210,20 @@ namespace Smelter.Plugins
 
             UpdateJob(importJobId, status, newOffset, processed, success, failed, skipped, complete: !hasMore);
             return new ProcessChunkResult { HasMore = hasMore, ProcessedSoFar = processed };
+        }
+
+        /// <summary>
+        /// Gate de estado del job: solo <see cref="ImportJobStatus.Processing"/> (lo deja PrepareImport y se
+        /// mantiene entre chunks) es procesable. Queued = Prepare no corrió; Completed/CompletedWithErrors/Failed
+        /// = terminal, reprocesar duplicaría contadores y reescribiría datos.
+        /// </summary>
+        private static void ValidateJobStatus(ImportContext context)
+        {
+            if (context.JobStatus == (int)ImportJobStatus.Processing) return;
+
+            throw new InvalidPluginExecutionException(
+                $"Import Job {context.ImportJobId} is not in Processing state " +
+                $"(status={(ImportJobStatus)context.JobStatus}). Run PrepareImport first; finished or failed jobs cannot be reprocessed.");
         }
 
         /// <summary>
@@ -269,7 +289,7 @@ namespace Smelter.Plugins
 
                 if (response.IsFaulted)
                     foreach (var item in response.Responses.Where(r => r.Fault != null))
-                        _tracing?.Trace($"  LOG WRITE FAULT (idx {item.RequestIndex}): {item.Fault.Message} " +
+                        _tracing?.Trace($"  LOG WRITE FAULT (idx {item.RequestIndex}): ErrorCode={item.Fault.ErrorCode} " +
                             "→ revisá la alternate key del Import Job Log y la columna errorcategory.");
             }
             catch (Exception ex)

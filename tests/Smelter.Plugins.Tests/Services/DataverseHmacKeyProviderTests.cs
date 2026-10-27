@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.ServiceModel;
 using FluentAssertions;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
@@ -126,6 +127,56 @@ namespace Smelter.Plugins.Tests.Services
 
             second.Should().BeSameAs(first);
             service.Received(1).RetrieveMultiple(Arg.Any<QueryBase>());
+        }
+
+        private static IOrganizationService FaultingService()
+        {
+            var service = Substitute.For<IOrganizationService>();
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(_ =>
+                throw new FaultException<OrganizationServiceFault>(
+                    new OrganizationServiceFault { Message = "Entity 'sanic_tbl_smlt_hmackey' does not exist" }));
+            return service;
+        }
+
+        [Fact]
+        public void GetKey_MissingTableFault_IsWrappedAsInvalidOperationWithoutFaultMessage()
+        {
+            var provider = new DataverseHmacKeyProvider(FaultingService());
+
+            Action act = () => provider.GetKey("cm-pan");
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("HMAC: key store not available in this environment ('cm-pan').")
+                .Which.ToString().Should().NotContain("does not exist");
+        }
+
+        [Fact]
+        public void GetKey_Failure_IsCachedPerKeyName_QueriesOnce()
+        {
+            var service = FaultingService();
+            var provider = new DataverseHmacKeyProvider(service);
+
+            Action act = () => provider.GetKey("cm-pan");
+            act.Should().Throw<InvalidOperationException>();
+            act.Should().Throw<InvalidOperationException>();
+            act.Should().Throw<InvalidOperationException>();
+
+            service.Received(1).RetrieveMultiple(Arg.Any<QueryBase>());
+        }
+
+        [Fact]
+        public void GetKey_Failure_OnOneName_DoesNotPoisonAnotherName()
+        {
+            var service = Substitute.For<IOrganizationService>();
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(
+                _ => throw new FaultException<OrganizationServiceFault>(new OrganizationServiceFault()),
+                _ => Rows(KeyEntity(KeyHex)));
+            var provider = new DataverseHmacKeyProvider(service);
+
+            Action bad = () => provider.GetKey("a");
+            bad.Should().Throw<InvalidOperationException>();
+
+            provider.GetKey("b").Should().Equal(ExpectedKey());
         }
 
         [Fact]

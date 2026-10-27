@@ -97,6 +97,28 @@ namespace Smelter.Plugins.Tests.Services
                 "loaded relationships must drive the topological order (bug #1 fixed)");
         }
 
+        [Theory]
+        [InlineData(1, (int)ImportJobStatus.Processing)]
+        [InlineData(2, (int)ImportJobStatus.Completed)]
+        [InlineData(null, (int)ImportJobStatus.Queued)] // sin estado → fail-closed para ProcessChunk
+        public void LoadContext_LoadsJobStatus(int? raw, int expected)
+        {
+            var service = Substitute.For<IOrganizationService>();
+            var jobId = Guid.NewGuid();
+            var templateId = Guid.NewGuid();
+            var job = new Entity("sanic_tbl_smlt_importjob", jobId);
+            job["sanic_smlt_ij_importtemplateid"] = new EntityReference("sanic_tbl_smlt_importtemplate", templateId);
+            if (raw.HasValue) job["sanic_smlt_ij_status"] = new OptionSetValue(raw.Value);
+            service.Retrieve("sanic_tbl_smlt_importjob", jobId, Arg.Any<ColumnSet>()).Returns(job);
+            service.Retrieve("sanic_tbl_smlt_importtemplate", templateId, Arg.Any<ColumnSet>())
+                .Returns(new Entity("sanic_tbl_smlt_importtemplate", templateId));
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(new EntityCollection());
+
+            var context = new ImportContextLoader(service).LoadContext(jobId);
+
+            context.JobStatus.Should().Be(expected);
+        }
+
         /// <summary>
         /// Regression: LoadTemplateConfig recibe un TEMPLATE id y va directo al template.
         /// NO debe hacer Retrieve de importjob con ese id (causa de "importjob ... Does Not Exist").

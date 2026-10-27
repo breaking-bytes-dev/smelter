@@ -149,9 +149,9 @@ namespace Smelter.Plugins
         /// <summary>
         /// Gate de estado (1.3.0.0): solo un template <see cref="ImportTemplateStatus.Active"/> es
         /// ejecutable. Antes, un template en Draft (a medio configurar) o Archived corría igual —
-        /// el campo status existía pero el motor lo ignoraba.
+        /// el campo status existía pero el motor lo ignoraba. Público: ProcessChunk reusa el mismo gate.
         /// </summary>
-        private static void ValidateTemplateStatus(ImportTemplateConfig template)
+        public static void ValidateTemplateStatus(ImportTemplateConfig template)
         {
             if (template.Status == (int)ImportTemplateStatus.Active) return;
 

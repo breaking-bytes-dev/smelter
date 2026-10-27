@@ -11,6 +11,24 @@ namespace Smelter.Plugins.Tests.Services
     {
         private readonly TypeCoercer _sut = new TypeCoercer();
 
+        [Theory]
+        [InlineData(ColumnDataType.Integer, "SECRET-4111")]
+        [InlineData(ColumnDataType.Decimal, "SECRET-4111")]
+        [InlineData(ColumnDataType.DateTime, "SECRET-4111")]
+        [InlineData(ColumnDataType.Boolean, "SECRET-4111")]
+        [InlineData(ColumnDataType.Money, "SECRET-4111")]
+        [InlineData(ColumnDataType.Guid, "SECRET-4111")]
+        [InlineData(ColumnDataType.OptionSet, "SECRET-4111")]
+        public void Coerce_Invalid_MessageNamesTypeAndLengthButNeverTheValue(ColumnDataType type, string value)
+        {
+            Action act = () => _sut.Coerce(value, type);
+
+            var ex = act.Should().Throw<FormatException>().Which;
+            ex.Message.Should().Contain(type == ColumnDataType.Guid ? "GUID" : type.ToString());
+            ex.Message.Should().Contain("(11 chars)");
+            ex.Message.Should().NotContain("SECRET").And.NotContain("4111");
+        }
+
         // --- String ---
 
         [Fact]

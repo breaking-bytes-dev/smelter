@@ -26,6 +26,11 @@ namespace Smelter.Plugins.Services
         private const double MinPlausibleOaDate = 2;
         private const double MaxPlausibleOaDate = 73415;
 
+        // El mensaje NUNCA incluye el valor de la celda (puede ser un PAN, un documento, etc.: termina en el
+        // Import Job Log y en traces). Solo el tipo destino y el largo; la columna la agrega NormalizationEngine.
+        private static FormatException CannotConvert(string value, string target, string hint = "") =>
+            new FormatException($"Cannot convert value ({value.Length} chars) to {target}.{hint}");
+
         /// <summary>
         /// Coerce a raw string value to the target CRM type.
         /// </summary>
@@ -49,12 +54,12 @@ namespace Smelter.Plugins.Services
 
                 case ColumnDataType.Integer:
                     if (!int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intResult))
-                        throw new FormatException($"Cannot convert '{value}' to Integer.");
+                        throw CannotConvert(value, "Integer");
                     return intResult;
 
                 case ColumnDataType.Decimal:
                     if (!decimal.TryParse(trimmed, NumberStyles.Number, CultureInfo.InvariantCulture, out var decResult))
-                        throw new FormatException($"Cannot convert '{value}' to Decimal.");
+                        throw CannotConvert(value, "Decimal");
                     return decResult;
 
                 case ColumnDataType.DateTime:
@@ -69,29 +74,28 @@ namespace Smelter.Plugins.Services
                         && oaDate >= MinPlausibleOaDate && oaDate <= MaxPlausibleOaDate)
                         return DateTime.FromOADate(oaDate);
 
-                    throw new FormatException($"Cannot convert '{value}' to DateTime.");
+                    throw CannotConvert(value, "DateTime");
 
                 case ColumnDataType.Boolean:
                     if (TrueValues.Contains(trimmed)) return true;
                     if (FalseValues.Contains(trimmed)) return false;
-                    throw new FormatException(
-                        $"Cannot convert '{value}' to Boolean. Expected: true/false, 1/0, yes/no.");
+                    throw CannotConvert(value, "Boolean", " Expected: true/false, 1/0, yes/no.");
 
                 case ColumnDataType.Money:
                     if (!decimal.TryParse(trimmed, NumberStyles.Number, CultureInfo.InvariantCulture, out var moneyResult))
-                        throw new FormatException($"Cannot convert '{value}' to Money.");
+                        throw CannotConvert(value, "Money");
                     return new Money(moneyResult);
 
                 case ColumnDataType.Guid:
                     if (!Guid.TryParse(trimmed, out var guidResult))
-                        throw new FormatException($"Cannot convert '{value}' to GUID.");
+                        throw CannotConvert(value, "GUID");
                     return guidResult;
 
                 case ColumnDataType.OptionSet:
                     if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var optResult))
                         return new OptionSetValue(optResult);
                     
-                    throw new FormatException($"Cannot convert '{value}' to OptionSet. Use MAP transform if mapping is required.");
+                    throw CannotConvert(value, "OptionSet", " Use MAP transform if mapping is required.");
 
                 case ColumnDataType.Lookup:
                     // Return the raw string regardless of whether it parses as a GUID.

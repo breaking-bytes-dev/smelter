@@ -20,6 +20,13 @@ namespace Smelter.Plugins.Models
         /// </summary>
         public bool IsDryRun { get; set; }
 
+        /// <summary>
+        /// Estado del job (<see cref="ImportJobStatus"/>) al cargar el contexto. ProcessChunk solo corre
+        /// sobre <see cref="ImportJobStatus.Processing"/> (lo deja PrepareImport). Default <c>Processing</c>
+        /// para contextos armados a mano; el loader lo completa con el valor real (null → Queued, fail-closed).
+        /// </summary>
+        public int JobStatus { get; set; } = (int)ImportJobStatus.Processing;
+
         /// <summary>Cumulative processed-row count loaded from the job record at the start of this invocation.</summary>
         public int InitialProcessedRows { get; set; }
 

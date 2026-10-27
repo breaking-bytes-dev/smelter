@@ -47,6 +47,46 @@ namespace Smelter.Plugins.Tests.Plugins
         private static IList<ProcessingResult> AllOk(IReadOnlyList<SourceRow> rows) =>
             rows.Select(r => ProcessingResult.Success(r.RowNumber, "t", Guid.NewGuid(), false)).ToList();
 
+        [Theory]
+        [InlineData(ImportTemplateStatus.Draft)]
+        [InlineData(ImportTemplateStatus.Archived)]
+        public void Run_TemplateNotActive_ThrowsBeforeDownloadOrAnyWrite(ImportTemplateStatus status)
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = Ctx(offset: 0, chunkSize: 1000);
+            ctx.Template.Status = (int)status;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.Build().Run(jobId, 0);
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*not Active*");
+            m.Downloader.DidNotReceiveWithAnyArgs().Download(null, null);
+            m.Engine.DidNotReceive().ProcessBatch(Arg.Any<ImportContext>(), Arg.Any<IList<SourceRow>>(), Arg.Any<IUpsertWriter>());
+            m.Service.DidNotReceiveWithAnyArgs().Update(null);
+        }
+
+        [Theory]
+        [InlineData(ImportJobStatus.Queued)]
+        [InlineData(ImportJobStatus.Completed)]
+        [InlineData(ImportJobStatus.CompletedWithErrors)]
+        [InlineData(ImportJobStatus.Failed)]
+        public void Run_JobNotProcessing_ThrowsBeforeDownloadOrAnyWrite(ImportJobStatus status)
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = Ctx(offset: 0, chunkSize: 1000);
+            ctx.JobStatus = (int)status;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.Build().Run(jobId, 0);
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*not in Processing state*");
+            m.Downloader.DidNotReceiveWithAnyArgs().Download(null, null);
+            m.Engine.DidNotReceive().ProcessBatch(Arg.Any<ImportContext>(), Arg.Any<IList<SourceRow>>(), Arg.Any<IUpsertWriter>());
+            m.Service.DidNotReceiveWithAnyArgs().Update(null);
+        }
+
         [Fact]
         public void Run_FullChunk_AdvancesOffsetByRowsAndReportsHasMore()
         {
