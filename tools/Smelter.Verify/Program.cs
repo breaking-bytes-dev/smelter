@@ -319,6 +319,7 @@ try
     }
 
     client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_insertonly"] = true });
+    ResetStatusForDirectRun(client, jobId3); // ya corrió completo arriba: Prepare solo reclama jobs Queued/sin status
     var gateTotal = (int)ExecuteWithTransientBlobRetry(client, new OrganizationRequest(apiPrepare) { ["JobId"] = jobId3 })["TotalRows"];
     Assert(gateTotal == 5, $"con 'Solo inserción' PrepareImport debía aceptar el template y contar 5 filas, contó {gateTotal}");
 
@@ -413,9 +414,20 @@ finally
 
 // ───────────────────────────────────────────────────────────────────────────
 
+// Desde 1.0.12 PrepareImport RECLAMA el job: solo lo toma si está Queued o sin status. Estas corridas directas re-corren
+// el MISMO job (idempotencia, reproceso) → se lo devuelve a "sin status" (NO a Queued: eso dispararía el Cloud Flow).
+static void ResetStatusForDirectRun(ServiceClient client, Guid jobId)
+{
+    var current = client.Retrieve(JobTable, jobId, new ColumnSet("sanic_smlt_ij_status")).GetAttributeValue<OptionSetValue>("sanic_smlt_ij_status");
+    if (current is not null)
+        client.Update(new Entity(JobTable, jobId) { ["sanic_smlt_ij_status"] = null });
+}
+
 static void RunImport(ServiceClient client, string apiPrepare, string apiProcessChunk, Guid jobId, int expectTotal)
 {
+    ResetStatusForDirectRun(client, jobId);
     var prep = ExecuteWithTransientBlobRetry(client, new OrganizationRequest(apiPrepare) { ["JobId"] = jobId });
+    Assert((bool)prep["Claimed"], "PrepareImport debía reclamar el job (Claimed=true): estaba sin status/Queued");
     var total = (int)prep["TotalRows"];
     Assert(total == expectTotal, $"PrepareImport debía contar {expectTotal} filas, contó {total}");
 

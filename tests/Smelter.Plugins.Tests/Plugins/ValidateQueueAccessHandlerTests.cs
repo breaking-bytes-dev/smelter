@@ -105,13 +105,69 @@ namespace Smelter.Plugins.Tests.Plugins
         }
 
         [Fact]
-        public void Update_TemplateInTarget_UsesItWithoutRetrieving()
+        public void Update_TemplateInTarget_UsesItForTheAccessCheck_StillRetrievesStatus()
         {
+            JobInDbWithStatus(null);
             _access.HasReadAccess(_user, Arg.Any<EntityReference>()).Returns(false);
 
             Action act = () => Build().Run("Update", Target(0, true, true), _user);
 
-            act.Should().Throw<InvalidPluginExecutionException>();
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("No tenés acceso*");
+            _service.Received(1).Retrieve(AssignJobOwnerHandler.ImportJobTable, _jobId,
+                Arg.Is<ColumnSet>(c => c.Columns.Contains(Status)));
+        }
+
+        private void JobInDbWithStatus(int? status)
+        {
+            var job = new Entity(AssignJobOwnerHandler.ImportJobTable, _jobId)
+            {
+                [AssignJobOwnerHandler.TemplateLookupAttribute] = TemplateRef()
+            };
+            if (status.HasValue) job[Status] = new OptionSetValue(status.Value);
+            _service.Retrieve(AssignJobOwnerHandler.ImportJobTable, _jobId, Arg.Any<ColumnSet>()).Returns(job);
+        }
+
+        private const string ProcessingMessage =
+            "El Import Job se está procesando: no se puede volver a poner en cola hasta que termine.";
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)] // template en el Target: igual hay que leer el status persistido
+        public void Update_QueuedWhileJobIsProcessing_ThrowsBeforeTheAccessCheck(bool templateInTarget)
+        {
+            JobInDbWithStatus(1);
+            _access.HasReadAccess(Arg.Any<Guid>(), Arg.Any<EntityReference>()).Returns(true);
+
+            Action act = () => Build().Run("Update", Target(0, templateInTarget, true), _user);
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage(ProcessingMessage);
+            _access.DidNotReceive().HasReadAccess(Arg.Any<Guid>(), Arg.Any<EntityReference>());
+        }
+
+        [Theory]
+        [InlineData(0)] // ya en cola: idempotente, el claim lo resuelve
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(4)]
+        [InlineData(null)]
+        public void Update_QueuedWhileJobIsNotProcessing_Allows(int? persisted)
+        {
+            JobInDbWithStatus(persisted);
+            _access.HasReadAccess(_user, Arg.Any<EntityReference>()).Returns(true);
+
+            Action act = () => Build().Run("Update", Target(0, false, true), _user);
+
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Create_QueuedIgnoresPersistedStatus_DoesNotRetrieve()
+        {
+            _access.HasReadAccess(_user, Arg.Any<EntityReference>()).Returns(true);
+
+            Action act = () => Build().Run("Create", Target(0, true, false), _user);
+
+            act.Should().NotThrow();
             _service.DidNotReceive().Retrieve(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<ColumnSet>());
         }
 

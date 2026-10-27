@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.ServiceModel;
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Query;
 using Smelter.Plugins.Models;
 using Smelter.Plugins.Services;
 
@@ -9,8 +12,9 @@ namespace Smelter.Plugins
 {
     /// <summary>
     /// Backing plugin for the Custom API <c>sanic_PrepareImport</c>.
-    /// Lightweight: counts data rows, validates headers, and resets the job state. NO staging.
-    /// In: JobId (Guid). Out: TotalRows (int).
+    /// Lightweight: counts data rows, validates headers, and atomically CLAIMS the job (Queued → Processing, resetting its
+    /// state). NO staging.
+    /// In: JobId (Guid). Out: TotalRows (int), Claimed (bool — false: another flow run owns the job, do NOT process).
     /// </summary>
     public class PrepareImportPlugin : IPlugin
     {
@@ -46,15 +50,32 @@ namespace Smelter.Plugins
                     new PrincipalAccessChecker(service),
                     tracing);
 
-                var total = handler.Run(jobId, context.InitiatingUserId);
-                tracing.Trace($"PrepareImport: COMPLETED. TotalRows = {total}");
-                context.OutputParameters["TotalRows"] = total;
+                var result = handler.Prepare(jobId, context.InitiatingUserId);
+                tracing.Trace($"PrepareImport: COMPLETED. Claimed = {result.Claimed}, TotalRows = {result.TotalRows}");
+                context.OutputParameters["TotalRows"] = result.TotalRows;
+                context.OutputParameters["Claimed"] = result.Claimed;
             }
             catch (Exception ex)
             {
                 tracing.Trace($"PrepareImport FAILED: {ex.GetType().Name}: {ex.Message}\nSTACK:\n{ex.StackTrace}");
                 throw;
             }
+        }
+    }
+
+    /// <summary>Resultado de <see cref="PrepareImportHandler.Prepare"/>.</summary>
+    public sealed class PrepareResult
+    {
+        /// <summary>true: esta llamada reclamó el job (lo dejó en Processing) y el caller debe procesarlo.</summary>
+        public bool Claimed { get; }
+
+        /// <summary>Filas de datos del archivo (0 si no se reclamó).</summary>
+        public int TotalRows { get; }
+
+        public PrepareResult(bool claimed, int totalRows)
+        {
+            Claimed = claimed;
+            TotalRows = totalRows;
         }
     }
 
@@ -76,6 +97,11 @@ namespace Smelter.Plugins
         /// to the first data byte (after BOM + header); ProcessChunk advances it so each chunk downloads only its range.
         /// </summary>
         public const string ByteCursorAttribute = "sanic_smlt_ij_bytecursor";
+
+        /// <summary>Dataverse ErrorCode 0x80060882 ConcurrencyVersionMismatch (UpdateRequest con IfRowVersionMatches).</summary>
+        public const int ConcurrencyVersionMismatch = unchecked((int)0x80060882);
+
+        private const string StatusAttribute = "sanic_smlt_ij_status";
 
         private readonly IImportContextLoader _loader;
         private readonly IFileDownloader _downloader;
@@ -124,7 +150,22 @@ namespace Smelter.Plugins
         /// Thrown when <paramref name="initiatingUserId"/> lacks Read access to the Import Template, or
         /// when one or more source columns referenced by the template are absent from the CSV header.
         /// </exception>
-        public int Run(Guid importJobId, Guid initiatingUserId)
+        public int Run(Guid importJobId, Guid initiatingUserId) => Prepare(importJobId, initiatingUserId).TotalRows;
+
+        /// <summary>
+        /// Igual que <see cref="Run"/> pero informa si se reclamó el job. CLAIM ATÓMICO (1.0.12): un job encolado puede
+        /// disparar varias corridas del Cloud Flow orquestador (triggers de Dataverse at-least-once, re-disparos por
+        /// updates de la fila); si cada una reseteara y procesara, los upserts competirían (DuplicateRecordEntityKey).
+        /// Después de TODAS las validaciones (que siguen lanzando → el flow marca Failed) se lee el job:
+        /// <list type="bullet">
+        /// <item>status Queued, o null/vacío (llamadas directas a la API sobre jobs sin status, p.ej. Smelter.Verify) →
+        /// reclamable; el reset (que pasa el job a Processing) va con <c>IfRowVersionMatches</c> y el RowVersion leído:
+        /// si otra corrida lo tocó en el medio (0x80060882) → no reclamado, sin lanzar.</item>
+        /// <item>cualquier otro status (Processing, Completed, ...) → no reclamado: no se resetea ni se procesa nada.</item>
+        /// </list>
+        /// </summary>
+        /// <returns><see cref="PrepareResult"/> con <c>Claimed=false</c> y <c>TotalRows=0</c> si otra corrida es dueña del job.</returns>
+        public PrepareResult Prepare(Guid importJobId, Guid initiatingUserId)
         {
             _tracing?.Trace($"Run: loading context for job {importJobId}...");
             var context = _loader.LoadContext(importJobId);
@@ -145,6 +186,16 @@ namespace Smelter.Plugins
             ValidateConfiguration(context);
             _tracing?.Trace("Run: template configuration is coherent OK.");
 
+            // Claim: se lee el job ANTES del trabajo pesado (descarga + conteo) para no gastarlo si otra corrida ya lo tomó.
+            var job = _service.Retrieve(ImportJobTable, importJobId, new ColumnSet(StatusAttribute));
+            var currentStatus = job?.GetAttributeValue<OptionSetValue>(StatusAttribute)?.Value;
+            if (currentStatus.HasValue && currentStatus.Value != (int)ImportJobStatus.Queued)
+            {
+                _tracing?.Trace($"Run: job NOT claimed (status={currentStatus.Value} is not Queued): another run owns it.");
+                return new PrepareResult(false, 0);
+            }
+            var rowVersion = job?.RowVersion;
+
             var bytes = _downloader.Download(new EntityReference(ImportJobTable, importJobId), SourceFileAttribute);
             _tracing?.Trace($"Run: downloaded file, {bytes?.Length ?? 0} bytes.");
 
@@ -162,8 +213,12 @@ namespace Smelter.Plugins
                 ? $"Run: byte cursor starts at {byteCursor.Value}."
                 : "Run: file not walkable by bytes; ProcessChunk will use the legacy full-download path.");
 
-            ResetJob(importJobId, totalRows, byteCursor);
-            return totalRows;
+            if (!TryClaimAndReset(importJobId, rowVersion, totalRows, byteCursor))
+            {
+                _tracing?.Trace("Run: job NOT claimed (RowVersion mismatch): another run claimed it first.");
+                return new PrepareResult(false, 0);
+            }
+            return new PrepareResult(true, totalRows);
         }
 
         /// <summary>
@@ -254,13 +309,13 @@ namespace Smelter.Plugins
         }
 
         /// <summary>
-        /// Writes the initial job state back to Dataverse: sets status to
+        /// Claims the job and writes its initial state back to Dataverse: sets status to
         /// <see cref="ImportJobStatus.Processing"/>, stores the row count, and zeros all counters
         /// so the Cloud Flow can loop <see cref="ProcessChunkPlugin"/> from offset 0 (and from the first data byte).
         /// </summary>
-        private void ResetJob(Guid jobId, int totalRows, long? byteCursor)
+        private bool TryClaimAndReset(Guid jobId, string rowVersion, int totalRows, long? byteCursor)
         {
-            _service.Update(new Entity(ImportJobTable, jobId)
+            var target = new Entity(ImportJobTable, jobId)
             {
                 // decimal (Decimal precision 0); null limpia un cursor de una corrida anterior.
                 [ByteCursorAttribute] = byteCursor.HasValue ? (object)(decimal)byteCursor.Value : null,
@@ -274,7 +329,22 @@ namespace Smelter.Plugins
                 ["sanic_smlt_ij_starttime"] = DateTime.UtcNow,
                 // Un Reintentar no debe arrastrar el fin de la corrida anterior.
                 ["sanic_smlt_ij_endtime"] = null
-            });
+            };
+            target.RowVersion = rowVersion;
+
+            try
+            {
+                _service.Execute(new UpdateRequest
+                {
+                    Target = target,
+                    ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches
+                });
+                return true;
+            }
+            catch (FaultException<OrganizationServiceFault> ex) when (ex.Detail != null && ex.Detail.ErrorCode == ConcurrencyVersionMismatch)
+            {
+                return false;
+            }
         }
     }
 }

@@ -95,14 +95,26 @@ namespace Smelter.Plugins
             }
 
             var templateRef = target.GetAttributeValue<EntityReference>(AssignJobOwnerHandler.TemplateLookupAttribute);
-            if (templateRef == null && string.Equals(messageName, "Update", StringComparison.OrdinalIgnoreCase)
-                && target.Id != Guid.Empty)
+            if (string.Equals(messageName, "Update", StringComparison.OrdinalIgnoreCase) && target.Id != Guid.Empty)
             {
-                // El Target de un Update solo trae lo que cambió: se lee el lookup del job persistido.
+                // El Target de un Update solo trae lo que cambió: se lee el job persistido (status y, si hace falta, el lookup).
                 // (Alternativa descartada: PreImage — un step image más para registrar y mantener.)
                 var job = _service.Retrieve(AssignJobOwnerHandler.ImportJobTable, target.Id,
-                    new ColumnSet(AssignJobOwnerHandler.TemplateLookupAttribute));
-                templateRef = job.GetAttributeValue<EntityReference>(AssignJobOwnerHandler.TemplateLookupAttribute);
+                    new ColumnSet(StatusAttribute, AssignJobOwnerHandler.TemplateLookupAttribute));
+
+                // Antes del chequeo de acceso: re-encolar un job en curso dispararía otra corrida del flow cuyo claim
+                // lo vería Queued y lo resetearía a mitad de camino. Queued -> Queued (idempotente) y los estados
+                // finales/vacío (reintento) siguen permitidos.
+                var persisted = job.GetAttributeValue<OptionSetValue>(StatusAttribute);
+                if (persisted != null && persisted.Value == (int)ImportJobStatus.Processing)
+                {
+                    _tracing?.Trace("Run: job is Processing — re-queue blocked.");
+                    throw new InvalidPluginExecutionException(
+                        "El Import Job se está procesando: no se puede volver a poner en cola hasta que termine.");
+                }
+
+                if (templateRef == null)
+                    templateRef = job.GetAttributeValue<EntityReference>(AssignJobOwnerHandler.TemplateLookupAttribute);
             }
 
             if (templateRef == null)

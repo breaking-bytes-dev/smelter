@@ -26,8 +26,8 @@ public class ClientDataFailedHandlerFixerTests
     }}},"schemaVersion":"1.0.0.0"}
     """;
 
-    private static string[] RunAfter(string json, string action = "Update_a_row") =>
-        JsonNode.Parse(json)!["properties"]!["definition"]!["actions"]![action]!["runAfter"]!["Scope"]!
+    private static string[] RunAfter(string json, string action = "Update_a_row", string dependsOn = "Scope") =>
+        JsonNode.Parse(json)!["properties"]!["definition"]!["actions"]![action]!["runAfter"]![dependsOn]!
             .AsArray().Select(n => n!.GetValue<string>()).ToArray();
 
     [Fact]
@@ -97,7 +97,19 @@ public class ClientDataFailedHandlerFixerTests
             "CloudFlowSmelterSmelterorchestrator-*.json").Single();
         var json = File.ReadAllText(path);
 
-        RunAfter(json).Should().BeEquivalentTo(Expected);
+        RunAfter(json, dependsOn: "Condition_claimed").Should().BeEquivalentTo(Expected);
         ClientDataFailedHandlerFixer.Apply(json).Changed.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Apply_HandlerHangingFromConditionClaimed_ExpandsThatDependencyAndIsIdempotent()
+    {
+        var json = Original.Replace("\"Scope\":[\"Failed\"]", "\"Condition_claimed\":[\"Failed\"]");
+
+        var (result, changed) = ClientDataFailedHandlerFixer.Apply(json);
+
+        changed.Should().BeTrue();
+        RunAfter(result, dependsOn: "Condition_claimed").Should().BeEquivalentTo(Expected);
+        ClientDataFailedHandlerFixer.Apply(result).Changed.Should().BeFalse();
     }
 }

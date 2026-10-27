@@ -3,7 +3,9 @@
 // Bug: la acción que setea sanic_smlt_ij_status = 4 (Failed) corría solo con runAfter {"Scope":["Failed"]}.
 // Si PrepareImport lanza (template no Active, header mismatch, sin acceso, gate HMAC...) el Scope queda
 // Skipped → el handler también → el job queda Queued para siempre. Idem si el Scope hace TimedOut.
-// Fix: runAfter {"Scope":["Failed","Skipped","TimedOut"]}.
+// Fix: runAfter {"Scope":["Failed","Skipped","TimedOut"]}. Desde que ClientDataClaimGate envuelve el Scope en
+// Condition_claimed, el handler cuelga de "Condition_claimed" con los mismos estados (este fixer converge cualquiera
+// de las dos dependencias).
 //
 // La acción se identifica por forma (OpenApiConnection UpdateOnlyRecord sobre sanic_tbl_smlt_importjobs
 // con item/sanic_smlt_ij_status == 4), no por display name. Idempotente: sobre clientdata ya corregido
@@ -79,14 +81,15 @@ internal static class ClientDataFailedHandlerFixer
     {
         if (action["runAfter"] is not JsonObject runAfter) return false;
 
-        // Solo se toca la dependencia sobre "Scope" (el handler cuelga del Scope principal).
-        if (runAfter["Scope"] is not JsonArray current) return false;
+        // El handler cuelga del Condition_claimed (ClientDataClaimGate) o, en flows aún sin el gate, del Scope principal.
+        var key = runAfter["Condition_claimed"] is JsonArray ? "Condition_claimed" : "Scope";
+        if (runAfter[key] is not JsonArray current) return false;
 
         var existing = current.Select(n => n?.GetValue<string>()).ToList();
         if (RequiredStatuses.All(existing.Contains)) return false;
 
         var merged = existing.OfType<string>().Union(RequiredStatuses).ToList();
-        runAfter["Scope"] = new JsonArray(merged.Select(s => (JsonNode)JsonValue.Create(s)!).ToArray());
+        runAfter[key] = new JsonArray(merged.Select(s => (JsonNode)JsonValue.Create(s)!).ToArray());
         return true;
     }
 }

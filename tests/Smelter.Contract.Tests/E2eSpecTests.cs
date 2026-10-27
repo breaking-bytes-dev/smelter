@@ -23,7 +23,7 @@ public class E2eSpecTests
         E2eSteps.All.Select(s => s.Id).Should().OnlyHaveUniqueItems();
         E2eSteps.All.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Title));
         E2eSteps.All.Select(s => s.Id).Should().Contain(
-            ["1", "2", "2g", "3", "4a", "4b", "5a", "5b", "5c", "6", "7a", "7b", "8", "10", "11", "12", "13", "14"]);
+            ["1", "2", "2g", "3", "4a", "4b", "5a", "5b", "5c", "6", "7a", "7b", "7c", "7d", "8", "10", "11", "12", "13", "14"]);
     }
 
     [Theory]
@@ -657,6 +657,8 @@ public class E2eSpecTests
         var simple = E2eSpec.Simple.Dto("dryrun", ImportTemplateStatus.Active);
         Add("8 dryrun", simple, E2eSpec.Simple.Csv("dry", E2eSpec.Simple.Rows), E2eSpec.Simple.Rows);
         Add("7a flow", E2eSpec.Simple.Dto("flow", ImportTemplateStatus.Active), E2eSpec.Simple.Csv("flow", E2eSpec.Simple.Rows), E2eSpec.Simple.Rows);
+        Add("7c flow claim", E2eSpec.Simple.Dto("claim", ImportTemplateStatus.Active), E2eSpec.Simple.Csv("claim", E2eSpec.Simple.Rows), E2eSpec.Simple.Rows);
+        Add("7d requeue guard", E2eSpec.Simple.Dto("requeue", ImportTemplateStatus.Active), E2eSpec.Simple.Csv("requeue", E2eSpec.Simple.Rows), E2eSpec.Simple.Rows);
         Add("7b flow draft", E2eSpec.Simple.Dto("flow-draft", ImportTemplateStatus.Draft), E2eSpec.Simple.Csv("flowdraft", 3), 3, runnable: false);
 
         var ci = E2eSpec.CaseInsensitive.Case();

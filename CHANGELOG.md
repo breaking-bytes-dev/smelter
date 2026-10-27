@@ -6,6 +6,39 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+### Fixed (guarda de re-encolado, Plugins 1.0.13)
+- **Poner `Queued` sobre un job que está `Processing` ya no se permite** (`ValidateQueueAccess`, Pre-op Update): un
+  Update por API durante la corrida disparaba otra corrida del flow cuyo claim veía `Queued` y reseteaba el job a
+  mitad de camino. Rechaza con "El Import Job se está procesando: no se puede volver a poner en cola hasta que
+  termine." antes del chequeo de acceso. `Queued -> Queued` (idempotente; lo resuelve el claim), estados finales y
+  status vacío (reintento) siguen permitidos; el Create no cambia. El flow y `PrepareImport` nunca setean `Queued`
+  (solo `Processing` y `Failed`), así que el pipeline del servidor no se ve afectado.
+- `Smelter.Verify`: nuevo **7d** (Prepare directo deja el job `Processing`; `Queued` es rechazado con el mensaje del
+  guard; ProcessChunk lo termina `Completed` con conteos exactos y 0 logs). 7c acepta que el segundo `Queued` sea
+  rechazado (si el flow ya pasó el job a `Processing`) o aceptado (si seguía `Queued`).
+
+### Fixed (corridas duplicadas del flow orquestador)
+- **Un job encolado disparaba varias corridas del Cloud Flow en el mismo segundo** (verificado en Dev con el historial
+  de `flowrun`): el trigger no tenía columnas filtro ni control de concurrencia, y los triggers de Dataverse son
+  at-least-once. Cada corrida llamaba a `PrepareImport` (que resetea el job) y a `ProcessChunk` en paralelo, así que los
+  upserts competían y fallaban con `DuplicateRecordEntityKey` (0x80060892): el job terminaba `CompletedWithErrors`, de
+  forma intermitente. Arreglo:
+  1. **Select columns** del trigger: `subscriptionRequest/filteringattributes = sanic_smlt_ij_status` (el Create sigue
+     disparando; el Update solo si cambia el status).
+  2. **Sin concurrencia global en el trigger**: los jobs **corren en paralelo** (una concurrencia `runs = 1`
+     serializaría jobs distintos y cobranza encola varios "partes" a la vez); los duplicados del mismo job los
+     neutraliza el claim (punto 3). El transformer quita cualquier `concurrency` que hubiera.
+  3. **Claim atómico**: `PrepareImport` lee el job y solo lo reclama si está `Queued` (o sin status, para llamadas
+     directas a la API); el reset que lo pasa a `Processing` va con `ConcurrencyBehavior.IfRowVersionMatches`, y ante
+     `ConcurrencyVersionMismatch` (0x80060882) o status distinto devuelve `Claimed = false` sin resetear ni lanzar. Nueva
+     response property `Claimed` (Boolean) en `sanic_capi_smelter_prepareimport`. El flow envuelve el `Scope` del loop
+     en `Condition_claimed` (`Claimed = true`) y el handler `Failed` ahora cuelga de esa condición. Nuevo transformer
+     idempotente `ClientDataClaimGate` (mismo Draft→Update→Activate que los demás) y el flow desempaquetado del repo
+     ya lo trae. Plugins 1.0.12.
+- `Smelter.Verify`: 7a exige además 0 Import Job Logs; nuevo **7c** (el mismo job encolado dos veces seguidas debe
+  terminar `Completed` con conteos exactos). Las corridas directas de Prepare sobre un job ya corrido lo devuelven antes
+  a "sin status".
+
 ### Added (auditoría de campos, tanda 2)
 - **Import Job**: los campos de salida (Status, contadores, Processing Batch, Starttime/Endtime) pasan a **solo
   lectura** en el form; quedan editables nombre, template, archivo e Is Dry Run. Nueva pestaña **Logs de

@@ -87,14 +87,18 @@ internal static class CloudFlowUpdater
 
         // Fix del handler Failed (runAfter Failed/Skipped/TimedOut) — ver ClientDataFailedHandlerFixer.cs.
         // Las transformaciones se aplican en UN solo Draft→Update→Activate.
-        var (fixedClientData, handlerFixed) = ClientDataFailedHandlerFixer.Apply(renamedClientData);
+        // Anti-duplicados: filteringattributes en el trigger (sin concurrency: los jobs corren en paralelo) y Scope envuelto en Condition_claimed
+        // (solo procesa si PrepareImport devolvió Claimed=true) — ver ClientDataClaimGate.cs. Va ANTES del fixer del
+        // handler Failed, que converge sobre Condition_claimed.
+        var (gatedClientData, gateApplied) = ClientDataClaimGate.Apply(renamedClientData);
+        var (fixedClientData, handlerFixed) = ClientDataFailedHandlerFixer.Apply(gatedClientData);
 
         // Motivo de falla en el job (sanic_smlt_ij_failurereason) — ver ClientDataFailureReasonWriter.cs.
         var (updatedClientData, reasonWritten) = ClientDataFailureReasonWriter.Apply(fixedClientData);
-        var changed = renamed || handlerFixed || reasonWritten;
+        var changed = renamed || gateApplied || handlerFixed || reasonWritten;
         if (!changed)
         {
-            Console.WriteLine($"[7]   flow '{name}': clientdata ya migrado, con handler Failed correcto y motivo de falla — sin cambios.");
+            Console.WriteLine($"[7]   flow '{name}': clientdata ya migrado, con claim gate, handler Failed correcto y motivo de falla — sin cambios.");
             return;
         }
 
@@ -109,7 +113,7 @@ internal static class CloudFlowUpdater
                 activate: () => SetState(client, flowId, StateActivated, StatusActivated),
                 log: Console.Error.WriteLine);
             Console.WriteLine($"[7]   flow '{name}' ({flowId}): clientdata actualizado " +
-                $"(rename processchunk: {renamed}; handler Failed Failed/Skipped/TimedOut: {handlerFixed}; motivo de falla: {reasonWritten}).");
+                $"(rename processchunk: {renamed}; claim gate: {gateApplied}; handler Failed Failed/Skipped/TimedOut: {handlerFixed}; motivo de falla: {reasonWritten}).");
         }
         catch (Exception ex)
         {

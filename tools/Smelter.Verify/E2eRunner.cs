@@ -96,6 +96,8 @@ internal static partial class E2eRunner
             case "6": ArchivedRejected(env); break;
             case "7a": CloudFlowCompletes(env); break;
             case "7b": CloudFlowFails(env); break;
+            case "7c": CloudFlowDoubleQueue(env); break;
+            case "7d": RequeueWhileProcessingRejected(env); break;
             case "8": DryRun(env); break;
             case "10": ExportImportRoundtrip(env); break;
             case "11": RunContactCase(env, E2eSpec.CaseInsensitive.Case(), id); break;
@@ -135,7 +137,9 @@ internal static partial class E2eRunner
     /// <summary>Prepare + ProcessChunk hasta que HasMore=false (o falla). Devuelve lo que contestó cada chunk.</summary>
     private static List<(int ProcessedSoFar, bool HasMore)> RunJob(Env env, Guid jobId, int expectTotal)
     {
-        var total = (int)ExecuteRetryingBlob(env.Client, new OrganizationRequest(env.Apis.Prepare) { ["JobId"] = jobId })["TotalRows"];
+        var prep = ExecuteRetryingBlob(env.Client, new OrganizationRequest(env.Apis.Prepare) { ["JobId"] = jobId });
+        Ensure((bool)prep["Claimed"], "PrepareImport debía reclamar el job (Claimed=true) y no lo hizo");
+        var total = (int)prep["TotalRows"];
         Ensure(total == expectTotal, $"PrepareImport debía contar {expectTotal} filas, contó {total}");
 
         var chunks = new List<(int, bool)>();

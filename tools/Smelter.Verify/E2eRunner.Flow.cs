@@ -1,4 +1,4 @@
-// Pasos [E2E-7a] y [E2E-7b]: el Cloud Flow de punta a punta, igual que lo dispara el botón Ejecutar de la MDA
+// Pasos [E2E-7a], [E2E-7b], [E2E-7c] y [E2E-7d]: el Cloud Flow de punta a punta, igual que lo dispara el botón Ejecutar de la MDA
 // (job con status vacío -> se pone Queued -> el flow llama a PrepareImport y a ProcessChunk en loop).
 // Cubre también el camino POSITIVO de ValidateQueueAccess (quien pone Queued puede leer el template). Ver E2eRunner.cs.
 
@@ -42,6 +42,9 @@ internal static partial class E2eRunner
         }
         Ensure(CountContactsWithPrefix(env, "flow") == E2eSpec.Simple.Rows,
             $"el flow debía crear {E2eSpec.Simple.Rows} contacts, hay {CountContactsWithPrefix(env, "flow")}");
+        // Anti-duplicados: si dos corridas del flow hubieran procesado el mismo job habría logs de clave duplicada
+        // (DuplicateRecordEntityKey) y/o contadores corridos. AssertJob ya exige processed == success == rows.
+        AssertNoLogs(env, jobId);
         Console.WriteLine($"[E2E-7a]  flow completo: Queued -> Completed con {E2eSpec.Simple.Rows}/{E2eSpec.Simple.Rows} contacts y contadores coherentes.");
     }
 
@@ -66,6 +69,102 @@ internal static partial class E2eRunner
         if (!reason.Contains("not Active", StringComparison.OrdinalIgnoreCase))
             Console.WriteLine("[E2E-7b]  WARN: el motivo no menciona 'not Active' (¿cayó en el texto genérico de respaldo del flow?).");
         Console.WriteLine($"[E2E-7b]  flow Failed OK, motivo sin PII: {reason}");
+    }
+
+    /// <summary>
+    /// Paso 7c (claim atómico): el MISMO job se encola dos veces seguidas (Queued, se toca otro campo estando Queued, Queued
+    /// otra vez). Sin filteringattributes/claim eso arrancaba varias corridas del orquestador que reseteaban y
+    /// procesaban en paralelo → DuplicateRecordEntityKey. Con el fix debe terminar Completed, con conteos exactos y sin logs.
+    /// </summary>
+    private static void CloudFlowDoubleQueue(Env env)
+    {
+        var templateId = ImportTemplate(env, E2eSpec.Simple.Dto("claim", ImportTemplateStatus.Active));
+        var jobId = CreateJob(env, templateId, "claim", E2eSpec.Simple.Csv("claim", E2eSpec.Simple.Rows));
+
+        var queuedAt = DateTime.UtcNow;
+        Queue(env, jobId);
+        env.Client.Update(new Entity(JobTable, jobId) { ["sanic_smlt_ij_name"] = E2eSpec.JobName("claim") + "-touch" }); // update con status Queued
+        // El guard de ValidateQueueAccess puede rechazar este segundo Queued si el flow ya pasó el job a Processing; si el job
+        // sigue Queued se acepta. Ambos resultados son válidos: lo que se exige es que el job termine bien.
+        try { Queue(env, jobId); Console.WriteLine("[E2E-7c]  segundo Queued aceptado (el job seguía Queued)."); }
+        catch (Exception ex) when (ex.Message.Contains(RequeueBlockedMessage, StringComparison.Ordinal))
+        { Console.WriteLine("[E2E-7c]  segundo Queued rechazado por el guard (el job ya estaba Processing)."); }
+
+        var job = WaitForEnd(env, jobId, "7c");
+        var status = job.GetAttributeValue<OptionSetValue>(StatusAttr)?.Value;
+        if (status != (int)ImportJobStatus.Completed) DumpLogs(env, jobId);
+        DumpConcurrency(env, jobId, queuedAt);
+        Ensure(status == (int)ImportJobStatus.Completed,
+            $"encolado dos veces, el job debía terminar Completed, terminó {StatusName(status)}{Reason(job)}");
+
+        try
+        {
+            AssertJob(env, jobId, new JobExpect(ImportJobStatus.Completed, E2eSpec.Simple.Rows, E2eSpec.Simple.Rows));
+            AssertNoLogs(env, jobId);
+        }
+        catch
+        {
+            DumpLogs(env, jobId);
+            throw;
+        }
+        Ensure(CountContactsWithPrefix(env, "claim") == E2eSpec.Simple.Rows,
+            $"el job debía crear exactamente {E2eSpec.Simple.Rows} contacts, hay {CountContactsWithPrefix(env, "claim")}");
+        Console.WriteLine($"[E2E-7c]  doble encolado: Completed con {E2eSpec.Simple.Rows}/{E2eSpec.Simple.Rows} contacts, contadores exactos y 0 logs de error.");
+    }
+
+    private const string RequeueBlockedMessage = "El Import Job se está procesando: no se puede volver a poner en cola hasta que termine.";
+
+    /// <summary>
+    /// Paso 7d (guard de re-encolado, determinístico y sin depender del flow): Prepare directo deja el job Processing con
+    /// Claimed=true; poner Queued debe ser rechazado por ValidateQueueAccess con el mensaje del guard. Después se corre
+    /// ProcessChunk hasta el final y el job debe terminar Completed con conteos exactos y sin logs (el intento no lo reseteó).
+    /// </summary>
+    private static void RequeueWhileProcessingRejected(Env env)
+    {
+        var templateId = ImportTemplate(env, E2eSpec.Simple.Dto("requeue", ImportTemplateStatus.Active));
+        var jobId = CreateJob(env, templateId, "requeue", E2eSpec.Simple.Csv("requeue", E2eSpec.Simple.Rows));
+
+        try
+        {
+            var prep = ExecuteRetryingBlob(env.Client, new OrganizationRequest(env.Apis.Prepare) { ["JobId"] = jobId });
+            Ensure((bool)prep["Claimed"], "PrepareImport debía reclamar el job (Claimed=true) y no lo hizo");
+
+            var before = env.Client.Retrieve(JobTable, jobId, new ColumnSet(StatusAttr)).GetAttributeValue<OptionSetValue>(StatusAttr)?.Value;
+            Ensure(before == (int)ImportJobStatus.Processing, $"tras Prepare el job debía estar Processing, está {StatusName(before)}");
+
+            string? rejection = null;
+            try { Queue(env, jobId); }
+            catch (Exception ex) { rejection = ex.Message; }
+            Ensure(rejection is not null, "poner Queued sobre un job Processing debía ser rechazado y fue aceptado (¿plugin 1.0.13 sin desplegar?)");
+            Ensure(rejection!.Contains(RequeueBlockedMessage, StringComparison.Ordinal), $"el rechazo debía traer el mensaje del guard, trajo: {rejection}");
+
+            var after = env.Client.Retrieve(JobTable, jobId, new ColumnSet(StatusAttr)).GetAttributeValue<OptionSetValue>(StatusAttr)?.Value;
+            Ensure(after == (int)ImportJobStatus.Processing, $"el intento rechazado no debía cambiar el status, quedó {StatusName(after)}");
+
+            for (var i = 0; i < 30; i++)
+            {
+                var resp = ExecuteRetryingBlob(env.Client, new OrganizationRequest(env.Apis.ProcessChunk) { ["JobId"] = jobId });
+                if (!(bool)resp["HasMore"]) break;
+                Ensure(i < 29, "ProcessChunk no terminó en 30 iteraciones (HasMore nunca fue false).");
+            }
+
+            AssertJob(env, jobId, new JobExpect(ImportJobStatus.Completed, E2eSpec.Simple.Rows, E2eSpec.Simple.Rows));
+            AssertNoLogs(env, jobId);
+        }
+        catch
+        {
+            DumpLogs(env, jobId);
+            throw;
+        }
+        Ensure(CountContactsWithPrefix(env, "requeue") == E2eSpec.Simple.Rows,
+            $"el job debía crear exactamente {E2eSpec.Simple.Rows} contacts, hay {CountContactsWithPrefix(env, "requeue")}");
+        Console.WriteLine("[E2E-7d]  re-encolado con el job Processing rechazado; el job terminó Completed con conteos exactos y 0 logs.");
+    }
+
+    private static void AssertNoLogs(Env env, Guid jobId)
+    {
+        var logs = LogsOf(env, jobId);
+        Ensure(logs.Count == 0, $"el job no debía tener Import Job Logs y tiene {logs.Count} (¿clave duplicada por corridas concurrentes del flow?)");
     }
 
     private static Guid StartFlowFailureJob(Env env)

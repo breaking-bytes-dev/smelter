@@ -24,6 +24,8 @@ internal static class E2eSteps
         new("6", "Template Archived rechazado por Prepare y por ProcessChunk"),
         new("7a", "Cloud Flow de punta a punta: job vacío -> Queued -> Completed"),
         new("7b", "Cloud Flow camino Failed: template Draft -> job Failed con motivo sin PII"),
+        new("7c", "Cloud Flow anti-duplicados: el MISMO job encolado dos veces seguidas termina Completed, con conteos exactos y sin logs de clave duplicada"),
+        new("7d", "Guard de re-encolado: con el job Processing (Prepare directo) poner Queued es rechazado; el job igual termina Completed"),
         new("8", "Dry run: no crea nada y termina Completed"),
         new("10", "Roundtrip Export -> Import con todos los campos del DTO"),
         new("11", "SourceColumn sin distinguir mayúsculas (header 'email' vs mapping 'Email')"),

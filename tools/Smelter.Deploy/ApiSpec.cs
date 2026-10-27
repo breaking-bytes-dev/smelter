@@ -47,7 +47,8 @@ internal static class Catalogo
             Description: "Valida los headers del CSV, cuenta las filas y resetea el estado del Import Job.",
             PluginTypeName: "Smelter.Plugins.PrepareImportPlugin",
             RequestParams: [new("JobId", ParamType.Guid, Optional: false)],
-            ResponseProps: [new("TotalRows", ParamType.Integer)],
+            // Claimed (1.0.12): false = otra corrida del flow ya reclamó el job (o no está Queued) → el flow NO debe procesar.
+            ResponseProps: [new("TotalRows", ParamType.Integer), new("Claimed", ParamType.Boolean)],
             ExecutePrivilegeName: SecuritySpec.PrivilegeName(PrivilegeType.Create, SecuritySpec.Tables.ImportJob)),
 
         // La entrada legacy "anic_capi_smelter_processchunk" (typo histórico, sin la 's') vivió acá

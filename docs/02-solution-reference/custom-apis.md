@@ -36,7 +36,8 @@ Se llama **una sola vez** por job, antes de iniciar el loop de chunks.
 
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
-| `TotalRows` | Integer | Número de filas de datos en el CSV (sin contar el encabezado si `hasheaderrow = true`) |
+| `TotalRows` | Integer | Número de filas de datos en el CSV (sin contar el encabezado si `hasheaderrow = true`). 0 si `Claimed = false` |
+| `Claimed` | Boolean | `true`: esta llamada reclamó el job (estaba `Queued` o sin status) y lo dejó en `Processing`; el caller debe procesarlo. `false`: otra corrida ya lo reclamó (status distinto de `Queued`, o `RowVersion` cambiado entre la lectura y el reset): no se resetea nada y el caller NO debe llamar a `ProcessChunk`. Claim optimista con `ConcurrencyBehavior.IfRowVersionMatches`. Desde 1.0.12 |
 
 ### Comportamiento interno
 

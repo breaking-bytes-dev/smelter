@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.ServiceModel;
 using FluentAssertions;
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Query;
 using NSubstitute;
 using Smelter.Plugins;
 using Smelter.Plugins.Models;
@@ -42,8 +46,38 @@ namespace Smelter.Plugins.Tests.Plugins
             public IOrganizationService Service = Substitute.For<IOrganizationService>();
             public IAccessChecker Access = Substitute.For<IAccessChecker>();
 
+            /// <summary>Todo lo que el handler ejecutó vía IOrganizationService.Execute (el reset va como UpdateRequest).</summary>
+            public List<OrganizationRequest> Executed = new List<OrganizationRequest>();
+
+            /// <summary>Entities de los UpdateRequest ejecutados (el reset/claim del job).</summary>
+            public List<Entity> Resets => Executed.OfType<UpdateRequest>().Select(r => r.Target).ToList();
+
+            /// <summary>Estado actual del job que devuelve Retrieve. Default: status null (legacy: llamada directa a la API).</summary>
+            public void JobIs(int? status, string rowVersion = "1")
+            {
+                Service.Retrieve(PrepareImportHandler.ImportJobTable, Arg.Any<Guid>(), Arg.Any<ColumnSet>())
+                    .Returns(ci =>
+                    {
+                        var e = new Entity(PrepareImportHandler.ImportJobTable, ci.ArgAt<Guid>(1)) { RowVersion = rowVersion };
+                        if (status.HasValue) e["sanic_smlt_ij_status"] = new OptionSetValue(status.Value);
+                        return e;
+                    });
+            }
+
+            /// <summary>Hace que el UpdateRequest del claim falle con el fault dado (se registra igual en Executed).</summary>
+            public void ExecuteFaults(int errorCode)
+            {
+                Service.When(x => x.Execute(Arg.Any<OrganizationRequest>())).Do(ci =>
+                {
+                    Executed.Add(ci.Arg<OrganizationRequest>());
+                    throw new FaultException<OrganizationServiceFault>(new OrganizationServiceFault { ErrorCode = errorCode });
+                });
+            }
+
             public Mocks()
             {
+                JobIs(null);
+                Service.Execute(Arg.Do<OrganizationRequest>(r => Executed.Add(r)));
                 // Default: access granted, so pre-existing tests (unrelated to Fase 5) don't need
                 // to know about the access check at all.
                 Access.HasReadAccess(Arg.Any<Guid>(), Arg.Any<EntityReference>()).Returns(true);
@@ -68,10 +102,10 @@ namespace Smelter.Plugins.Tests.Plugins
             var total = m.Build().Run(jobId, userId);
 
             total.Should().Be(42);
-            m.Service.Received(1).Update(Arg.Is<Entity>(e =>
+            m.Resets.Should().ContainSingle(e =>
                 (int)e["sanic_smlt_ij_totalrows"] == 42
                 && (int)e["sanic_smlt_ij_processingbatch"] == 0
-                && ((OptionSetValue)e["sanic_smlt_ij_status"]).Value == (int)ImportJobStatus.Processing));
+                && ((OptionSetValue)e["sanic_smlt_ij_status"]).Value == (int)ImportJobStatus.Processing);
         }
 
         [Fact]
@@ -88,8 +122,8 @@ namespace Smelter.Plugins.Tests.Plugins
 
             m.Build().Run(jobId, Guid.NewGuid());
 
-            m.Service.Received(1).Update(Arg.Is<Entity>(e =>
-                e.Contains("sanic_smlt_ij_endtime") && e["sanic_smlt_ij_endtime"] == null));
+            m.Resets.Should().ContainSingle(e =>
+                e.Contains("sanic_smlt_ij_endtime") && e["sanic_smlt_ij_endtime"] == null);
         }
 
         [Fact]
@@ -107,7 +141,7 @@ namespace Smelter.Plugins.Tests.Plugins
             Action act = () => m.Build().Run(jobId, userId);
 
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*code*");
-            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+            m.Executed.Should().BeEmpty();
         }
 
         // ── 1.3.0.0: gate de estado del template — solo Active es ejecutable ─────────────────────
@@ -130,7 +164,7 @@ namespace Smelter.Plugins.Tests.Plugins
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*not Active*");
             m.Access.DidNotReceive().HasReadAccess(Arg.Any<Guid>(), Arg.Any<EntityReference>());
             m.Downloader.DidNotReceive().Download(Arg.Any<EntityReference>(), Arg.Any<string>());
-            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+            m.Executed.Should().BeEmpty();
         }
 
         [Fact]
@@ -172,7 +206,7 @@ namespace Smelter.Plugins.Tests.Plugins
             m.Access.Received(1).HasReadAccess(userId, Arg.Is<EntityReference>(r =>
                 r.LogicalName == ImportContextLoader.ImportTemplateTable && r.Id == templateId));
             m.Downloader.DidNotReceive().Download(Arg.Any<EntityReference>(), Arg.Any<string>());
-            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+            m.Executed.Should().BeEmpty();
         }
 
         [Fact]
@@ -197,7 +231,7 @@ namespace Smelter.Plugins.Tests.Plugins
             total.Should().Be(7);
             m.Access.Received(1).HasReadAccess(userId, Arg.Is<EntityReference>(r =>
                 r.LogicalName == ImportContextLoader.ImportTemplateTable && r.Id == templateId));
-            m.Service.Received(1).Update(Arg.Any<Entity>());
+            m.Executed.Should().ContainSingle();
         }
 
         // ── Cursor de bytes: Prepare lo deja en el primer byte de datos (después de BOM + cabecera) ──
@@ -220,9 +254,9 @@ namespace Smelter.Plugins.Tests.Plugins
 
             m.Build().Run(jobId, Guid.NewGuid());
 
-            m.Service.Received(1).Update(Arg.Is<Entity>(e =>
+            m.Resets.Should().ContainSingle(e =>
                 (int)e["sanic_smlt_ij_processingbatch"] == 0
-                && (decimal)e[PrepareImportHandler.ByteCursorAttribute] == 13m));
+                && (decimal)e[PrepareImportHandler.ByteCursorAttribute] == 13m);
         }
 
         [Fact]
@@ -240,8 +274,121 @@ namespace Smelter.Plugins.Tests.Plugins
 
             m.Build().Run(jobId, Guid.NewGuid());
 
-            m.Service.Received(1).Update(Arg.Is<Entity>(e =>
-                e.Contains(PrepareImportHandler.ByteCursorAttribute) && e[PrepareImportHandler.ByteCursorAttribute] == null));
+            m.Resets.Should().ContainSingle(e =>
+                e.Contains(PrepareImportHandler.ByteCursorAttribute) && e[PrepareImportHandler.ByteCursorAttribute] == null);
+        }
+
+        // ── Claim atómico (1.0.12): una sola corrida del flow procesa el job ─────────────────────
+
+        private static Mocks ReadyToPrepare(out Guid jobId, int rows = 5)
+        {
+            var m = new Mocks();
+            jobId = Guid.NewGuid();
+            var bytes = new byte[] { 1 };
+            m.Loader.LoadContext(jobId).Returns(ContextWith(true, "name"));
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name" });
+            m.Csv.CountRows(bytes, true, ",").Returns(rows);
+            return m;
+        }
+
+        [Fact]
+        public void Prepare_QueuedJob_ClaimsItWithRowVersionConcurrency()
+        {
+            var m = ReadyToPrepare(out var jobId, rows: 7);
+            m.JobIs((int)ImportJobStatus.Queued, rowVersion: "123456");
+
+            var result = m.Build().Prepare(jobId, Guid.NewGuid());
+
+            result.Claimed.Should().BeTrue();
+            result.TotalRows.Should().Be(7);
+            var update = m.Executed.Should().ContainSingle().Which.Should().BeOfType<UpdateRequest>().Subject;
+            update.ConcurrencyBehavior.Should().Be(ConcurrencyBehavior.IfRowVersionMatches);
+            update.Target.Id.Should().Be(jobId);
+            update.Target.RowVersion.Should().Be("123456", "el claim usa el RowVersion leído ANTES del trabajo pesado");
+            ((OptionSetValue)update.Target["sanic_smlt_ij_status"]).Value.Should().Be((int)ImportJobStatus.Processing);
+            ((int)update.Target["sanic_smlt_ij_totalrows"]).Should().Be(7);
+        }
+
+        [Fact]
+        public void Prepare_JobWithNullStatus_IsClaimable_SoDirectApiCallersKeepWorking()
+        {
+            // Smelter.Verify (RunJob) y otros callers directos invocan Prepare sobre jobs creados sin status.
+            var m = ReadyToPrepare(out var jobId);
+            m.JobIs(null);
+
+            var result = m.Build().Prepare(jobId, Guid.NewGuid());
+
+            result.Claimed.Should().BeTrue();
+            m.Executed.Should().ContainSingle().Which.Should().BeOfType<UpdateRequest>()
+                .Which.ConcurrencyBehavior.Should().Be(ConcurrencyBehavior.IfRowVersionMatches);
+        }
+
+        [Theory]
+        [InlineData(ImportJobStatus.Processing)]
+        [InlineData(ImportJobStatus.Completed)]
+        [InlineData(ImportJobStatus.CompletedWithErrors)]
+        [InlineData(ImportJobStatus.Failed)]
+        public void Prepare_JobNotQueued_IsNotClaimed_NoResetNoThrowNoDownload(ImportJobStatus status)
+        {
+            var m = ReadyToPrepare(out var jobId);
+            m.JobIs((int)status);
+
+            var result = m.Build().Prepare(jobId, Guid.NewGuid());
+
+            result.Claimed.Should().BeFalse();
+            result.TotalRows.Should().Be(0);
+            m.Executed.Should().BeEmpty("otra corrida ya es dueña del job: no se resetea nada");
+            m.Downloader.DidNotReceive().Download(Arg.Any<EntityReference>(), Arg.Any<string>());
+        }
+
+        [Fact]
+        public void Prepare_RowVersionMismatch_IsNotClaimed_AndDoesNotThrow()
+        {
+            var m = ReadyToPrepare(out var jobId);
+            m.JobIs((int)ImportJobStatus.Queued);
+            m.ExecuteFaults(PrepareImportHandler.ConcurrencyVersionMismatch);
+
+            var result = m.Build().Prepare(jobId, Guid.NewGuid());
+
+            result.Claimed.Should().BeFalse("otra corrida actualizó el job entre la lectura y el claim");
+            result.TotalRows.Should().Be(0);
+        }
+
+        [Fact]
+        public void Prepare_OtherDataverseFault_Propagates()
+        {
+            var m = ReadyToPrepare(out var jobId);
+            m.JobIs((int)ImportJobStatus.Queued);
+            m.ExecuteFaults(unchecked((int)0x80040265));
+
+            Action act = () => m.Build().Prepare(jobId, Guid.NewGuid());
+
+            act.Should().Throw<FaultException<OrganizationServiceFault>>();
+        }
+
+        [Fact]
+        public void Prepare_ValidationFailure_StillThrowsBeforeTheClaim()
+        {
+            var m = ReadyToPrepare(out var jobId);
+            m.JobIs((int)ImportJobStatus.Processing); // aunque ya esté tomado, la validación va primero
+            var ctx = ContextWith(true, "name");
+            ctx.Template.Status = (int)ImportTemplateStatus.Draft;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.Build().Prepare(jobId, Guid.NewGuid());
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*not Active*");
+            m.Executed.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Run_NotClaimedJob_ReturnsZeroRows()
+        {
+            var m = ReadyToPrepare(out var jobId);
+            m.JobIs((int)ImportJobStatus.Processing);
+
+            m.Build().Run(jobId, Guid.NewGuid()).Should().Be(0);
         }
 
         // ── 1.0.10: validaciones de coherencia del template ─────────────────────────────────────
@@ -259,7 +406,7 @@ namespace Smelter.Plugins.Tests.Plugins
 
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*Mapping*ghost*");
             m.Downloader.DidNotReceive().Download(Arg.Any<EntityReference>(), Arg.Any<string>());
-            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+            m.Executed.Should().BeEmpty();
         }
 
         [Fact]
@@ -297,7 +444,7 @@ namespace Smelter.Plugins.Tests.Plugins
             Action act = () => m.Build().Run(jobId, Guid.NewGuid());
 
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*NM*ManyToMany is not supported*");
-            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+            m.Executed.Should().BeEmpty();
         }
 
         [Fact]
@@ -384,7 +531,7 @@ namespace Smelter.Plugins.Tests.Plugins
 
             act.Should().Throw<InvalidPluginExecutionException>().WithMessage(DedupMessage);
             m.Downloader.DidNotReceive().Download(Arg.Any<EntityReference>(), Arg.Any<string>());
-            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+            m.Executed.Should().BeEmpty();
         }
 
         [Fact]
