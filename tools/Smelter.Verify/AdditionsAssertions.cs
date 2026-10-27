@@ -65,7 +65,32 @@ internal static class AdditionsAssertions
                     },
                 },
             }).Entities.Count > 0;
-            Assert(inSolution, $"{spec.SchemaName} no es componente de {SchemaAdditionsCatalogo.SolutionUniqueName}: no viajaría a Test/Prod");
+            // Las tablas de Smelter están en la solución con rootcomponentbehavior = 0 (incluir todos los
+            // subcomponentes): sus columnas viajan con la tabla aunque no tengan fila propia en solutioncomponent.
+            if (!inSolution)
+            {
+                var entityId = ((RetrieveEntityResponse)client.Execute(new RetrieveEntityRequest
+                {
+                    LogicalName = spec.EntityLogicalName,
+                    EntityFilters = EntityFilters.Entity,
+                })).EntityMetadata.MetadataId!.Value;
+                inSolution = client.RetrieveMultiple(new QueryExpression("solutioncomponent")
+                {
+                    ColumnSet = new ColumnSet(false),
+                    Criteria =
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("solutionid", ConditionOperator.Equal, solutionId!.Value),
+                            new ConditionExpression("componenttype", ConditionOperator.Equal, 1),
+                            new ConditionExpression("objectid", ConditionOperator.Equal, entityId),
+                            new ConditionExpression("rootcomponentbehavior", ConditionOperator.Equal, 0),
+                        },
+                    },
+                }).Entities.Count > 0;
+            }
+            Assert(inSolution, $"{spec.SchemaName} no es componente de {SchemaAdditionsCatalogo.SolutionUniqueName} " +
+                "(ni explícito ni vía su tabla con todos los subcomponentes): no viajaría a Test/Prod");
 
             if (spec.Form is not null)
             {
