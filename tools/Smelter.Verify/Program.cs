@@ -320,6 +320,7 @@ try
 
     client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_insertonly"] = true });
     ResetStatusForDirectRun(client, jobId3); // ya corrió completo arriba: Prepare solo reclama jobs Queued/sin status
+    ResetStatusForDirectRun(client, jobId3); // jobId3 ya terminó en [6c]: sin esto Prepare no lo reclama
     var gateTotal = (int)ExecuteWithTransientBlobRetry(client, new OrganizationRequest(apiPrepare) { ["JobId"] = jobId3 })["TotalRows"];
     Assert(gateTotal == 5, $"con 'Solo inserción' PrepareImport debía aceptar el template y contar 5 filas, contó {gateTotal}");
 

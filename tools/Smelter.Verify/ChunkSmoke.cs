@@ -69,7 +69,12 @@ internal static class ChunkSmoke
 
     private static void RunAndAssert(ServiceClient client, string apiPrepare, string apiProcessChunk, Guid jobId, int byteLength)
     {
-        var total = (int)ExecuteRetryingBlob(client, new OrganizationRequest(apiPrepare) { ["JobId"] = jobId })["TotalRows"];
+        // PrepareImport solo reclama jobs Queued o sin status (1.0.12): la 2ª corrida sobre el MISMO job lo devuelve a
+        // "sin status" (NO a Queued, que dispararía el Cloud Flow).
+        client.Update(new Entity("sanic_tbl_smlt_importjob", jobId) { ["sanic_smlt_ij_status"] = null });
+        var prep = ExecuteRetryingBlob(client, new OrganizationRequest(apiPrepare) { ["JobId"] = jobId });
+        Ensure((bool)prep["Claimed"], "PrepareImport debía reclamar el job (Claimed=true) y no lo hizo");
+        var total = (int)prep["TotalRows"];
         Ensure(total == MultiChunkSmokeSpec.Rows, $"PrepareImport debía contar {MultiChunkSmokeSpec.Rows} filas (el newline embebido NO suma filas), contó {total}");
 
         var expected = MultiChunkSmokeSpec.ExpectedChunks();
