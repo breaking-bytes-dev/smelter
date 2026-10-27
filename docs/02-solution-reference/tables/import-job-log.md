@@ -28,15 +28,12 @@ fallaron; las filas exitosas y omitidas se contabilizan en los contadores del Im
 
 | Valor | Label | Descripción |
 |-------|-------|-------------|
-| 0 | Created | Registro nuevo creado |
-| 1 | Updated | Registro existente actualizado (dedup match + updateIfExists) |
-| 2 | Skipped | Match de dedup encontrado, updateIfExists = false |
 | 3 | Failed | Error durante create/update |
 
-> **Nota (1.3.0.0):** hoy el motor escribe **solo `3: Failed`** en el log. Los resultados
-> `Created`, `Updated` y `Skipped` se reflejan en los contadores del Import Job
-> (`successcount`, `skippedcount`), no en el log. Los otros valores del optionset se
-> conservan por compatibilidad.
+> **Desde 1.0.10** el choice tiene **solo `3: Failed`**: el log registra únicamente fallos. Las opciones
+> `Created (0)`, `Updated (1)` y `Skipped (2)` nunca se escribían y se eliminaron del schema por SDK
+> (`SchemaCleanupSpec`); esos resultados viven en los contadores del Import Job (`successcount`,
+> `skippedcount`).
 
 ## OptionSet — `sanic_smlt_ijl_errorcategory`
 
@@ -50,7 +47,9 @@ Indica en qué etapa del pipeline ocurrió el fallo. Facilita el diagnóstico si
 | 3 | ValidationError | Campo requerido vacío o validación de negocio |
 | 4 | LookupUnresolved | Lookup padre o externo no encontrado en Dataverse |
 | 5 | TargetData | Dataverse rechazó la escritura (constraint, privilegio, duplicado) |
-| 6 | Transient | Fallo transitorio de BD (deadlock/timeout/lock). En v1 se clasifica como TargetData. |
+
+> `Transient (6)` se eliminó del choice en 1.0.10: nunca se producía (un fallo transitorio de BD se clasifica
+> como `TargetData`).
 
 ## Alternate Key (idempotencia de logs)
 

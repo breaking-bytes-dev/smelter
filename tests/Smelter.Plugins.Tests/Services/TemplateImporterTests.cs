@@ -69,6 +69,19 @@ namespace Smelter.Plugins.Tests.Services
             created.First(e => e.LogicalName == table && (pred == null || pred(e)));
 
         [Fact]
+        public void Import_LegacySourceType_IsAlwaysWrittenAsCsv_BecauseTheChoiceOnlyHasCsv()
+        {
+            // JSON viejo con SourceType=1 (Excel, que nunca existió en el choice): crearía un OptionSetValue inválido.
+            var service = Service(out var created);
+            var dto = Dto();
+            dto.Template.SourceType = 1;
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            ((OptionSetValue)Created(created, TemplateTable)["sanic_smlt_it_sourcetype"]).Value.Should().Be(0);
+        }
+
+        [Fact]
         public void Import_CleanEnvironment_CreatesTemplateTableColumnAndRelationship()
         {
             var service = Service(out var created);

@@ -82,6 +82,9 @@ try
     // ── [ADD] Columnas nuevas según SchemaAdditionsSpec (byte cursor del job + "Solo inserción" del mapping) ──
     AdditionsAssertions.RunAll(client);
 
+    // ── [TUNE] Ajustes de columnas/forms existentes según SchemaTuningSpec (1.0.10) ──
+    TuningAssertions.RunAll(client);
+
     // ── [HMAC] Tabla de keys HMAC según HmacKeyTableSpec (incluye column security) ──
     HmacKeyAssertions.RunAll(client);
 

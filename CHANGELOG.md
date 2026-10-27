@@ -18,6 +18,19 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
   de la corrida anterior). Plugins 1.0.9.
 
 ### Changed
+- **Update If Exists nace en Sí** (`sanic_smlt_tm_updateifexists`, default del schema: antes No): alinea el
+  schema con los docs y con el fallback del Loader (`?? true`). Solo cambia el default de mappings NUEVOS;
+  los existentes conservan su valor. Aplicado por SDK (`SchemaTuningProvisioner`, paso 4h).
+- **`Source Type` del Import Template**: sin requerir, default CSV y oculto del main form (la columna se
+  conserva y viaja en el export/import). El importer siempre escribe CSV (0).
+- **`PrepareImport` valida la coherencia del template antes de bajar el archivo** (`TemplateValidator`, en
+  `Smelter.Core`): cada Dedup Column debe ser el Target Column de un Column Mapping del mismo Table Mapping;
+  `Data Type = Lookup` exige Lookup Table; una relación OneToMany exige "Lookup column on child", un padre
+  con dedup columns y tantas Parent Dedup Columns como dedup columns tiene el padre. Los errores nombran el
+  mapping y la columna (nunca valores). Antes cada caso fallaba fila por fila o en silencio.
+- **Delimiter acepta alias de tabulador**: `\t`, `TAB` (sin distinguir mayúsculas) o el tab real; cualquier
+  otro valor sigue siendo literal. Antes un TSV era inalcanzable desde la UI (no se puede tipear un tab).
+- Plugins 1.0.10.
 - **Botones Ejecutar/Reintentar de Import Job: un solo camino de ejecución (Cloud Flow)**: antes corrían
   `PrepareImport` + el loop de `ProcessChunk` desde el navegador (cerrar la pestaña dejaba el job en
   Processing para siempre, y un fallo de Prepare desde el botón no marcaba Failed). Ahora solo guardan el
@@ -32,6 +45,9 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
   lectura del template bajo el usuario que hace click).
 
 ### Added
+- **Paso 4h de `Smelter.Deploy`** (`SchemaTuningSpec`/`SchemaTuningProvisioner`, no destructivo) y
+  `[TUNE]` en `Smelter.Verify`: ajustes declarativos de columnas/forms existentes (required level, defaults,
+  campos ocultos). `FormXmlEditor.TryRemoveField` / `TrySetVisible`.
 - **Forms y vistas fijados en la MDA** (paso 4g de `Smelter.Deploy`): main form, vista por defecto, lookup, asociada y Quick Find de cada tabla, más las 3 vistas propias de Import Job. ValidateApp ya no avisa "App users will see all forms and views".
 - **Verify**: check `[MDA] 5` de los 33 componentes fijados; smoke `[CHUNK]` de 250 filas en 3 chunks por el cursor de bytes (newline embebido y multibyte en los bordes); modo `--bench` (100k filas en dry run, falla si algún chunk tarda ≥ 60 s) con input `bench` en `backend-verify`.
 - **Función `HMAC(val, "nombreKey")` en el Transform DSL**: HMAC-SHA256 en hex minúsculas (64 chars)
@@ -89,6 +105,16 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 - La función `HMAC` exige el nombre de la key como literal con forma de etiqueta, validado antes de evaluar.
 
 ### Fixed
+- **`Source Column` ya no distingue mayúsculas**: `PrepareImport` validaba los headers con `OrdinalIgnoreCase`
+  pero el motor leía la celda con una comparación sensible (un CSV con `email` y un mapping `Email` pasaba
+  Prepare y escribía vacío en silencio). `SourceRow.Values` es case-insensitive de punta a punta (también las
+  referencias a columnas dentro de un Transform) y `SourceColumn` se recorta como los headers.
+- **Dedup Columns**: cada nombre se recorta y se ignoran los vacíos (`"a, b"` generaba la key `" b"`, que nunca
+  coincidía y dejaba el upsert sin key completa).
+- **La key del padre ahora usa el mismo pipeline que el Table Mapping padre**: antes el hijo mandaba el valor
+  CRUDO del CSV, por lo que un padre con key `HMAC(Pan, "k")` (o con un tipo coercionado, o con default) nunca
+  resolvía para sus hijos. Ahora el motor aplica a las Parent Dedup Columns el transform / default /
+  coerción del mapping del padre para esa columna destino.
 - El Import Job queda `Failed` si `PrepareImport` falla o el loop del Cloud Flow hace timeout; el deploy
   ya no deja el flow apagado.
 
@@ -98,6 +124,17 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 - **Riesgo aceptado (HMAC)**: la key vive en Dataverse; cualquier System Administrator del entorno puede
   leerla, las copias/backups del entorno la arrastran y la columna del valor no se audita. Endurecimiento
   futuro posible: Azure Key Vault (mismas keys → mismos hashes, migración sin ruptura).
+
+### Removed
+- **`sanic_smlt_tm_isjunctiontable`** (Is Junction Table): sale del main form del Table Mapping y del schema
+  (`SchemaCleanupSpec`, requiere `--allow-destructive`). Un JSON de export viejo que traiga el campo sigue
+  importando (se ignora).
+- **Opciones muertas de choices** (`SchemaCleanupSpec`/`OptionCleanupCatalogo`, `DeleteOptionValueRequest`,
+  `--allow-destructive`; el provisioner se niega si alguna fila usa el valor): `Relationship Type = ManyToMany`
+  (el motor lo ignoraba en silencio; ahora `PrepareImport` y el import de templates lo rechazan con un error
+  claro), `Import Job Log Status = Created / Updated / Skipped` y `Error Category = Transient` (nunca se
+  escriben). `ErrorCategory.Transient` sale del enum; `ImportLogStatus` conserva los valores para los
+  contadores del job (solo `Failed` se persiste). Nuevo enum `RelationshipType`; `ChoicesContractTests` los ata.
 
 ## [[1.3.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.3.0.0)] — 2026-07-29
 

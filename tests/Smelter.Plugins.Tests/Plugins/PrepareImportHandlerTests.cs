@@ -19,6 +19,12 @@ namespace Smelter.Plugins.Tests.Plugins
                 Template = new ImportTemplateConfig { HasHeaderRow = hasHeader, Delimiter = "," }
             };
             var tm = new TableMappingConfig { Id = Guid.NewGuid(), Name = "Mapping", TargetTable = "t", DedupColumns = "k" };
+            // La dedup column 'k' tiene que ser el Target Column de algún Column Mapping (TemplateValidator);
+            // un transform STATIC no lee columna del CSV, así que no agrega nada al chequeo de headers.
+            tm.ColumnMappings.Add(new ColumnMappingConfig
+            {
+                Id = Guid.NewGuid(), TargetColumn = "k", DataType = ColumnDataType.String, TransformExpression = "STATIC(\"1\")"
+            });
             foreach (var sc in sourceColumns)
                 tm.ColumnMappings.Add(new ColumnMappingConfig
                 {
@@ -236,6 +242,115 @@ namespace Smelter.Plugins.Tests.Plugins
 
             m.Service.Received(1).Update(Arg.Is<Entity>(e =>
                 e.Contains(PrepareImportHandler.ByteCursorAttribute) && e[PrepareImportHandler.ByteCursorAttribute] == null));
+        }
+
+        // ── 1.0.10: validaciones de coherencia del template ─────────────────────────────────────
+
+        [Fact]
+        public void Run_DedupColumnWithoutColumnMapping_IsRejectedBeforeDownloadOrUpdate()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = ContextWith(true, "name");
+            ctx.TableMappings[0].DedupColumns = "k, ghost";
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.Build().Run(jobId, Guid.NewGuid());
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*Mapping*ghost*");
+            m.Downloader.DidNotReceive().Download(Arg.Any<EntityReference>(), Arg.Any<string>());
+            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+        }
+
+        [Fact]
+        public void Run_LookupColumnWithoutLookupTable_IsRejected()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = ContextWith(true, "name");
+            ctx.TableMappings[0].ColumnMappings.Add(new ColumnMappingConfig
+            {
+                Id = Guid.NewGuid(), Name = "Owner", SourceColumn = "name", TargetColumn = "owner", DataType = ColumnDataType.Lookup
+            });
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.Build().Run(jobId, Guid.NewGuid());
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*owner*Lookup Table*");
+        }
+
+        [Fact]
+        public void Run_ManyToManyRelationship_IsRejectedWithAClearError()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = ContextWith(true, "name");
+            var second = new TableMappingConfig { Id = Guid.NewGuid(), Name = "Second", TargetTable = "s", InsertOnly = true };
+            ctx.TableMappings.Add(second);
+            ctx.RelationshipMappings.Add(new RelationshipMappingConfig
+            {
+                Id = Guid.NewGuid(), Name = "NM", ParentTableMappingId = ctx.TableMappings[0].Id,
+                ChildTableMappingId = second.Id, RelationshipType = 1
+            });
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.Build().Run(jobId, Guid.NewGuid());
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*NM*ManyToMany is not supported*");
+            m.Service.DidNotReceive().Update(Arg.Any<Entity>());
+        }
+
+        [Fact]
+        public void Run_OneToManyWithParentDedupCountMismatch_IsRejected()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = ContextWith(true, "name");
+            var child = new TableMappingConfig { Id = Guid.NewGuid(), Name = "Child", TargetTable = "c", InsertOnly = true };
+            ctx.TableMappings.Add(child);
+            ctx.RelationshipMappings.Add(new RelationshipMappingConfig
+            {
+                Id = Guid.NewGuid(), Name = "R", ParentTableMappingId = ctx.TableMappings[0].Id, ChildTableMappingId = child.Id,
+                RelationshipType = 0, LookupColumnOnChild = "x_parent", ParentDedupColumns = "a,b"
+            });
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.Build().Run(jobId, Guid.NewGuid());
+
+            act.Should().Throw<InvalidPluginExecutionException>().WithMessage("*Parent Dedup Columns lists 2*");
+        }
+
+        [Fact]
+        public void Run_HeaderValidationIgnoresCaseAndSurroundingSpaces()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var bytes = new byte[] { 1 };
+            m.Loader.LoadContext(jobId).Returns(ContextWith(true, " Email "));
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "email" });
+            m.Csv.CountRows(bytes, true, ",").Returns(1);
+
+            m.Build().Run(jobId, Guid.NewGuid()).Should().Be(1);
+        }
+
+        [Theory]
+        [InlineData("TAB")]
+        [InlineData("\\t")]
+        [InlineData("\t")]
+        public void Run_TabDelimiterAlias_ValidatesHeadersOfARealTsv(string delimiter)
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var bytes = System.Text.Encoding.UTF8.GetBytes("name\tcode\nA\tB\nC\tD");
+            var ctx = ContextWith(true, "name", "code");
+            ctx.Template.Delimiter = delimiter;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+
+            var handler = new PrepareImportHandler(m.Loader, m.Downloader, new CsvParserService(), m.Service, m.Access);
+
+            handler.Run(jobId, Guid.NewGuid()).Should().Be(2);
         }
 
         // ── Gate de idempotencia: todo Table Mapping necesita dedup columns, salvo "Solo inserción" ──

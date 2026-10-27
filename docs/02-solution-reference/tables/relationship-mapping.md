@@ -23,24 +23,21 @@ construir el DAG de procesamiento (orden padre→hijo) y por la resolución de l
 | `sanic_smlt_rm_parenttablemappingid` | Lookup | Sí | FK → Table Mapping (tabla padre en el DAG) |
 | `sanic_smlt_rm_childtablemappingid` | Lookup | Sí | FK → Table Mapping (tabla hija en el DAG) |
 | `sanic_smlt_rm_relationshiptype` | OptionSet | Sí | Tipo de relación |
-| `sanic_smlt_rm_lookupcolumnonchild` | String(100) | Condicional | Para 1:N: logical name de la columna lookup en la tabla hija |
-| `sanic_smlt_rm_parentdedupcolumns` | String(500) | Sí | Columnas de origen (separadas por coma) que identifican al registro padre. Usadas para resolver el GUID del padre desde el cache de dedup. |
+| `sanic_smlt_rm_lookupcolumnonchild` | String(100) | Sí | Logical name de la columna lookup en la tabla hija. `PrepareImport` rechaza el template si falta |
+| `sanic_smlt_rm_parentdedupcolumns` | String(500) | Sí | Columnas del CSV (separadas por coma) que identifican al registro padre, emparejadas **por posición** con las `Dedup Columns` del padre. Deben ser tantas como dedup columns tiene el padre (`PrepareImport` lo valida). El valor se calcula con el **mismo transform / default / tipo** que el Table Mapping padre aplica a esa columna destino (p. ej. un padre keyed por `HMAC(Pan, "k")` resuelve para sus hijos). |
 
 ## OptionSet — `sanic_smlt_rm_relationshiptype`
 
 | Valor | Label | Descripción |
 |-------|-------|-------------|
-| 0 | OneToMany | El padre tiene un lookup en la tabla hija |
-| 1 | ManyToMany | Usa una tabla intersect (junction table) |
+| 0 | OneToMany | El hijo tiene un lookup al padre |
 
-> ⚠️ **`ManyToMany` (valor 1) — sin soporte.** El `NormalizationEngine` filtra los relationship
-> mappings con `.Where(r => r.IsOneToMany)`, por lo que cualquier mapping configurado como
-> `ManyToMany` se **ignora en silencio** — no produce error pero tampoco genera ningún vínculo.
-> Implementar N:M requeriría `AssociateRequest` y desarrollo nuevo. El campo
-> `sanic_smlt_rm_intersecttable` fue **eliminado del schema en 1.3.0.0** (nunca se leyó en ninguna
-> ruta de código).
-> Para tablas intersect, la alternativa actual es mapear la tabla join explícitamente como un `TableMapping`
-> adicional con sus propias `DedupColumns` y lookups hacia ambas tablas padre.
+> **`ManyToMany` ya no existe (1.0.10).** N:M nunca se implementó: el motor ignoraba el mapping en silencio.
+> La opción se eliminó del choice por SDK (el deploy se niega si alguna fila la usa), `PrepareImport` y el
+> import de templates rechazan un valor distinto de `OneToMany` con un error claro, y
+> `sanic_smlt_rm_intersecttable` ya se había eliminado en 1.3.0.0.
+> Para una tabla intersect, mapear la tabla join como un `TableMapping` adicional con sus propias
+> `DedupColumns` y lookups hacia ambas tablas padre.
 
 ## Sin relationship mappings — comportamiento del motor
 

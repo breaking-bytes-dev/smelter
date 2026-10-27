@@ -76,7 +76,8 @@ namespace Smelter.Plugins.Services
             var template = new Entity(ImportContextLoader.ImportTemplateTable)
             {
                 ["sanic_smlt_it_name"] = dto.Template.Name,
-                ["sanic_smlt_it_sourcetype"] = new OptionSetValue(dto.Template.SourceType),
+                // El choice solo tiene CSV (0): un SourceType viejo (p.ej. 1 = Excel) crearía un valor inexistente.
+                ["sanic_smlt_it_sourcetype"] = new OptionSetValue(0),
                 ["sanic_smlt_it_hasheaderrow"] = dto.Template.HasHeaderRow,
                 ["sanic_smlt_it_delimiter"] = dto.Template.Delimiter,
                 ["sanic_smlt_it_chunksize"] = dto.Template.ChunkSize

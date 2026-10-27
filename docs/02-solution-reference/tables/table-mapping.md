@@ -22,15 +22,13 @@ Table Mappings para normalizar una fuente plana en varias tablas relacionadas.
 | `sanic_smlt_tm_name` | String(200) | Sí | Nombre descriptivo |
 | `sanic_smlt_tm_targettable` | String(100) | Sí | Logical name de la tabla Dataverse destino (ej. `account`) |
 | `sanic_smlt_tm_processingorder` | Integer | Sí | Orden de procesamiento DAG — padres primero (número menor = primero) |
-| `sanic_smlt_tm_dedupcolumns` | String(500) | No | Nombres lógicos de columnas destino usados como dedup key, separados por coma. Vacío = siempre crear. |
-| `sanic_smlt_tm_isjunctiontable` | Boolean | No | ⚠️ Ignorado por el motor — pendiente de eliminación. Placeholder N:M nunca implementado |
+| `sanic_smlt_tm_dedupcolumns` | String(500) | No* | Nombres lógicos de columnas destino usados como dedup key, separados por coma (se recortan espacios). Cada una debe ser el **Target Column de un Column Mapping** de este mismo Table Mapping. *Obligatorio salvo "Solo inserción": `PrepareImport` rechaza el template si falta. |
 | `sanic_smlt_tm_createifnotexists` | Boolean | Sí | Si el registro **no existe** (sin match de dedup): Sí = Create, No = fila `Skipped` (default: Sí) |
-| `sanic_smlt_tm_updateifexists` | Boolean | Sí | Si el registro **existe** (match de dedup): Sí = Update, No = fila `Skipped` (default: Sí) |
+| `sanic_smlt_tm_updateifexists` | Boolean | Sí | Si el registro **existe** (match de dedup): Sí = Update, No = fila `Skipped`. Default del schema: **Sí** desde 1.0.10 (antes No, en contradicción con estos docs; los mappings existentes conservan su valor) |
 
-> ⚠️ **`sanic_smlt_tm_isjunctiontable` — ignorado por el motor, pendiente de eliminación.** Ningún
-> componente del motor de procesamiento lo lee, y desde 1.3.0.0 el export/import de templates tampoco
-> lo toca. Era un placeholder para el soporte de relaciones N:M, que no está implementado.
-> Ver [Relationship Mapping](relationship-mapping.md) para más detalles sobre la limitación ManyToMany.
+> **`sanic_smlt_tm_isjunctiontable` fue eliminado (1.0.10)** del form y del schema por SDK
+> (`SchemaCleanupSpec`): era un placeholder de N:M que ningún componente leía. Un JSON de export viejo que
+> lo traiga sigue importando (se ignora). Ver [Relationship Mapping](relationship-mapping.md).
 
 > **`sanic_smlt_tm_createifnotexists` / `sanic_smlt_tm_updateifexists` — implementados en 1.3.0.0.**
 > El `UpsertWriter` honra ambos flags cuando la tabla tiene `DedupColumns` (alternate key):

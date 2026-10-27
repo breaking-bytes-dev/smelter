@@ -1,8 +1,9 @@
 namespace Smelter.Plugins.Models
 {
     /// <summary>
-    /// Maps to the OptionSet values on sanic_smlt_ijl_status.
-    /// Result of processing a single row for a target table.
+    /// Result of processing a single row for a target table (internal to the pipeline). Only <see cref="Failed"/>
+    /// is persisted: the Import Job Log table records failures only, so since 1.0.10 the
+    /// <c>sanic_smlt_ijl_status</c> choice has just <c>Failed (3)</c>; Created/Updated/Skipped feed the job counters.
     /// </summary>
     public enum ImportLogStatus
     {

@@ -158,7 +158,11 @@ public class MdaXmlTests
                 foreach (var lx in doc.Descendants("grid")) referenced.UnionWith(MdaXml.LayoutAttributes(lx.ToString()));
             }
 
-            referenced.Should().NotIntersectWith(deleted, $"{table}: forms/views no deben referenciar atributos eliminados en 1.3.0.0");
+            // Un atributo del catálogo que TODAVÍA figura en el Entity.xml versionado aún no llegó por solution-sync
+            // (el deploy lo borra en Dev por SDK): sus forms/vistas siguen consistentes con ese Entity.xml. Una vez
+            // sincronizado desaparece de `known` y este assert pasa a exigir cero referencias.
+            referenced.Should().NotIntersectWith(deleted.Where(d => !known.Contains(d)),
+                $"{table}: forms/views no deben referenciar atributos eliminados (SchemaCleanupSpec)");
             var customUnknown = referenced.Where(a => a.StartsWith("sanic_") && !known.Contains(a) && a != table + "id");
             customUnknown.Should().BeEmpty($"{table}: forms/views referencian columnas custom inexistentes");
         }

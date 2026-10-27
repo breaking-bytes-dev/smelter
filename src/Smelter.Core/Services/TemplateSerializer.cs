@@ -91,6 +91,10 @@ namespace Smelter.Plugins.Services
 
             foreach (var rel in dto.RelationshipMappings ?? new List<RelationshipMappingDto>())
             {
+                // ManyToMany se quitó del choice de Relationship Type: importarlo crearía un valor inexistente.
+                if (rel.RelationshipType != (int)RelationshipType.OneToMany)
+                    throw new TemplateFormatException(
+                        $"Relationship '{rel.Name}' is ManyToMany, which is not supported; only OneToMany is.");
                 if (!refs.Contains(rel.ParentRef))
                     throw new TemplateFormatException(
                         $"Relationship references unknown parentRef '{rel.ParentRef}'.");

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Smelter.Plugins.Models
@@ -15,8 +16,8 @@ namespace Smelter.Plugins.Models
 
         /// <summary>
         /// Raw column values keyed by header name.
-        /// Keys are case-sensitive and match the source file headers exactly.
+        /// Keys are case-INsensitive (OrdinalIgnoreCase), consistent with the header validation in PrepareImport.
         /// </summary>
-        public Dictionary<string, string> Values { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> Values { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 }

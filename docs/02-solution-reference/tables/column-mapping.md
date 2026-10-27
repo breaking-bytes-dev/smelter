@@ -18,12 +18,12 @@ default y expresiones de transform.
 | `sanic_smlt_cm_columnmappingid` | GUID (PK) | Auto | Clave primaria |
 | `sanic_smlt_cm_tablemappingid` | Lookup | Sí | FK → Table Mapping |
 | `sanic_smlt_cm_name` | String(200) | Sí | Nombre descriptivo |
-| `sanic_smlt_cm_sourcecolumn` | String(200) | Condicional | Nombre de columna en el CSV. Opcional cuando se usa transform `STATIC()`. |
+| `sanic_smlt_cm_sourcecolumn` | String(200) | Condicional | Nombre de columna en el CSV; **no distingue mayúsculas** ni espacios alrededor (`Email` lee la columna `email`). Opcional cuando se usa transform `STATIC()`. |
 | `sanic_smlt_cm_targetcolumn` | String(100) | Sí | Logical name de la columna Dataverse destino |
 | `sanic_smlt_cm_datatype` | OptionSet | Sí | Tipo de dato destino |
 | `sanic_smlt_cm_isrequired` | Boolean | No | Fallar la fila si el valor de origen está vacío |
 | `sanic_smlt_cm_defaultvalue` | String(500) | No | Valor por defecto cuando el origen está vacío |
-| `sanic_smlt_cm_lookuptable` | String(100) | Condicional | Para tipo Lookup: logical name de la tabla a la que apunta |
+| `sanic_smlt_cm_lookuptable` | String(100) | Condicional | Para tipo Lookup: logical name de la tabla a la que apunta. **Obligatorio con Data Type = Lookup** (`PrepareImport` rechaza el template si falta) |
 | `sanic_smlt_cm_lookupmatchcolumn` | String(100) | Condicional | Para tipo Lookup: columna de la tabla lookup contra la que hacer match |
 | `sanic_smlt_cm_optionsetmapping` | Multiline | Condicional | Para tipo OptionSet: JSON `{"valor_origen": 123456}` |
 | `sanic_smlt_cm_transformexpression` | String(1000) | No | Expresión DSL de transform. Tiene prioridad sobre el valor crudo del origen. Ver [Transform DSL](../../03-developer-guide/transform-dsl.md). |

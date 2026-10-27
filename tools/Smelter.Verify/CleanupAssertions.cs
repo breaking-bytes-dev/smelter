@@ -34,7 +34,17 @@ internal static class CleanupAssertions
             }
         }
 
-        Console.WriteLine($"[CLEAN] OK: {SchemaCleanupCatalogo.Attributes.Length} atributo(s) fuera del schema.");
+        foreach (var spec in OptionCleanupCatalogo.Options)
+        {
+            var sigue = SchemaCleanupProvisioner.OptionExists(client, spec);
+            Assert(!sigue,
+                $"la opción {spec.EntityLogicalName}.{spec.AttributeLogicalName} = {spec.Value} ({spec.Label}) SIGUE existiendo " +
+                "(¿SchemaCleanupProvisioner no corrió, o se negó porque hay filas que la usan?)");
+            Console.WriteLine($"[CLEAN]   {spec.EntityLogicalName}.{spec.AttributeLogicalName} = {spec.Value} ({spec.Label}): eliminada OK.");
+        }
+
+        Console.WriteLine($"[CLEAN] OK: {SchemaCleanupCatalogo.Attributes.Length} atributo(s) y " +
+            $"{OptionCleanupCatalogo.Options.Length} opción(es) fuera del schema.");
     }
 
     private static void Assert(bool condition, string message)

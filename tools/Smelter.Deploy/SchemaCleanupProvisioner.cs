@@ -56,7 +56,59 @@ internal static class SchemaCleanupProvisioner
             }
         }
 
-        Console.WriteLine($"[4d] SchemaCleanup OK ({SchemaCleanupCatalogo.Attributes.Length} specs procesadas).");
+        RemoveOptions(client);
+
+        Console.WriteLine($"[4d] SchemaCleanup OK ({SchemaCleanupCatalogo.Attributes.Length} atributos + " +
+            $"{OptionCleanupCatalogo.Options.Length} opciones procesadas).");
+    }
+
+    // ── Opciones muertas de choices locales (OptionCleanupCatalogo) ──────────────────────────────
+    // Se niega a borrar una opción que alguna fila usa: dejaría datos con un valor inexistente. Sin filas, es
+    // DeleteOptionValueRequest + publish. Idempotente: una opción que ya no está se saltea.
+    internal static void RemoveOptions(ServiceClient client)
+    {
+        foreach (var spec in OptionCleanupCatalogo.Options)
+        {
+            var label = $"{spec.EntityLogicalName}.{spec.AttributeLogicalName} = {spec.Value} ({spec.Label})";
+            if (!OptionExists(client, spec))
+            {
+                Console.WriteLine($"[4d]   opción {label} ya no existe — nada que borrar.");
+                continue;
+            }
+
+            var inUse = client.RetrieveMultiple(new QueryExpression(spec.EntityLogicalName)
+            {
+                ColumnSet = new ColumnSet(false),
+                TopCount = 1,
+                Criteria = { Conditions = { new ConditionExpression(spec.AttributeLogicalName, ConditionOperator.Equal, spec.Value) } },
+            }).Entities.Count > 0;
+            if (inUse)
+                throw new InvalidOperationException(
+                    $"No se elimina la opción {label}: existen filas que la usan (se consulta sin filtrar por estado). " +
+                    "Migrar o borrar esas filas y volver a correr el deploy.");
+
+            client.Execute(new DeleteOptionValueRequest
+            {
+                EntityLogicalName = spec.EntityLogicalName,
+                AttributeLogicalName = spec.AttributeLogicalName,
+                Value = spec.Value,
+            });
+            PublishEntity(client, spec.EntityLogicalName);
+            Console.WriteLine($"[4d]   opción {label} ELIMINADA ({spec.Reason}).");
+        }
+    }
+
+    internal static bool OptionExists(ServiceClient client, OptionCleanupSpec spec)
+    {
+        var attribute = ((RetrieveAttributeResponse)client.Execute(new RetrieveAttributeRequest
+        {
+            EntityLogicalName = spec.EntityLogicalName,
+            LogicalName = spec.AttributeLogicalName,
+            RetrieveAsIfPublished = true,
+        })).AttributeMetadata;
+
+        var options = (attribute as EnumAttributeMetadata)?.OptionSet?.Options;
+        return options?.Any(o => o.Value == spec.Value) == true;
     }
 
     private static bool AttributeExists(ServiceClient client, AttributeCleanupSpec spec)
@@ -89,21 +141,12 @@ internal static class SchemaCleanupProvisioner
                 continue;
 
             var doc = XDocument.Parse(formXml);
-            var celdas = doc.Descendants("control")
-                .Where(c => string.Equals((string?)c.Attribute("datafieldname"), spec.AttributeLogicalName,
-                    StringComparison.OrdinalIgnoreCase))
-                .Select(c => c.Ancestors("cell").FirstOrDefault() ?? (XElement)c)
-                .Distinct()
-                .ToList();
-            if (celdas.Count == 0)
+            if (!FormXmlEditor.TryRemoveField(doc, spec.AttributeLogicalName))
                 continue;
-
-            foreach (var celda in celdas)
-                celda.Remove();
 
             client.Update(new Entity("systemform", form.Id) { ["formxml"] = doc.ToString(SaveOptions.DisableFormatting) });
             Console.WriteLine($"[4d]     form '{form.GetAttributeValue<string>("name")}': " +
-                $"{celdas.Count} celda(s) de {spec.AttributeLogicalName} removida(s).");
+                $"{spec.AttributeLogicalName} removido.");
         }
     }
 

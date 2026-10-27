@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Smelter.Plugins.Models
 {
@@ -77,7 +78,7 @@ namespace Smelter.Plugins.Models
         public string Name { get; set; }
 
         /// <summary>
-        /// 0 = CSV, 1 = Excel
+        /// 0 = CSV (única opción; la columna está oculta y sin requerir desde 1.0.10)
         /// </summary>
         public int SourceType { get; set; }
 
@@ -155,7 +156,7 @@ namespace Smelter.Plugins.Models
             if (string.IsNullOrWhiteSpace(DedupColumns))
                 return Array.Empty<string>();
 
-            return DedupColumns.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            return DedupColumns.Split(',').Select(c => c.Trim()).Where(c => c.Length > 0).ToArray();
         }
     }
 
@@ -230,7 +231,8 @@ namespace Smelter.Plugins.Models
         public Guid ChildTableMappingId { get; set; }
 
         /// <summary>
-        /// 0 = OneToMany, 1 = ManyToMany
+        /// <see cref="Models.RelationshipType"/> (0 = OneToMany). ManyToMany ya no existe en el choice; un valor
+        /// legacy distinto de 0 lo rechaza PrepareImport.
         /// </summary>
         public int RelationshipType { get; set; }
 
@@ -246,9 +248,9 @@ namespace Smelter.Plugins.Models
         public string ParentDedupColumns { get; set; }
 
         /// <summary>
-        /// <c>true</c> when <see cref="RelationshipType"/> is 0 (one-to-many). Los mappings N:M
-        /// (valor 1) no están soportados: el engine los filtra por esta propiedad.
+        /// <c>true</c> when <see cref="RelationshipType"/> is 0 (one-to-many). Cualquier otro valor (N:M, ya no
+        /// ofrecido en el choice) no está soportado: PrepareImport lo rechaza y el engine lo filtra por esta propiedad.
         /// </summary>
-        public bool IsOneToMany => RelationshipType == 0;
+        public bool IsOneToMany => RelationshipType == (int)Models.RelationshipType.OneToMany;
     }
 }

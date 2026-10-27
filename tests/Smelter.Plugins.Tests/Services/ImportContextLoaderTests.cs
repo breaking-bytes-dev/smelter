@@ -188,5 +188,30 @@ namespace Smelter.Plugins.Tests.Services
 
             context.TableMappings.Should().ContainSingle().Which.InsertOnly.Should().Be(expected);
         }
+
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        [InlineData(null, true)] // sin valor (legacy) => true: alineado con el default Sí del schema (1.0.10)
+        public void LoadContext_UpdateIfExists_FallsBackToTrueWhenTheAttributeIsEmpty(bool? raw, bool expected)
+        {
+            var service = Substitute.For<IOrganizationService>();
+            var jobId = Guid.NewGuid();
+            var templateId = Guid.NewGuid();
+            var job = new Entity("sanic_tbl_smlt_importjob", jobId);
+            job["sanic_smlt_ij_importtemplateid"] = new EntityReference("sanic_tbl_smlt_importtemplate", templateId);
+            service.Retrieve("sanic_tbl_smlt_importjob", jobId, Arg.Any<ColumnSet>()).Returns(job);
+            service.Retrieve("sanic_tbl_smlt_importtemplate", templateId, Arg.Any<ColumnSet>())
+                .Returns(new Entity("sanic_tbl_smlt_importtemplate", templateId));
+            var tm = new Entity("sanic_tbl_smlt_tablemapping", Guid.NewGuid());
+            if (raw.HasValue) tm["sanic_smlt_tm_updateifexists"] = raw.Value;
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(ci =>
+                ((QueryExpression)ci.Arg<QueryBase>()).EntityName == "sanic_tbl_smlt_tablemapping"
+                    ? new EntityCollection(new List<Entity> { tm })
+                    : new EntityCollection());
+
+            new ImportContextLoader(service).LoadContext(jobId)
+                .TableMappings.Should().ContainSingle().Which.UpdateIfExists.Should().Be(expected);
+        }
     }
 }

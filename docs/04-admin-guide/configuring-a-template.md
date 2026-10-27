@@ -35,9 +35,9 @@ En la MDA de Smelter, navegá a **Import Templates** → **Nuevo**.
 |-------|-------------|---------|
 | **Name** | Nombre identificador del template | `Cobranza Diaria` |
 | **Description** | Descripción opcional | `CSV denormalizado de cobranza` |
-| **Source Type** | Tipo de archivo fuente | `CSV` (valor 0) |
+| **Source Type** | Tipo de archivo fuente. Solo existe CSV; desde 1.0.10 está oculto en el form y nace en CSV | `CSV` (valor 0) |
 | **Has Header Row** | Si la primera fila es encabezado | `Sí` (recomendado) |
-| **Delimiter** | Separador de columnas del CSV | `,` (coma; usar `;` si corresponde) |
+| **Delimiter** | Separador de columnas del CSV | `,` (coma; `;` si corresponde; `\t` o `TAB` para tabulador/TSV) |
 | **Chunk Size** | Filas procesadas por lote | `1000` (ajustar según volumen) |
 | **Status** | Estado del template | `Active` para que pueda usarse |
 
@@ -61,10 +61,9 @@ de columnas paralelas más adelante).
 | **Import Template** | Lookup al template padre | Se completa automáticamente |
 | **Target Table** | Nombre lógico de la tabla Dataverse | `sanic_cliente`, `contact`, `account` |
 | **Processing Order** | Orden de procesamiento (número entero) | Padres: 1 · Hijos: 2 · Nietos: 3 |
-| **Dedup Columns** | Columnas de la alternate key, separadas por coma | `sanic_cif` o `sanic_cif,sanic_tipo` |
+| **Dedup Columns** | Columnas de la alternate key, separadas por coma. Cada una debe existir como **Target Column** de un Column Mapping de este Table Mapping | `sanic_cif` o `sanic_cif,sanic_tipo` |
 | **Create If Not Exists** | Crear registro si no existe match | `Sí` en casi todos los casos |
-| **Update If Exists** | Actualizar si ya existe un match | `Sí` para tablas de estado actual; `No` para append-only |
-| **Is Junction Table** | Marcar si es tabla de intersección N:M | Solo para relaciones muchos-a-muchos |
+| **Update If Exists** | Actualizar si ya existe un match (default `Sí` desde 1.0.10) | `Sí` para tablas de estado actual; `No` para append-only |
 
 ### Sobre Dedup Columns
 
@@ -169,10 +168,9 @@ Creá **un Relationship Mapping por cada relación padre-hijo** entre Table Mapp
 | **Import Template** | Lookup al template | Sí (auto) |
 | **Parent Table Mapping** | Lookup al Table Mapping del padre | Sí |
 | **Child Table Mapping** | Lookup al Table Mapping del hijo | Sí |
-| **Relationship Type** | `OneToMany` (1:N) o `ManyToMany` (N:M) | Sí |
-| **Lookup Column On Child** | Nombre lógico del campo lookup en la tabla hija | Para 1:N |
-| **Intersect Table** | Nombre lógico de la tabla de intersección | Para N:M |
-| **Parent Dedup Columns** | Columnas del CSV que identifican al padre | Sí |
+| **Relationship Type** | `OneToMany` (1:N). N:M no está soportado y desde 1.0.10 no es una opción | Sí |
+| **Lookup Column On Child** | Nombre lógico del campo lookup en la tabla hija | Sí |
+| **Parent Dedup Columns** | Columnas del CSV que identifican al padre; tantas como `Dedup Columns` tiene el padre | Sí |
 
 ### Cómo funciona Parent Dedup Columns
 
@@ -182,9 +180,11 @@ Este campo es el más importante y el que más confusión genera. Responde a la 
 No son los nombres lógicos de Dataverse — son los nombres de las columnas en el archivo CSV fuente.
 
 En tiempo de procesamiento, el motor:
-1. Lee los valores de esas columnas del CSV (por fila).
-2. Los combina con los nombres de las columnas de la alternate key del padre (de `Dedup Columns` en el Table
-   Mapping padre).
+1. Lee los valores de esas columnas del CSV (por fila) y les aplica el **mismo transform, default y tipo** que el
+   Table Mapping padre usa para esa columna destino (si el padre guarda `HMAC(Pan, "k")`, el hijo busca por el
+   HMAC, no por el PAN crudo).
+2. Los combina, por posición, con los nombres de las columnas de la alternate key del padre (de `Dedup Columns`
+   en el Table Mapping padre).
 3. Construye un `EntityReference` con `KeyAttributes` apuntando al padre.
 
 Ejemplo concreto:
@@ -271,10 +271,10 @@ del schema** en 1.3.0.0, otro se **implementó**, y otro sigue ignorado por el m
 | Campo | Estado | Qué hacer |
 |-------|--------|-----------|
 | **IsRetry** (`sanic_smlt_ij_retry` en Import Job) | **Eliminado del schema en 1.3.0.0.** Nunca estuvo implementado; no existe "reprocesar solo filas fallidas". | Para reintentar: usar la retry policy automática del Cloud Flow (errores transitorios) o volver el job a `Queued` para re-correr desde cero (el upsert es idempotente). |
-| **Is Junction Table** (`sanic_smlt_tm_isjunctiontable` en Table Mapping) | **Sigue ignorado por el motor** — pendiente de eliminación del schema. Placeholder para N:M, que no está soportado; desde 1.3.0.0 el export/import de templates tampoco lo toca. | Modelar la tabla join como un `TableMapping` adicional con `DedupColumns` y lookups explícitos hacia ambas tablas padre. |
+| **Is Junction Table** (`sanic_smlt_tm_isjunctiontable` en Table Mapping) | **Eliminado en 1.0.10** (form y schema). Era un placeholder para N:M, que no está soportado. | Modelar la tabla join como un `TableMapping` adicional con `DedupColumns` y lookups explícitos hacia ambas tablas padre. |
 | **Create If Not Exists** (`sanic_smlt_tm_createifnotexists` en Table Mapping) | **Implementado en 1.3.0.0.** Si el registro **no existe** (sin match de dedup): Sí = se crea; No = la fila queda `Skipped` (no se escribe) y suma al contador **Skipped** del job. | Default Sí. Ponerlo en No solo cuando el import debe limitarse a actualizar registros existentes. Requiere `DedupColumns`; sin alternate key el flag se ignora. |
-| **Update If Exists** (`sanic_smlt_tm_updateifexists` en Table Mapping) | **Implementado en 1.3.0.0.** Si el registro **existe** (match de dedup): Sí = se actualiza; No = la fila queda `Skipped` (no se escribe) y suma al contador **Skipped** del job. Con ambos flags en Sí (default) se mantiene el upsert de un solo round-trip. | Default Sí. Ponerlo en No para imports "solo alta" que no deben pisar datos existentes. Requiere `DedupColumns`; sin alternate key el flag se ignora. |
-| **Relationship Type = ManyToMany** / **Intersect Table** | N:M sigue sin soporte. `NormalizationEngine` filtra con `.Where(r => r.IsOneToMany)`: cualquier mapping `ManyToMany` se ignora en silencio. El campo `sanic_smlt_rm_intersecttable` fue **eliminado del schema en 1.3.0.0**. | Solo usar `OneToMany`. Para N:M, ver el ítem Is Junction Table arriba. |
+| **Update If Exists** (`sanic_smlt_tm_updateifexists` en Table Mapping) | **Implementado en 1.3.0.0.** Si el registro **existe** (match de dedup): Sí = se actualiza; No = la fila queda `Skipped` (no se escribe) y suma al contador **Skipped** del job. Con ambos flags en Sí (default) se mantiene el upsert de un solo round-trip. | Default Sí (desde 1.0.10 también en el schema). Ponerlo en No para imports "solo alta" que no deben pisar datos existentes. Requiere `DedupColumns`; sin alternate key el flag se ignora. |
+| **Relationship Type = ManyToMany** / **Intersect Table** | N:M sigue sin soporte. Desde 1.0.10 la opción `ManyToMany` **se eliminó del choice** y `PrepareImport` rechaza cualquier valor distinto de `OneToMany` con un error claro (antes se ignoraba en silencio). `sanic_smlt_rm_intersecttable` se eliminó en 1.3.0.0. | Solo usar `OneToMany`. Para N:M, ver el ítem Is Junction Table arriba. |
 
 ### Comportamientos implícitos que conviene conocer
 

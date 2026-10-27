@@ -123,7 +123,7 @@ namespace Smelter.Plugins.Models
         /// <summary>Ref of the child table mapping (matches a <see cref="TableMappingDto.Ref"/>).</summary>
         [DataMember(Order = 3)] public string ChildRef { get; set; }
 
-        /// <summary>Relationship type: 0 = OneToMany, 1 = ManyToMany.</summary>
+        /// <summary>Relationship type: 0 = OneToMany (único soportado; ManyToMany se rechaza al deserializar).</summary>
         [DataMember(Order = 4)] public int RelationshipType { get; set; }
 
         /// <summary>For 1:N relationships: logical name of the lookup column on the child entity.</summary>

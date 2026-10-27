@@ -155,8 +155,8 @@ namespace Smelter.Plugins.Services
                     ProcessingOrder = tm.GetAttributeValue<int?>("sanic_smlt_tm_processingorder") ?? 0,
                     DedupColumns = tm.GetAttributeValue<string>("sanic_smlt_tm_dedupcolumns"),
                     CreateIfNotExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_createifnotexists") ?? true,
-                    // Fallback true = comportamiento histórico (el motor siempre actualizaba) para
-                    // registros legacy sin el atributo poblado — el flag recién se honra desde 1.3.0.0.
+                    // Fallback true = default del schema desde 1.0.10 (antes No) y comportamiento histórico (el
+                    // motor siempre actualizaba) para registros legacy sin el atributo poblado.
                     UpdateIfExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_updateifexists") ?? true,
                     // Sin valor (registros previos al flag) = false: el gate de idempotencia aplica.
                     InsertOnly = tm.GetAttributeValue<bool?>("sanic_smlt_tm_insertonly") ?? false

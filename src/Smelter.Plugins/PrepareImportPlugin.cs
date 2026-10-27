@@ -142,6 +142,9 @@ namespace Smelter.Plugins
             ValidateDedupGate(context.TableMappings);
             _tracing?.Trace("Run: idempotency gate (dedup columns / insert-only) OK.");
 
+            ValidateConfiguration(context);
+            _tracing?.Trace("Run: template configuration is coherent OK.");
+
             var bytes = _downloader.Download(new EntityReference(ImportJobTable, importJobId), SourceFileAttribute);
             _tracing?.Trace($"Run: downloaded file, {bytes?.Length ?? 0} bytes.");
 
@@ -195,6 +198,21 @@ namespace Smelter.Plugins
         }
 
         /// <summary>
+        /// Coherencia entre registros del template (<see cref="TemplateValidator"/>): dedup columns que existen como
+        /// Target Column, Lookup con Lookup Table, relaciones 1:N completas y con la misma cantidad de columnas de key
+        /// que el padre. Antes cada una de estas configuraciones fallaba fila por fila (o en silencio) en ProcessChunk.
+        /// Público: lo reusan los tests.
+        /// </summary>
+        public static void ValidateConfiguration(ImportContext context)
+        {
+            var errors = TemplateValidator.Validate(context);
+            if (errors.Count == 0) return;
+
+            throw new InvalidPluginExecutionException(
+                $"Import Template '{context.Template?.Name}' has configuration errors: {string.Join(" ", errors)}");
+        }
+
+        /// <summary>
         /// Validates that <paramref name="initiatingUserId"/> has Read access to the Import Template
         /// before any file is downloaded or the job is reset. Prevents an Operador from preparing an
         /// import against a template that was never shared with their team (smelter-access-control).
@@ -225,7 +243,7 @@ namespace Smelter.Plugins
             var missing = context.TableMappings
                 .SelectMany(t => t.ColumnMappings)
                 .Where(c => string.IsNullOrWhiteSpace(c.TransformExpression) && !string.IsNullOrEmpty(c.SourceColumn))
-                .Select(c => c.SourceColumn)
+                .Select(c => c.SourceColumn.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Where(sc => !headers.Contains(sc))
                 .ToList();

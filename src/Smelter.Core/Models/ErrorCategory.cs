@@ -21,9 +21,6 @@ namespace Smelter.Plugins.Models
         LookupUnresolved = 4,
 
         /// <summary>Dataverse rejected the write for data reasons (constraint, privilege, duplicate).</summary>
-        TargetData = 5,
-
-        /// <summary>Transient Dataverse fault (SQL deadlock/timeout/lock). Reintentable. Diferido en v1.</summary>
-        Transient = 6
+        TargetData = 5
     }
 }

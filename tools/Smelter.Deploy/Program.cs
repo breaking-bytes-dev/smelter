@@ -12,7 +12,7 @@
 //   --package-only   solo (re)sube el package (sin tocar APIs).
 //   --interactive    login interactivo (browser) en vez del Service Principal.
 //   --allow-destructive  habilita los pasos que borran schema/metadata/datos (4c: recrear key y
-//                    dedupe de filas, 4d: SchemaCleanup, 8: Custom API legacy). También por
+//                    dedupe de filas, 4d: SchemaCleanup — atributos y opciones de choices —, 8: Custom API legacy). También por
 //                    SMELTER_ALLOW_DESTRUCTIVE=true. Sin esto se omiten (o fallan explícito, ver 4c).
 //
 // Guarda de entorno: exige SMELTER_ENV=dev. Esto es una herramienta de DEV; Test/Prod reciben la
@@ -123,6 +123,9 @@ SchemaAdditionsProvisioner.Run(client);
 
 // ── 4g. Pin de forms y vistas Smelter en la MDA (MdaComponentsSpec.cs): sin esto ValidateApp avisa "all forms and views" ──
 MdaComponentsProvisioner.Run(client);
+
+// ── 4h. Ajustes de columnas/forms existentes (SchemaTuningSpec.cs): sourcetype opcional/oculto, UpdateIfExists default Sí ──
+SchemaTuningProvisioner.Run(client);
 
 // ── 5. Publicar: refresca la metadata OData del Web API ────────────────────
 Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del Web API) ...");

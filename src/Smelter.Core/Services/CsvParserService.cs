@@ -70,7 +70,7 @@ namespace Smelter.Plugins.Services
         /// <returns>All data rows from the file.</returns>
         public List<SourceRow> Parse(byte[] fileBytes, bool hasHeaderRow, FileParseOptions options)
         {
-            var delimiter = string.IsNullOrEmpty(options?.Delimiter) ? "," : options.Delimiter;
+            var delimiter = CsvDelimiter.Resolve(options?.Delimiter);
             return ReadRange(fileBytes, hasHeaderRow, delimiter, 0, int.MaxValue).ToList();
         }
 
@@ -199,7 +199,7 @@ namespace Smelter.Plugins.Services
             var config = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
                 HasHeaderRecord = false,
-                Delimiter = string.IsNullOrEmpty(delimiter) ? "," : delimiter,
+                Delimiter = CsvDelimiter.Resolve(delimiter),
                 TrimOptions = TrimOptions.Trim,
                 MissingFieldFound = null,
                 BadDataFound = null
@@ -332,7 +332,7 @@ namespace Smelter.Plugins.Services
             var config = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
                 HasHeaderRecord = hasHeaderRow,
-                Delimiter = string.IsNullOrEmpty(delimiter) ? "," : delimiter,
+                Delimiter = CsvDelimiter.Resolve(delimiter),
                 TrimOptions = TrimOptions.Trim,
                 MissingFieldFound = null,
                 BadDataFound = null

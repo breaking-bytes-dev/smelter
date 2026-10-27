@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using FluentAssertions;
 using Smelter.Plugins.Models;
@@ -121,6 +122,31 @@ namespace Smelter.Plugins.Tests.Services
             var result = _sut.Deserialize(oldJson);
 
             result.TableMappings.Should().ContainSingle().Which.InsertOnly.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Deserialize_JsonWithRemovedIsJunctionTableMember_StillImports()
+        {
+            // JSON exportado antes de 1.3.0.0: trae IsJunctionTable (campo eliminado). Se ignora.
+            const string oldJson = "{\"FormatVersion\":\"1.0\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0}," +
+                "\"TableMappings\":[{\"Ref\":\"a\",\"Name\":\"A\",\"TargetTable\":\"x\",\"ProcessingOrder\":1,\"DedupColumns\":\"k\",\"CreateIfNotExists\":true,\"UpdateIfExists\":true,\"IsJunctionTable\":true,\"ColumnMappings\":[]}]," +
+                "\"RelationshipMappings\":[]}";
+
+            var result = _sut.Deserialize(oldJson);
+
+            result.TableMappings.Should().ContainSingle().Which.Name.Should().Be("A");
+        }
+
+        [Fact]
+        public void Deserialize_ManyToManyRelationship_IsRejectedWithAClearError()
+        {
+            const string json = "{\"FormatVersion\":\"1.0\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0}," +
+                "\"TableMappings\":[{\"Ref\":\"a\",\"Name\":\"A\",\"TargetTable\":\"x\",\"ColumnMappings\":[]},{\"Ref\":\"b\",\"Name\":\"B\",\"TargetTable\":\"y\",\"ColumnMappings\":[]}]," +
+                "\"RelationshipMappings\":[{\"Name\":\"NM\",\"ParentRef\":\"a\",\"ChildRef\":\"b\",\"RelationshipType\":1}]}";
+
+            Action act = () => _sut.Deserialize(json);
+
+            act.Should().Throw<TemplateFormatException>().WithMessage("*NM*ManyToMany*not supported*");
         }
     }
 }
