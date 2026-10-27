@@ -11,6 +11,12 @@
 //   (default)        despliega: package + espera plugintypes + upsert de las 4 APIs.
 //   --package-only   solo (re)sube el package (sin tocar APIs).
 //   --interactive    login interactivo (browser) en vez del Service Principal.
+//   --allow-destructive  habilita los pasos que borran schema/metadata/datos (4c: recrear key y
+//                    dedupe de filas, 4d: SchemaCleanup, 8: Custom API legacy). También por
+//                    SMELTER_ALLOW_DESTRUCTIVE=true. Sin esto se omiten (o fallan explícito, ver 4c).
+//
+// Guarda de entorno: exige SMELTER_ENV=dev. Esto es una herramienta de DEV; Test/Prod reciben la
+//   solución managed por el workflow solution-import.
 //
 // Autenticación: si PP_CLIENT_ID/PP_CLIENT_SECRET están en el entorno → Service Principal
 //   (sin browser, ideal para CI); si no (o con --interactive) → login interactivo.
@@ -22,6 +28,15 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using Smelter.Deploy;
+
+var envError = DeployGuards.CheckEnvironment(Environment.GetEnvironmentVariable(DeployGuards.EnvVarName));
+if (envError is not null)
+{
+    Console.Error.WriteLine($"[FATAL] {envError}");
+    return 2;
+}
+DeployOptions.AllowDestructive = DeployGuards.IsDestructiveAllowed(
+    args, Environment.GetEnvironmentVariable(DeployGuards.AllowDestructiveEnvVarName));
 
 string? nupkgArg = args.FirstOrDefault(a => !a.StartsWith("--"));
 bool packageOnly = args.Contains("--package-only");
@@ -95,7 +110,10 @@ StepProvisioner.Run(client, typePorNombre);
 KeyProvisioner.Run(client);
 
 // ── 4d. Limpieza de atributos muertos (SchemaCleanupSpec.cs, audit 1.3.0.0) ─
-SchemaCleanupProvisioner.Run(client);
+if (DeployOptions.AllowDestructive)
+    SchemaCleanupProvisioner.Run(client);
+else
+    Console.WriteLine("[4d] SchemaCleanup OMITIDO (destructivo; usar --allow-destructive o SMELTER_ALLOW_DESTRUCTIVE=true).");
 
 // ── 4e. Tabla DEV-only de keys HMAC (HmacKeyTableSpec.cs) — fuera de roles y de la solución ──
 HmacKeyTableProvisioner.Run(client);
@@ -113,7 +131,7 @@ CloudFlowUpdater.UpdateProcessChunkReference(client);
 
 // ── 8. Cleanup Fase 9 (Release N+1, gate: backend-verify verde run 30364284364): borrar la Custom
 //       API legacy "anic_..." de Dev. Idempotente: si ya no existe, no hay nada que borrar. ──
-var legacyApi = client.RetrieveMultiple(new QueryExpression("customapi")
+var legacyApi = !DeployOptions.AllowDestructive ? null : client.RetrieveMultiple(new QueryExpression("customapi")
 {
     ColumnSet = new ColumnSet("customapiid"),
     Criteria = { Conditions = { new ConditionExpression("uniquename", ConditionOperator.Equal, ClientDataProcessChunkRenamer.OldActionUniqueName) } },
@@ -123,6 +141,10 @@ if (legacyApi is not null)
 {
     client.Delete("customapi", legacyApi.Id);
     Console.WriteLine($"[8] Custom API legacy '{ClientDataProcessChunkRenamer.OldActionUniqueName}' eliminada de Dev ({legacyApi.Id}).");
+}
+else if (!DeployOptions.AllowDestructive)
+{
+    Console.WriteLine("[8] Borrado de Custom API legacy OMITIDO (destructivo; usar --allow-destructive o SMELTER_ALLOW_DESTRUCTIVE=true).");
 }
 else
 {

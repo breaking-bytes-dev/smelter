@@ -6,6 +6,7 @@ name: backend-verify
 on:
   workflow_dispatch:
 
+# Branch policy: se configura en el environment `dev` (deployment branches), no acá.
 permissions:
   contents: read
 
@@ -19,6 +20,7 @@ env:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    environment: dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
