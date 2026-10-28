@@ -42,6 +42,34 @@ internal static class TuningAssertions
             Console.WriteLine($"[TUNE]   {spec.Entity}.{spec.Attribute}: OK.");
         }
 
+        // Comportamiento, no solo metadata: guardar un Chunk Size fuera de rango debe RECHAZARSE (antes un 50 se aceptaba y el motor lo acotaba).
+        foreach (var outOfRange in new[] { SchemaTuningCatalogo.ChunkSizeMin - 1, 50, SchemaTuningCatalogo.ChunkSizeMax + 1 })
+        {
+            Guid? leaked = null;
+            try
+            {
+                leaked = client.Create(new Microsoft.Xrm.Sdk.Entity(SecuritySpec.Tables.ImportTemplate)
+                {
+                    ["sanic_smlt_it_name"] = "Smelter Verify · chunk-range probe",
+                    ["sanic_smlt_it_chunksize"] = outOfRange,
+                });
+            }
+            catch (System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault>)
+            {
+                // esperado: la columna rechaza el valor
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException && ex.Message.Contains("range", StringComparison.OrdinalIgnoreCase))
+            {
+                // ServiceClient puede envolver el fault en otra excepción: igualmente es un rechazo
+            }
+            if (leaked is { } id)
+            {
+                client.Delete(SecuritySpec.Tables.ImportTemplate, id);
+                Assert(false, $"sanic_smlt_it_chunksize={outOfRange} debía rechazarse y se guardó (¿MinValue/MaxValue sin aplicar?)");
+            }
+        }
+        Console.WriteLine("[TUNE]   Chunk Size fuera de rango (<100 / >10000): rechazado OK.");
+
         foreach (var hidden in SchemaTuningCatalogo.HiddenFields)
         {
             var mains = client.RetrieveMultiple(new QueryExpression("systemform")
