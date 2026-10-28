@@ -352,7 +352,9 @@ public class FormPolishSpecContractTests
 
         var parameters = Control(doc, spec.Field)!.Element("parameters")!;
         parameters.Element("DefaultViewId")!.Value.Should().BeEquivalentTo($"{{{spec.ViewId:D}}}");
-        parameters.Element("ViewIds")!.Value.Should().BeEquivalentTo($"{{{spec.ViewId:D}}}");
+        parameters.Element("AvailableViewIds")!.Value.Should().BeEquivalentTo($"{{{spec.ViewId:D}}}");
+        parameters.Elements().Select(e => e.Name.LocalName).Should().Equal(new[] { "DefaultViewId", "DisableMru", "DisableViewPicker", "AvailableViewIds" },
+            "el schema del formxml es una secuencia: este es el orden y los únicos nombres válidos (ViewIds lo rechaza Dataverse)");
         parameters.Element("DisableViewPicker")!.Value.Should().Be("true", "sin selector de vistas no se puede volver a 'todos los templates'");
         parameters.Element("DisableMru")!.Value.Should().Be("true", "los recientes podrían traer un Draft ya elegido");
         Control(doc, spec.Field)!.Attribute("classid")!.Value.Should().Be("{270BD3DB-D9AF-4782-9025-509E298DEC0A}");

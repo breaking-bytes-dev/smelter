@@ -243,7 +243,7 @@ internal static class FormXmlEditor
     }
 
     /// <summary>
-    /// Limita un lookup a UNA vista: DefaultViewId + ViewIds = la vista, DisableViewPicker (no se puede cambiar a otra) y
+    /// Limita un lookup a UNA vista: DefaultViewId + AvailableViewIds = la vista, DisableViewPicker (no se puede cambiar a otra) y
     /// DisableMru (los recientes no se saltean el filtro). Conserva el resto de &lt;parameters&gt;. <c>false</c> si el campo
     /// no está o ya está así.
     /// </summary>
@@ -261,10 +261,12 @@ internal static class FormXmlEditor
         }
 
         var id = $"{{{viewId:D}}}";
+        // Nombres y ORDEN que acepta el schema del formxml (secuencia: DefaultViewId ... DisableMru ... DisableViewPicker, AvailableViewIds);
+        // "ViewIds" lo rechaza Dataverse ("The element 'parameters' has invalid child element 'ViewIds'", backend-deploy 40634586344).
         var changed = SetParameter(parameters, "DefaultViewId", id, ignoreCase: true);
-        changed |= SetParameter(parameters, "ViewIds", id, ignoreCase: true);
-        changed |= SetParameter(parameters, "DisableViewPicker", "true");
         changed |= SetParameter(parameters, "DisableMru", "true");
+        changed |= SetParameter(parameters, "DisableViewPicker", "true");
+        changed |= SetParameter(parameters, "AvailableViewIds", id, ignoreCase: true);
         return changed;
     }
 
