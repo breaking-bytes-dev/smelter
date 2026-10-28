@@ -2,7 +2,7 @@
 
 Los términos de Smelter para quien configura y ejecuta importaciones. Cada término tiene su nombre en español como lo muestra la app **Smelter — Configuración de importaciones**, su equivalente en la interfaz en inglés (**Smelter — Import configuration**) y una definición en lenguaje simple, con un enlace a la guía donde se explica a fondo.
 
-> **Nota sobre los nombres en inglés:** en la interfaz en inglés, las tablas llevan un prefijo técnico (`TBL | SMLT |`, por ejemplo *TBL | SMLT | Import Job*) y las columnas llevan una sigla entre corchetes (`[IT]`, `[TM]`, `[CM]`, `[RM]`, `[IJ]`, `[IJL]`, por ejemplo *[IJ] Status*). En este glosario se omiten esos prefijos para que el nombre sea legible. Los botones **Ejecutar**, **Reintentar**, **Exportar Smelter Template** e **Importar Smelter Template** se ven igual en los dos idiomas.
+> **Nota sobre los nombres en inglés:** en la interfaz en inglés, las tablas llevan un prefijo técnico (`TBL | SMLT |`, por ejemplo *TBL | SMLT | Import Job*) y las columnas llevan una sigla entre corchetes (`[IT]`, `[TM]`, `[CM]`, `[RM]`, `[IJ]`, `[IJL]`, por ejemplo *[IJ] Status*). En este glosario se omiten esos prefijos para que el nombre sea legible. Los botones **Ejecutar**, **Reintentar**, **Exportar template** e **Importar template** se ven igual en los dos idiomas.
 
 - [La app y su menú](#la-app-y-su-menú)
 - [Templates y mappings](#templates-y-mappings)
@@ -137,8 +137,8 @@ Los términos de Smelter para quien configura y ejecuta importaciones. Cada tér
 | **Hora de inicio** | Starttime | Cuándo empezó el procesamiento |
 | **Hora de fin** | Endtime | Cuándo terminó el procesamiento |
 | **Motivo de la falla** | Failure Reason | Mensaje (en inglés) del paso que hizo fallar el job. Solo se llena si el job quedó **Fallido**; se limpia cuando el job se vuelve a procesar |
-| **Ejecutar** | Ejecutar | Botón del menú **⋮** de un job que nunca corrió. Pone el job **En cola**; el procesamiento corre en el servidor |
-| **Reintentar** | Reintentar | Botón del menú **⋮** de un job terminado. Vuelve a encolarlo y lo reprocesa desde cero |
+| **Ejecutar** | Run | Botón del menú **⋮** de un job que nunca corrió. Pone el job **En cola**; el procesamiento corre en el servidor |
+| **Reintentar** | Retry | Botón del menú **⋮** de un job terminado. Vuelve a encolarlo y lo reprocesa desde cero |
 | **Panel / Dashboard** | Smelter Dashboard | Ver *Panel de Smelter* |
 | **Chunk** (bloque) | Chunk | Grupo de filas que el servidor procesa de una vez. Su tamaño se define en el template |
 

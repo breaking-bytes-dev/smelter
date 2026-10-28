@@ -93,12 +93,12 @@ Hay **un solo camino de ejecución**: los botones no procesan nada, solo ponen e
 
 | Botón | Dónde | Cuándo se habilita | Qué hace |
 |---|---|---|---|
-| **Ejecutar** | Formulario del Import Job, `MainTab.Actions` | Registro ya guardado y **status vacío** (el job nunca corrió) | Encola el job |
-| **Reintentar** | Formulario del Import Job, `MainTab.Actions` | Registro guardado y status `Completed`, `CompletedWithErrors` o `Failed` | Encola el job (el reset de `PrepareImport` lo reprocesa desde cero) |
-| **Exportar Smelter Template** | Grilla de Import Template | Al menos un registro seleccionado | Descarga `smelter-template.json` |
-| **Importar Smelter Template** | Grilla de Import Template | Siempre | Abre un selector de archivo `.json` y recrea el template |
+| **Ejecutar** (*Run*) | Formulario del Import Job, `MainTab.Actions` | Registro ya guardado y **status vacío** (el job nunca corrió) | Encola el job |
+| **Reintentar** (*Retry*) | Formulario del Import Job, `MainTab.Actions` | Registro guardado y status `Completed`, `CompletedWithErrors` o `Failed` | Encola el job (el reset de `PrepareImport` lo reprocesa desde cero) |
+| **Exportar template** (*Export template*) | Grilla de Import Template | Al menos un registro seleccionado | Descarga `smelter-template.json` |
+| **Importar template** (*Import template*) | Grilla de Import Template | Siempre | Abre un selector de archivo `.json` y recrea el template |
 
-Ambos botones están siempre visibles y se habilitan según el estado; quedan **deshabilitados** en `Queued`, en `Processing` y en registros nuevos sin guardar (`FormStateRule Create` invertida). El estado se evalúa con una `CustomRule` de JavaScript (`canExecuteImportJob`, `canRetryImportJob`) porque `ValueRule` no puede expresar «vacío» ni «uno de varios valores» (las reglas se combinan con AND).
+Los botones Ejecutar y Reintentar están siempre visibles y se habilitan según el estado; quedan **deshabilitados** en `Queued`, en `Processing` y en registros nuevos sin guardar (`FormStateRule Create` invertida). El estado se evalúa con una `CustomRule` de JavaScript (`canExecuteImportJob`, `canRetryImportJob`) porque `ValueRule` no puede expresar «vacío» ni «uno de varios valores» (las reglas se combinan con AND).
 
 ```mermaid
 sequenceDiagram
@@ -118,20 +118,21 @@ sequenceDiagram
 
 Si falla cualquier paso, se muestra un diálogo de error con el motivo. La verificación de lectura del template bajo el usuario es necesaria porque el plugin de preparación ya no ve a la persona (ve la identidad del flow); ver [Seguridad](03-seguridad.md).
 
-Los botones de **exportar e importar** vienen con la solución (`sanic_smlt_exporttemplate.js`, `sanic_smlt_importtemplate.js` y el `RibbonDiff` de la tabla): `Smelter.Deploy` **no** los aprovisiona, solo los de Ejecutar y Reintentar.
+Los cuatro botones se aprovisionan por código con el mismo mecanismo (paso `[6]`, `UpsertRibbon`): `Smelter.Deploy` importa en UNA mini-solución los dos `RibbonDiffXml` versionados en `Assets/` (Import Job: Ejecutar y Reintentar; Import Template: Exportar e Importar template), declarados en [`RibbonSpec.cs`](../../tools/Smelter.Deploy/RibbonSpec.cs). Los JS de exportar e importar (`sanic_smlt_exporttemplate.js`, `sanic_smlt_importtemplate.js`) siguen viajando como web resources de la solución; el ribbon se importa sin tocar sus comandos, reglas ni JS.
 
-> [!WARNING]
-> Las etiquetas de los botones (y los textos del ribbon) están declaradas solo en `languagecode 1033` y **con texto en español** («Ejecutar», «Reintentar», «Exportar Smelter Template»). Un usuario con la interfaz en inglés los ve en español. No son bilingües, a diferencia del resto de la interfaz.
+> [!IMPORTANT]
+> **Cada `LocLabel` del ribbon debe llevar UN título 1033 y UN título 3082, y cada botón un `ModernImage`.** En un ambiente cuyo idioma BASE es español, un `LocLabel` que solo trae 1033 no tiene traducción para el idioma del usuario y la interfaz muestra el literal «LabelText»; un `Button` sin `ModernImage` muestra el ícono genérico (puzzle). Textos: Run / Ejecutar, Retry / Reintentar, Export template / Exportar template, Import template / Importar template (etiqueta, título y descripción del tooltip). Lo garantizan los tests de contrato (`RibbonLocalizationContractTests`) y `Smelter.Verify` `[ICONS]`, que lee el ribbon publicado (`RetrieveEntityRibbonRequest`: es el mismo XML compilado que usa la interfaz) y comprueba `ModernImage` y los títulos 1033/3082 de los cuatro botones.
 
 ### Íconos
 
-Nueve SVG de estilo Fluent, 24×24 y un solo color (`#2F6FB3`), versionados en [`tools/Smelter.Deploy/Assets/icons/`](../../tools/Smelter.Deploy/Assets/icons/) y embebidos en el ensamblado. Se crean como *web resources* de tipo SVG (`webresourcetype 11`) dentro de `smlt_core_smelter`, con nombre `sanic_/smelter/icons/<clave>.svg` y nombre visible `Icon | SMLT | <nombre>`.
+Trece SVG de estilo Fluent (nueve de tablas, sitemap y app, y cuatro de los botones: `export`, `import`, `run`, `retry`), 24×24 y un solo color (`#2F6FB3`), versionados en [`tools/Smelter.Deploy/Assets/icons/`](../../tools/Smelter.Deploy/Assets/icons/) y embebidos en el ensamblado. Se crean como *web resources* de tipo SVG (`webresourcetype 11`) dentro de `smlt_core_smelter`, con nombre `sanic_/smelter/icons/<clave>.svg` y nombre visible `Icon | SMLT | <nombre>`.
 
 | Clave | Para qué |
 |---|---|
 | `template`, `job`, `joblog`, `tablemapping`, `columnmapping`, `relationshipmapping`, `hmackey` | `IconVectorName` de la tabla correspondiente (grilla, formulario y lookups) |
 | `template`, `job`, `dashboard`, `joblog` | `VectorIcon="$webresource:..."` del `SubArea` del sitemap (reemplaza al gif transparente con el que nació) |
 | `app` | El ícono de la app (`appmodule.webresourceid`) |
+| `run`, `retry`, `export`, `import` | `ModernImage="$webresource:sanic_/smelter/icons/<clave>.svg"` de los botones Ejecutar, Reintentar, Exportar template e Importar template |
 
 ### Internacionalización: 1033 y 3082
 
@@ -169,8 +170,7 @@ Los mensajes que guardan los plugins y el flow en registros (motivos de falla, v
 | Vistas del Import Job, botones, panel (roles incluidos) | [`SecuritySpec.cs`](../../tools/Smelter.Deploy/SecuritySpec.cs), [`SecurityProvisioner.cs`](../../tools/Smelter.Deploy/SecurityProvisioner.cs) |
 | Componentes fijados en la app | [`MdaComponentsSpec.cs`](../../tools/Smelter.Deploy/MdaComponentsSpec.cs) |
 | Panel clásico | [`DashboardSpec.cs`](../../tools/Smelter.Deploy/DashboardSpec.cs), `DashboardProvisioner.cs` |
-| Botones de Ejecutar y Reintentar | [`Assets/sanic_smlt_importjob_actions.js`](../../tools/Smelter.Deploy/Assets/sanic_smlt_importjob_actions.js), [`Assets/sanic_tbl_smlt_importjob.RibbonDiffXml.xml`](../../tools/Smelter.Deploy/Assets/sanic_tbl_smlt_importjob.RibbonDiffXml.xml), [`SolutionZipBuilder.cs`](../../tools/Smelter.Deploy/SolutionZipBuilder.cs) |
-| Botones de exportar e importar | [`solutions/unpacked/WebResources/`](../../solutions/unpacked/WebResources/), `solutions/unpacked/Entities/sanic_tbl_smlt_importtemplate/RibbonDiff.xml` |
+| Botones de Ejecutar, Reintentar, Exportar e Importar template | [`RibbonSpec.cs`](../../tools/Smelter.Deploy/RibbonSpec.cs), [`Assets/sanic_smlt_importjob_actions.js`](../../tools/Smelter.Deploy/Assets/sanic_smlt_importjob_actions.js), [`Assets/sanic_tbl_smlt_importjob.RibbonDiffXml.xml`](../../tools/Smelter.Deploy/Assets/sanic_tbl_smlt_importjob.RibbonDiffXml.xml), [`Assets/sanic_tbl_smlt_importtemplate.RibbonDiffXml.xml`](../../tools/Smelter.Deploy/Assets/sanic_tbl_smlt_importtemplate.RibbonDiffXml.xml), [`SolutionZipBuilder.cs`](../../tools/Smelter.Deploy/SolutionZipBuilder.cs); JS de exportar/importar en [`solutions/unpacked/WebResources/`](../../solutions/unpacked/WebResources/) |
 | Íconos | [`IconsSpec.cs`](../../tools/Smelter.Deploy/IconsSpec.cs), [`Assets/icons/`](../../tools/Smelter.Deploy/Assets/icons/) |
 | Bilingüe | [`Bilingual.cs`](../../tools/Smelter.Deploy/Bilingual.cs), [`LocLabels.cs`](../../tools/Smelter.Deploy/LocLabels.cs), [`FormLabelsReader.cs`](../../tools/Smelter.Deploy/FormLabelsReader.cs) |
 | Verificación | `Smelter.Verify`: `[SITEMAP]`, `[POLISH]`, `[MDA]`, `[ICONS]`, `[LABELS]`, `[VIEWS]`, `[DESC]`, `[SOLNAME]` |
@@ -197,6 +197,5 @@ Los mensajes que guardan los plugins y el flow en registros (motivos de falla, v
 - **El quick find del log no se reordena.** Dataverse falla al actualizar su fetchxml.
 - **`System Administrator` y `System Customizer` quedan asociados a toda MDA** y no se pueden quitar; no afecta al modelo porque los operadores no los tienen.
 - **Dos nombres en inglés para el dashboard.** El dashboard se llama «Smelter Dashboard» y la entrada del sitemap «Smelter dashboard».
-- **El espejo `solutions/unpacked/` no refleja esta interfaz todavía.** Muestra el sitemap con títulos en español bajo 1033, el título «Area1», el nombre «MDA - SMLT - Import Configurationd and Monitoring» y el ribbon antiguo de los botones. Se actualiza al publicar el próximo Release. Ver [ALM](08-alm-y-despliegue.md#versionado-y-releases).
+- **El espejo `solutions/unpacked/` no refleja esta interfaz todavía.** Muestra el sitemap con títulos en español bajo 1033, el título «Area1», el nombre «MDA - SMLT - Import Configurationd and Monitoring» y el ribbon antiguo de los botones (sin 3082 ni ícono hasta el Release 1.4.1.0). Se actualiza al publicar el próximo Release. Ver [ALM](08-alm-y-despliegue.md#versionado-y-releases).
 - **Los nombres de las vistas custom de Import Job nacieron en español bajo 1033** (`Jobs Activos`...). Dev las renombra por su nombre legado en vez de duplicarlas; en `MdaComponentsSpec` siguen con el nombre legado como descripción interna.
-- **El ribbon no está localizado** (ver arriba).

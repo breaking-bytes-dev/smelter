@@ -53,7 +53,7 @@ Si olvidas subir el archivo, al ejecutar la pantalla te avisa.
 1. En la barra de comandos del job, abre el menú **⋮** (**Más comandos para Import Job**).
 2. Pulsa **Ejecutar**.
 
-![Import Job con el menú de comandos abierto: aparece Ejecutar con la descripción «Pone el job en cola: el procesamiento corre en el servidor (Cloud Flow).»](img/12-job-comando-ejecutar.png)
+![Import Job con el menú de comandos abierto: aparece Ejecutar con la descripción «Pone el job en cola: el procesamiento corre en el servidor.»](img/12-job-comando-ejecutar.png)
 
 *El comando **Ejecutar** está dentro del menú **⋮**. Al pasar el cursor, explica que pone el job en cola y que el procesamiento corre en el servidor.*
 
@@ -223,7 +223,7 @@ Si el **Motivo de la falla** dice «Revisá el historial de ejecuciones del fluj
 
 Cuando un job terminó (**Completado**, **Completado con errores** o **Fallido**), puedes volver a correrlo con **Reintentar**. Está en el mismo menú **⋮** donde estaba **Ejecutar**: cuando el job ya corrió, en ese lugar aparece **Reintentar** en vez de **Ejecutar**.
 
-![Import Job Fallido con el menú ⋮ abierto: aparece Reintentar con la descripción «Vuelve a encolar un job terminado (Completed, CompletedWithErrors o Failed); se re-procesa desde cero.»](img/22-job-comando-reintentar.png)
+![Import Job Fallido con el menú ⋮ abierto: aparece Reintentar con la descripción «Vuelve a poner en cola un job terminado (Completado, Completado con errores o Fallido); se reprocesa desde cero.»](img/22-job-comando-reintentar.png)
 
 *El comando **Reintentar** en el menú **⋮** de un job **Fallido**. La descripción aclara que el job se vuelve a encolar y se reprocesa **desde cero**.*
 

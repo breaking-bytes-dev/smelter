@@ -6,6 +6,20 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/historico/repo-matu
 
 ## [Unreleased]
 
+## [[1.4.1.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.4.1.0)] — 2026-10-28
+
+### Fixed (`Smelter.Deploy` [4m] y [6], `Smelter.Verify` [ICONS])
+- **Botones de la barra de comandos en un ambiente con idioma base español**: los 4 botones custom (Ejecutar y Reintentar del Import Job;
+  Exportar e Importar template de la grilla de Import Template) se veían como «LabelText» con el ícono genérico de puzzle. Causa: los
+  `LocLabel` solo tenían `languagecode="1033"` (sin 3082) y los `Button` no tenían `ModernImage`. Ahora cada `LocLabel` lleva un título 1033
+  y uno 3082 (Run/Ejecutar, Retry/Reintentar, Export template/Exportar template, Import template/Importar template, con sus tooltips) y cada
+  botón su `ModernImage` (4 SVG nuevos: `export`, `import`, `run`, `retry`, registrados en `IconsSpec`).
+- El `RibbonDiffXml` de Import Template (que solo vivía en `solutions/unpacked`) pasa a `Assets/` y se importa por código junto al del Import Job
+  (`RibbonSpec.cs`); comandos, reglas y JS sin cambios.
+- Tests de contrato (`RibbonLocalizationContractTests`) y assert `Smelter.Verify` `[ICONS]` sobre el ribbon publicado.
+- Si aplicaste el workaround manual (comandos modernos creados en el diseñador de comandos y los botones clásicos ocultos), tras actualizar
+  borra esos comandos modernos y vuelve a mostrar los clásicos.
+
 ## [[1.4.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.4.0.0)] — 2026-10-28
 
 ### Changed / Fixed (Plugins 1.0.16; `Smelter.Deploy` [6] y `Smelter.Verify` [SEC], E2E 3b, 7e y 7f)

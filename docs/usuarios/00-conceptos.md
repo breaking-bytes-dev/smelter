@@ -30,7 +30,7 @@ Al abrir la app ves el menú de la izquierda con tres grupos. Todo lo que hace e
 
 ![Pantalla Templates de importación de la app Smelter — Configuración de importaciones: menú de la izquierda con los tres grupos y la lista de templates en el centro](img/01-inicio-templates.png)
 
-*La app al abrir **Templates de importación**. A la izquierda, el menú con Configuración, Ejecución y monitoreo y Diagnóstico; arriba, la barra de comandos con **Nuevo** e **Importar Smelter Template**.*
+*La app al abrir **Templates de importación**. A la izquierda, el menú con Configuración, Ejecución y monitoreo y Diagnóstico; arriba, la barra de comandos con **Nuevo** e **Importar template**.*
 
 > **Nota:** la app tiene el idioma de tu interfaz de Power Apps. Algunos nombres no se traducen por decisión del producto y los vas a ver tal cual en español: **Import Jobs**, **Import Job** y los nombres de las vistas de sistema, como **Active TBL | SMLT | Import Jobs**. Los textos de las columnas estándar de la plataforma (por ejemplo **Owner** o **Created On**) también aparecen en inglés. Más detalle en el [Glosario](../glosario.md).
 

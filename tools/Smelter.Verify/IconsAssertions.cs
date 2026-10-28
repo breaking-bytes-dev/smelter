@@ -54,7 +54,36 @@ internal static class IconsAssertions
         Assert(app!.GetAttributeValue<Guid>("webresourceid") == ids[IconsCatalogo.App.WebResourceName],
             $"la app no usa el web resource '{IconsCatalogo.App.WebResourceName}' como ícono");
 
+        AssertRibbonButtons(client);
+
         Console.WriteLine($"[ICONS] OK: {IconsCatalogo.All.Count} SVG en la solución, tablas con IconVectorName e ícono de app.");
+    }
+
+    // Los 4 botones custom del command bar (RibbonSpec.cs): el ribbon PUBLICADO de cada tabla (RetrieveEntityRibbonRequest, el mismo
+    // XML compilado que consume la UCI; es lo que se lee de forma confiable — no la tabla ribboncustomization, que no expone el
+    // diff publicado) trae cada botón con ModernImage = su ícono y cada LocLabel suyo con UN título 1033 y UN título 3082.
+    private static void AssertRibbonButtons(ServiceClient client)
+    {
+        foreach (var asset in RibbonCatalogo.Assets)
+        {
+            var ribbon = (RetrieveEntityRibbonResponse)client.Execute(new RetrieveEntityRibbonRequest
+            {
+                EntityName = asset.Table,
+                RibbonLocationFilter = RibbonLocationFilters.All,
+            });
+            using var zip = new System.IO.Compression.ZipArchive(new MemoryStream(ribbon.CompressedEntityXml));
+            var entry = zip.GetEntry("RibbonXml.xml");
+            Assert(entry is not null, $"el ribbon de {asset.Table} no trae RibbonXml.xml");
+            using var reader = new StreamReader(entry!.Open());
+            var doc = System.Xml.Linq.XDocument.Parse(reader.ReadToEnd());
+
+            var problems = RibbonCatalogo.ButtonProblems(doc, asset)
+                .Concat(RibbonCatalogo.LocLabelProblems(doc, RibbonCatalogo.LabelIdsOf(doc, asset))).ToList();
+            Assert(problems.Count == 0, $"ribbon de {asset.Table}: " + string.Join("; ", problems));
+            Assert(RibbonCatalogo.LabelIdsOf(doc, asset).Count == asset.Buttons.Count * 3,
+                $"ribbon de {asset.Table}: los botones no referencian sus 3 LocLabels ($LocLabels:) cada uno");
+        }
+        Console.WriteLine($"[ICONS]   Ribbon: {RibbonCatalogo.Assets.Sum(a => a.Buttons.Count)} botones con ModernImage y LocLabels 1033+3082. OK.");
     }
 
     private static void Assert(bool condition, string message)

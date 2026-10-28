@@ -41,7 +41,7 @@ flowchart TD
 | Roles `Smelter Configurador` y `Smelter Operador` | Sí | 3 y 6 |
 | Cloud Flow «Smelter orchestrator» | Sí (estado según cómo se importe) | 3 |
 | App model-driven, formularios, vistas, panel, sitemap bilingüe, íconos SVG y botones Ejecutar y Reintentar | Sí | 3 |
-| Botones Exportar e Importar template y sus web resources | Sí | 3 |
+| Botones Exportar e Importar template y sus web resources (los cuatro botones bilingües 1033+3082, con ícono) | Sí | 3 |
 | Nombres en español (3082) de tablas, columnas, opciones, vistas y app | Sí, pero **solo se ven si el idioma 3082 está habilitado** | 5 |
 | Conexión Dataverse y su vínculo a las connection references | **No** | 2 |
 | Teams, membresías y rol a personas | **No** | 6 |
@@ -226,7 +226,7 @@ Smelter instalado no trae ningún template. Necesitas dos cosas:
 
 1. **Las tablas destino con sus alternate keys en estado Active.** No son de Smelter: vienen de la solución del negocio. Una key en `Pending` o `Failed` produce el mismo error que una key inexistente. La key de cada tabla tiene que tener **exactamente** las columnas que el template declara como Dedup Columns.
 2. **El template**, de una de dos formas:
-   - **Importarlo** desde un JSON exportado de otro ambiente: en la app, **Import templates** → botón **Importar Smelter Template** → elige el `.json`. Es la Custom API `sanic_capi_smelter_importtemplate`; el template importado nace **Active** si el JSON no trae estado. Si la tabla destino no existe en este ambiente, aparece una advertencia, no un error.
+   - **Importarlo** desde un JSON exportado de otro ambiente: en la app, **Import templates** → botón **Importar template** → elige el `.json`. Es la Custom API `sanic_capi_smelter_importtemplate`; el template importado nace **Active** si el JSON no trae estado. Si la tabla destino no existe en este ambiente, aparece una advertencia, no un error.
    - **Crearlo a mano** desde la app (**Import templates** → **New**). Un template nuevo nace sin estado `Active` garantizado: ábrelo y pasa su **Status** a **Active** (en español, «Activo») antes de usarlo.
 
 Puntos de configuración que fallan en `PrepareImport`, antes de procesar:
@@ -309,6 +309,7 @@ Cada versión nueva es un `.zip` *managed* con número mayor (`X.Y.Z.B`); los ca
    - Primera versión con el gate de idempotencia: **revisa antes tus templates**. Todo Table Mapping sin Dedup Columns deja de correr (`PrepareImport` lo rechaza) salvo que se marque «Solo inserción».
    - Versiones que cambian el comportamiento de los templates (por ejemplo 1.3.0.0, donde `Update If Exists = No` pasó a saltear filas existentes): revisa tus templates.
    - Versiones que limitan **Chunk Size** a 100–10.000: los valores ya guardados no se tocan, pero el formulario rechaza guardar uno fuera de rango.
+   - Desde la **1.4.1.0**, los cuatro botones de la barra de comandos (Ejecutar/Run, Reintentar/Retry, Exportar template/Export template, Importar template/Import template) se ven con su texto e ícono también en un ambiente cuyo idioma base es español; antes aparecían como «LabelText» con el ícono genérico. Si en una versión anterior aplicaste el **workaround manual** (comandos modernos creados en el diseñador de comandos y los botones clásicos ocultos), tras actualizar **borra esos comandos modernos y vuelve a mostrar los clásicos**; si no, quedan los botones duplicados.
 8. Corre el smoke test.
 
 La importación no toca datos: teams, clave HMAC, templates y asignaciones quedan como estaban.

@@ -20,9 +20,9 @@ Luis,Gómez,luis@example.com
 Marta,Ruiz,marta@example.com
 ```
 
-![Lista de Templates de importación con la barra de comandos: Mostrar gráfico, Nuevo, Eliminar, Importar Smelter Template, Actualizar](img/01-inicio-templates.png)
+![Lista de Templates de importación con la barra de comandos: Mostrar gráfico, Nuevo, Eliminar, Importar template, Actualizar](img/01-inicio-templates.png)
 
-*La lista de templates. El botón **Nuevo** crea un template; **Importar Smelter Template** carga uno desde un archivo (ver [Exportar e importar](03-exportar-e-importar.md)). La vista se llama **Active TBL | SMLT | Import Templates**: es un nombre de sistema que no se traduce.*
+*La lista de templates. El botón **Nuevo** crea un template; **Importar template** carga uno desde un archivo (ver [Exportar e importar](03-exportar-e-importar.md)). La vista se llama **Active TBL | SMLT | Import Templates**: es un nombre de sistema que no se traduce.*
 
 ## Paso 1: Crea el template
 

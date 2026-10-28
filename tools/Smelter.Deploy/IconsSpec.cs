@@ -6,6 +6,7 @@
 //   - EntityMetadata.IconVectorName de cada tabla de Smelter (ícono en la grilla, el form y los lookups).
 //   - VectorIcon="$webresource:<nombre>" de cada SubArea del sitemap (SiteMapSpec.Apply, reemplaza al Icon transparent_spacer).
 //   - appmodule.webresourceid: el ícono de la app (el tile de la lista de apps).
+//   - ModernImage de los 4 botones custom del command bar (RibbonSpec.cs).
 //
 // Las tablas Table/Column/Relationship Mapping no tienen entrada en el sitemap (se abren desde el template) pero sí ícono.
 // El HMAC Key table solo se toca si existe (HmacKeyTableProvisioner la crea antes, paso 4e).
@@ -43,10 +44,16 @@ internal static class IconsCatalogo
     internal static readonly IconSpec TableMapping = Icon("tablemapping", "Table Mapping");
     internal static readonly IconSpec ColumnMapping = Icon("columnmapping", "Column Mapping");
     internal static readonly IconSpec RelationshipMapping = Icon("relationshipmapping", "Relationship Mapping");
+    // Botones del command bar (RibbonSpec.cs): ModernImage de Export/Import Template y Ejecutar/Reintentar del Import Job.
+    internal static readonly IconSpec Export = Icon("export", "Export Template");
+    internal static readonly IconSpec Import = Icon("import", "Import Template Button");
+    internal static readonly IconSpec Run = Icon("run", "Run Import Job");
+    internal static readonly IconSpec Retry = Icon("retry", "Retry Import Job");
 
     internal static readonly IReadOnlyList<IconSpec> All =
     [
         Template, Job, Log, Dashboard, HmacKey, App, TableMapping, ColumnMapping, RelationshipMapping,
+        Export, Import, Run, Retry,
     ];
 
     internal static readonly TableIconSpec[] TableIcons =
