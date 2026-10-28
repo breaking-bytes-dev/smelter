@@ -53,9 +53,9 @@ Si olvidas subir el archivo, al ejecutar la pantalla te avisa.
 1. En la barra de comandos del job, abre el menú **⋮** (**Más comandos para Import Job**).
 2. Pulsa **Ejecutar**.
 
-![Import Job con el menú de comandos abierto: aparece Ejecutar con la descripción «Pone el job en cola: el procesamiento corre en el servidor.»](img/12-job-comando-ejecutar.png)
+![Import Job con el menú de comandos abierto: aparece Ejecutar, con su ícono, y la descripción «Pone el job en cola: el procesamiento corre en el servidor.»](img/12-job-comando-ejecutar.png)
 
-*El comando **Ejecutar** está dentro del menú **⋮**. Al pasar el cursor, explica que pone el job en cola y que el procesamiento corre en el servidor.*
+*El comando **Ejecutar** está dentro del menú **⋮** y lleva un ícono de reproducir. Al pasar el cursor, un cuadro de ayuda explica que pone el job en cola y que el procesamiento corre en el servidor.*
 
 **Ejecutar** guarda primero los cambios pendientes del formulario, comprueba que el job tenga template y archivo y que puedas leer el template, y pone el job en cola. No procesa nada en tu navegador. Si falta algo, verás un cuadro de error y el job **no** cambia de estado:
 
@@ -223,9 +223,9 @@ Si el **Motivo de la falla** dice «Revisá el historial de ejecuciones del fluj
 
 Cuando un job terminó (**Completado**, **Completado con errores** o **Fallido**), puedes volver a correrlo con **Reintentar**. Está en el mismo menú **⋮** donde estaba **Ejecutar**: cuando el job ya corrió, en ese lugar aparece **Reintentar** en vez de **Ejecutar**.
 
-![Import Job Fallido con el menú ⋮ abierto: aparece Reintentar con la descripción «Vuelve a poner en cola un job terminado (Completado, Completado con errores o Fallido); se reprocesa desde cero.»](img/22-job-comando-reintentar.png)
+![Import Job Fallido con el menú ⋮ abierto: aparece Reintentar, con su ícono, y la descripción «Vuelve a poner en cola un job terminado (Completado, Completado con errores o Fallido); se reprocesa desde cero.»](img/22-job-comando-reintentar.png)
 
-*El comando **Reintentar** en el menú **⋮** de un job **Fallido**. La descripción aclara que el job se vuelve a encolar y se reprocesa **desde cero**.*
+*El comando **Reintentar**, con su ícono de actualizar, en el menú **⋮** de un job **Fallido**. El cuadro de ayuda aclara que el job se vuelve a encolar y se reprocesa **desde cero**.*
 
 **Reintentar** funciona igual que **Ejecutar**: guarda, valida y pone el job **En cola**. Cuando el servidor lo toma, **resetea** los contadores, el offset y las horas, y **limpia el Motivo de la falla**; el job se procesa desde la primera fila.
 

@@ -26,9 +26,9 @@ Los dos botones están en la barra de comandos de la lista **Templates de import
 2. Marca la casilla de la fila del template que quieres exportar.
 3. En la barra de comandos, pulsa **Exportar template**.
 
-![Lista de Templates de importación con la fila Demo · Contactos seleccionada y la barra de comandos con Editar, Activar, Desactivar, Eliminar y Exportar template](img/27-exportar-template-seleccion.png)
+![Lista de Templates de importación, filtrada por «Demo», con la fila Demo · Contactos seleccionada y la barra de comandos con Editar, Activar, Desactivar, Eliminar y Exportar template, que muestra su ayuda: «Descarga el template seleccionado como JSON.»](img/27-exportar-template-seleccion.png)
 
-*Con una fila seleccionada, la barra de comandos suma **Exportar template**. Abajo se lee **Seleccionados: 1**.*
+*Con una fila seleccionada, la barra de comandos suma **Exportar template** (con ícono de subida). Al pasar el cursor, un cuadro de ayuda dice que descarga el template seleccionado como JSON. Abajo se lee **Seleccionados: 1**.*
 
 4. Tu navegador descarga el archivo **`smelter-template.json`**. Búscalo en tu carpeta de descargas.
 
@@ -45,11 +45,11 @@ Los dos botones están en la barra de comandos de la lista **Templates de import
 3. Se abre el selector de archivos de tu equipo, que acepta archivos `.json`. Elige el archivo exportado.
 4. Smelter importa el template. Cuando termina, aparece un cuadro con el mensaje **Template importado correctamente.** Pulsa **Aceptar**.
 
-![Cuadro de diálogo con el mensaje «Template importado correctamente.» y el botón Aceptar sobre la lista de templates](img/28-importar-template-resultado.png)
+![Cuadro de diálogo con el mensaje «Template importado correctamente.» y el botón Aceptar sobre la lista de templates, donde se ve el botón Importar template](img/28-importar-template-resultado.png)
 
 *El cuadro de resultado. Al pulsar **Aceptar**, la lista se actualiza sola.*
 
-![Lista de Templates de importación con el template nuevo Demo · Contactos (copia) en estado Borrador](img/29-templates-con-copia-importada.png)
+![Lista de Templates de importación, filtrada por «Demo», con el template Demo · Contactos (copia) en estado Borrador](img/29-templates-con-copia-importada.png)
 
 *La lista después de importar: apareció **Demo · Contactos (copia)**. En este ejemplo el archivo traía ese nombre, que no existía en el entorno, así que se creó un template nuevo; llegó con el **Estado** **Borrador**.*
 
