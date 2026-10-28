@@ -197,5 +197,4 @@ Los mensajes que guardan los plugins y el flow en registros (motivos de falla, v
 - **El quick find del log no se reordena.** Dataverse falla al actualizar su fetchxml.
 - **`System Administrator` y `System Customizer` quedan asociados a toda MDA** y no se pueden quitar; no afecta al modelo porque los operadores no los tienen.
 - **Dos nombres en inglés para el dashboard.** El dashboard se llama «Smelter Dashboard» y la entrada del sitemap «Smelter dashboard».
-- **El espejo `solutions/unpacked/` no refleja esta interfaz todavía.** Muestra el sitemap con títulos en español bajo 1033, el título «Area1», el nombre «MDA - SMLT - Import Configurationd and Monitoring» y el ribbon antiguo de los botones (sin 3082 ni ícono hasta el Release 1.4.1.0). Se actualiza al publicar el próximo Release. Ver [ALM](08-alm-y-despliegue.md#versionado-y-releases).
 - **Los nombres de las vistas custom de Import Job nacieron en español bajo 1033** (`Jobs Activos`...). Dev las renombra por su nombre legado en vez de duplicarlas; en `MdaComponentsSpec` siguen con el nombre legado como descripción interna.
