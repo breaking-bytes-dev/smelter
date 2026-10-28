@@ -10,6 +10,7 @@
         <tab verticallayout="true" id="{64b6f4e8-cbac-4de0-8de3-ff858e7f4adb}" IsUserDefined="1">
           <labels>
             <label description="General" languagecode="1033" />
+            <label description="General" languagecode="3082" />
           </labels>
           <columns>
             <column width="100%">
@@ -17,12 +18,14 @@
                 <section showlabel="false" showbar="false" IsUserDefined="0" id="{970982be-4573-4bec-80b3-e48ffbc7747c}">
                   <labels>
                     <label description="General" languagecode="1033" />
+                    <label description="General" languagecode="3082" />
                   </labels>
                   <rows>
                     <row>
                       <cell id="{19430a9c-0970-4aa8-af43-908082b15440}">
                         <labels>
                           <label description="[IJ] Name" languagecode="1033" />
+                          <label description="Nombre" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_ij_name" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_ij_name" />
                       </cell>
@@ -40,8 +43,9 @@
                       <cell id="{0f37a3eb-be07-4e2c-9db4-d9285b0a36ed}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Total Rows" languagecode="1033" />
+                          <label description="Total de filas" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_totalrows" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_totalrows" disabled="false" />
+                        <control id="sanic_smlt_ij_totalrows" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_totalrows" disabled="true" />
                       </cell>
                     </row>
                     <row />
@@ -49,46 +53,61 @@
                       <cell id="{0d1f5512-7925-4272-8ca1-06f28115994b}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Success Count" languagecode="1033" />
+                          <label description="Filas exitosas" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_successcount" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_successcount" disabled="false" />
+                        <control id="sanic_smlt_ij_successcount" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_successcount" disabled="true" />
                       </cell>
                     </row>
                     <row>
                       <cell id="{243a5543-bf0f-48e3-9f76-c16c964b0339}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Skipped Count" languagecode="1033" />
+                          <label description="Filas omitidas" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_skippedcount" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_skippedcount" disabled="false" />
+                        <control id="sanic_smlt_ij_skippedcount" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_skippedcount" disabled="true" />
                       </cell>
                     </row>
                     <row>
                       <cell id="{92379168-3fbe-4692-b277-13fe3a119b02}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Status" languagecode="1033" />
+                          <label description="Estado" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_status" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_ij_status" disabled="false" />
+                        <control id="sanic_smlt_ij_status" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_ij_status" disabled="true" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{9c5b4da3-fe8d-4475-b169-8f4829369c55}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[IJ] Failure Reason" languagecode="1033" />
+                          <label description="Motivo de la falla" languagecode="3082" />
+                        </labels>
+                        <control id="sanic_smlt_ij_failurereason" classid="{E0DECE4B-6FC8-4A8F-A065-082708572369}" datafieldname="sanic_smlt_ij_failurereason" disabled="true" />
                       </cell>
                     </row>
                     <row>
                       <cell id="{51fade43-4bbf-401a-929d-8257b27f61fa}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Processing Batch" languagecode="1033" />
+                          <label description="Offset de procesamiento" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_processingbatch" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_processingbatch" disabled="false" />
+                        <control id="sanic_smlt_ij_processingbatch" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_processingbatch" disabled="true" />
                       </cell>
                     </row>
                     <row>
                       <cell id="{0cbf1434-fce5-4040-bc36-bf299560753a}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Starttime" languagecode="1033" />
+                          <label description="Hora de inicio" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_starttime" classid="{5B773807-9FB2-42DB-97C3-7A91EFF8ADFF}" datafieldname="sanic_smlt_ij_starttime" disabled="false" />
+                        <control id="sanic_smlt_ij_starttime" classid="{5B773807-9FB2-42DB-97C3-7A91EFF8ADFF}" datafieldname="sanic_smlt_ij_starttime" disabled="true" />
                       </cell>
                     </row>
                     <row>
                       <cell id="{9c0f823c-e231-4508-b4fe-2c7630d6c2cd}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Source File" languagecode="1033" />
+                          <label description="Archivo de origen" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_ij_sourcefile" classid="{0A7FF475-B016-4687-9CE5-042BFDBD6519}" datafieldname="sanic_smlt_ij_sourcefile" disabled="false" />
                       </cell>
@@ -97,32 +116,43 @@
                       <cell id="{270c52c9-4f7a-4219-a001-de24ad7897b7}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Processed Rows" languagecode="1033" />
+                          <label description="Filas procesadas" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_processedrows" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_processedrows" disabled="false" />
+                        <control id="sanic_smlt_ij_processedrows" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_processedrows" disabled="true" />
                       </cell>
                     </row>
                     <row>
                       <cell id="{0d247255-3aea-46aa-936b-cb2df6252869}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Import Template" languagecode="1033" />
+                          <label description="Template de importación" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_importtemplateid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_ij_importtemplateid" disabled="false" />
+                        <control id="sanic_smlt_ij_importtemplateid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_ij_importtemplateid" disabled="false">
+                          <parameters>
+                            <DefaultViewId>{661531bd-0e53-48d8-8d44-c3f9fecc423a}</DefaultViewId>
+                            <DisableMru>true</DisableMru>
+                            <DisableViewPicker>true</DisableViewPicker>
+                            <AvailableViewIds>{661531bd-0e53-48d8-8d44-c3f9fecc423a}</AvailableViewIds>
+                          </parameters>
+                        </control>
                       </cell>
                     </row>
                     <row>
                       <cell id="{cffc8a05-83d8-483a-be8f-1f12deb0d518}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Fail Count" languagecode="1033" />
+                          <label description="Filas fallidas" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_failedcount" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_failedcount" disabled="false" />
+                        <control id="sanic_smlt_ij_failedcount" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ij_failedcount" disabled="true" />
                       </cell>
                     </row>
                     <row>
                       <cell id="{6df9ee3c-f1ee-4ffc-9e5c-fb54942928f6}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Endtime" languagecode="1033" />
+                          <label description="Hora de fin" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_ij_endtime" classid="{5B773807-9FB2-42DB-97C3-7A91EFF8ADFF}" datafieldname="sanic_smlt_ij_endtime" disabled="false" />
+                        <control id="sanic_smlt_ij_endtime" classid="{5B773807-9FB2-42DB-97C3-7A91EFF8ADFF}" datafieldname="sanic_smlt_ij_endtime" disabled="true" />
                       </cell>
                     </row>
                     <row />
@@ -130,10 +160,60 @@
                       <cell id="{b349e397-1b1b-4185-b6d2-52c9a25c21b2}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IJ] Is Dry Run" languagecode="1033" />
+                          <label description="Es simulación (Dry Run)" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_ij_isdryrun" classid="{67FAC785-CD58-4F9F-ABB3-4B7DDC6ED5ED}" datafieldname="sanic_smlt_ij_isdryrun" disabled="false" />
                       </cell>
                     </row>
+                  </rows>
+                </section>
+              </sections>
+            </column>
+          </columns>
+        </tab>
+        <tab verticallayout="true" id="{47068139-641f-4bb0-a718-2974d9bc24c4}" IsUserDefined="1">
+          <labels>
+            <label description="Import logs" languagecode="1033" />
+            <label description="Logs de importación" languagecode="3082" />
+          </labels>
+          <columns>
+            <column width="100%">
+              <sections>
+                <section showlabel="false" showbar="false" IsUserDefined="0" id="{b305da0a-0783-4d1b-9032-4a2bbabaf30b}">
+                  <labels>
+                    <label description="Import logs" languagecode="1033" />
+                    <label description="Logs de importación" languagecode="3082" />
+                  </labels>
+                  <rows>
+                    <row>
+                      <cell id="{ba4ab348-08b3-45ce-be48-89f89ea4e5f2}" rowspan="8" colspan="1" auto="false">
+                        <labels>
+                          <label description="Import logs" languagecode="1033" />
+                          <label description="Logs de importación" languagecode="3082" />
+                        </labels>
+                        <control indicationOfSubgrid="true" id="Subgrid_importjoblogs" classid="{E7A81278-8635-4D9E-8D4D-59480B391C5B}">
+                          <parameters>
+                            <RecordsPerPage>10</RecordsPerPage>
+                            <AutoExpand>Fixed</AutoExpand>
+                            <EnableQuickFind>false</EnableQuickFind>
+                            <EnableViewPicker>false</EnableViewPicker>
+                            <EnableChartPicker>false</EnableChartPicker>
+                            <ChartGridMode>Grid</ChartGridMode>
+                            <RelationshipName>sanic_tbl_smlt_importjoblog_smlt_ijl_importjobid_sanic_tbl_smlt_importjob</RelationshipName>
+                            <TargetEntityType>sanic_tbl_smlt_importjoblog</TargetEntityType>
+                            <ViewId>{6752F00A-34E0-43FD-BA73-9A9CBEC00991}</ViewId>
+                            <ViewIds>{6752F00A-34E0-43FD-BA73-9A9CBEC00991}</ViewIds>
+                          </parameters>
+                        </control>
+                      </cell>
+                    </row>
+                    <row />
+                    <row />
+                    <row />
+                    <row />
+                    <row />
+                    <row />
+                    <row />
                   </rows>
                 </section>
               </sections>

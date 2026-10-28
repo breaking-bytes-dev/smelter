@@ -18,7 +18,8 @@
     <ReferencingAttributeName>sanic_smlt_cm_tablemappingid</ReferencingAttributeName>
     <RelationshipDescription>
       <Descriptions>
-        <Description description="" languagecode="1033" />
+        <Description description="Table Mapping this column belongs to." languagecode="1033" />
+        <Description description="Table Mapping al que pertenece esta columna." languagecode="3082" />
       </Descriptions>
     </RelationshipDescription>
     <EntityRelationshipRoles>
@@ -53,7 +54,8 @@
     <ReferencingAttributeName>sanic_smlt_rm_childtablemappingid</ReferencingAttributeName>
     <RelationshipDescription>
       <Descriptions>
-        <Description description="" languagecode="1033" />
+        <Description description="Table Mapping on the child side (many): the one that receives the lookup to the parent." languagecode="1033" />
+        <Description description="Table Mapping del lado hijo (muchos): es el que recibe el lookup al padre." languagecode="3082" />
       </Descriptions>
     </RelationshipDescription>
     <EntityRelationshipRoles>
@@ -88,7 +90,8 @@
     <ReferencingAttributeName>sanic_smlt_rm_parenttablemappingid</ReferencingAttributeName>
     <RelationshipDescription>
       <Descriptions>
-        <Description description="" languagecode="1033" />
+        <Description description="Table Mapping on the parent side (one). It must have Dedup Columns so its key can be resolved." languagecode="1033" />
+        <Description description="Table Mapping del lado padre (uno). Debe tener Dedup Columns para poder resolver su clave." languagecode="3082" />
       </Descriptions>
     </RelationshipDescription>
     <EntityRelationshipRoles>

@@ -15,6 +15,7 @@
           <cell name="sanic_smlt_ijl_targettable" width="142" />
           <cell name="sanic_smlt_ijl_rownumber" width="148" />
           <cell name="sanic_smlt_ijl_status" width="106" />
+          <cell name="sanic_smlt_ijl_errorcategory" width="130" />
           <cell name="sanic_smlt_ijl_errormessage" width="154" />
           <cell name="createdon" width="125" />
         </row>
@@ -27,13 +28,14 @@
           <attribute name="sanic_tbl_smlt_importjoblogid" />
           <attribute name="sanic_smlt_ijl_id" />
           <attribute name="createdon" />
-          <order attribute="sanic_smlt_ijl_id" descending="false" />
+          <order attribute="createdon" descending="true" />
           <filter type="and">
             <condition attribute="statecode" operator="eq" value="0" />
           </filter>
           <attribute name="sanic_smlt_ijl_importjobid" />
           <attribute name="sanic_smlt_ijl_targettable" />
           <attribute name="sanic_smlt_ijl_status" />
+          <attribute name="sanic_smlt_ijl_errorcategory" />
           <attribute name="sanic_smlt_ijl_rownumber" />
           <attribute name="sanic_smlt_ijl_errormessage" />
         </entity>

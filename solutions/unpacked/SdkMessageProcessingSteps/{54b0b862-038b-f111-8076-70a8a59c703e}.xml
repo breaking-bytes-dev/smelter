@@ -6,6 +6,7 @@
   <AsyncAutoDelete>0</AsyncAutoDelete>
   <Description>Pre-operation sync en Create de Import Job: si el template referenciado es owned por un team, el job nace owned por ese mismo team — visibilidad de equipo con Read/Write Basic del rol Operador, sin tocar la matriz de privilegios.</Description>
   <FilteringAttributes></FilteringAttributes>
+  <ImpersonatingUserIdName></ImpersonatingUserIdName>
   <InvocationSource>1</InvocationSource>
   <Mode>0</Mode>
   <Rank>1</Rank>

@@ -5,9 +5,11 @@
     <entity Name="sanic_tbl_smlt_importjob">
       <LocalizedNames>
         <LocalizedName description="TBL | SMLT | Import Job" languagecode="1033" />
+        <LocalizedName description="Import Job" languagecode="3082" />
       </LocalizedNames>
       <LocalizedCollectionNames>
         <LocalizedCollectionName description="TBL | SMLT | Import Jobs" languagecode="1033" />
+        <LocalizedCollectionName description="Import Jobs" languagecode="3082" />
       </LocalizedCollectionNames>
       <Descriptions>
         <Description description="" languagecode="1033" />
@@ -488,6 +490,90 @@
             <Description description="Unique identifier for the user that owns the record." languagecode="1033" />
           </Descriptions>
         </attribute>
+        <attribute PhysicalName="sanic_smlt_ij_bytecursor">
+          <Type>decimal</Type>
+          <Name>sanic_smlt_ij_bytecursor</Name>
+          <LogicalName>sanic_smlt_ij_bytecursor</LogicalName>
+          <RequiredLevel>none</RequiredLevel>
+          <DisplayMask>ValidForAdvancedFind|ValidForForm|ValidForGrid</DisplayMask>
+          <ImeMode>disabled</ImeMode>
+          <ValidForUpdateApi>1</ValidForUpdateApi>
+          <ValidForReadApi>1</ValidForReadApi>
+          <ValidForCreateApi>1</ValidForCreateApi>
+          <IsCustomField>1</IsCustomField>
+          <IsAuditEnabled>1</IsAuditEnabled>
+          <IsSecured>0</IsSecured>
+          <IntroducedVersion>1.0.0.0</IntroducedVersion>
+          <IsCustomizable>1</IsCustomizable>
+          <IsRenameable>1</IsRenameable>
+          <CanModifySearchSettings>1</CanModifySearchSettings>
+          <CanModifyRequirementLevelSettings>1</CanModifyRequirementLevelSettings>
+          <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
+          <SourceType>0</SourceType>
+          <IsGlobalFilterEnabled>0</IsGlobalFilterEnabled>
+          <IsSortableEnabled>0</IsSortableEnabled>
+          <CanModifyGlobalFilterSettings>1</CanModifyGlobalFilterSettings>
+          <CanModifyIsSortableSettings>1</CanModifyIsSortableSettings>
+          <IsDataSourceSecret>0</IsDataSourceSecret>
+          <AutoNumberFormat></AutoNumberFormat>
+          <IsSearchable>0</IsSearchable>
+          <IsFilterable>0</IsFilterable>
+          <IsRetrievable>0</IsRetrievable>
+          <IsLocalizable>0</IsLocalizable>
+          <MinValue>0</MinValue>
+          <MaxValue>100000000000</MaxValue>
+          <Accuracy>0</Accuracy>
+          <displaynames>
+            <displayname description="[IJ] Byte Cursor" languagecode="1033" />
+            <displayname description="Cursor de bytes" languagecode="3082" />
+          </displaynames>
+          <Descriptions>
+            <Description description="Byte of the next unread record in the CSV. Set by PrepareImport and advanced by ProcessChunk; empty = job prepared by an earlier version (ProcessChunk takes the full-download path)." languagecode="1033" />
+            <Description description="Byte del próximo registro sin leer del CSV. Lo fija PrepareImport y lo avanza ProcessChunk; vacío = job preparado por una versión anterior (ProcessChunk usa el camino de descarga completa)." languagecode="3082" />
+          </Descriptions>
+        </attribute>
+        <attribute PhysicalName="sanic_smlt_ij_claimlock">
+          <Type>datetime</Type>
+          <Name>sanic_smlt_ij_claimlock</Name>
+          <LogicalName>sanic_smlt_ij_claimlock</LogicalName>
+          <RequiredLevel>none</RequiredLevel>
+          <DisplayMask>ValidForAdvancedFind|ValidForForm|ValidForGrid</DisplayMask>
+          <ImeMode>inactive</ImeMode>
+          <ValidForUpdateApi>1</ValidForUpdateApi>
+          <ValidForReadApi>1</ValidForReadApi>
+          <ValidForCreateApi>1</ValidForCreateApi>
+          <IsCustomField>1</IsCustomField>
+          <IsAuditEnabled>1</IsAuditEnabled>
+          <IsSecured>0</IsSecured>
+          <IntroducedVersion>1.0.0.0</IntroducedVersion>
+          <IsCustomizable>1</IsCustomizable>
+          <IsRenameable>1</IsRenameable>
+          <CanModifySearchSettings>1</CanModifySearchSettings>
+          <CanModifyRequirementLevelSettings>1</CanModifyRequirementLevelSettings>
+          <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
+          <SourceType>0</SourceType>
+          <IsGlobalFilterEnabled>0</IsGlobalFilterEnabled>
+          <IsSortableEnabled>0</IsSortableEnabled>
+          <CanModifyGlobalFilterSettings>1</CanModifyGlobalFilterSettings>
+          <CanModifyIsSortableSettings>1</CanModifyIsSortableSettings>
+          <IsDataSourceSecret>0</IsDataSourceSecret>
+          <AutoNumberFormat></AutoNumberFormat>
+          <IsSearchable>0</IsSearchable>
+          <IsFilterable>0</IsFilterable>
+          <IsRetrievable>0</IsRetrievable>
+          <IsLocalizable>0</IsLocalizable>
+          <Format>datetime</Format>
+          <CanChangeDateTimeBehavior>1</CanChangeDateTimeBehavior>
+          <Behavior>3</Behavior>
+          <displaynames>
+            <displayname description="[IJ] Claim Lock" languagecode="1033" />
+            <displayname description="Bloqueo de claim" languagecode="3082" />
+          </displaynames>
+          <Descriptions>
+            <Description description="Technical column: PrepareImport writes it only to take the job's row lock and serialize concurrent flow runs. Nobody reads or edits it." languagecode="1033" />
+            <Description description="Columna técnica: PrepareImport la escribe solo para tomar el lock de fila del job y serializar corridas concurrentes del flow. Nadie la lee ni la edita." languagecode="3082" />
+          </Descriptions>
+        </attribute>
         <attribute PhysicalName="sanic_smlt_ij_endtime">
           <Type>datetime</Type>
           <Name>sanic_smlt_ij_endtime</Name>
@@ -519,12 +605,15 @@
           <IsRetrievable>0</IsRetrievable>
           <IsLocalizable>0</IsLocalizable>
           <Format>datetime</Format>
+          <CanChangeDateTimeBehavior>0</CanChangeDateTimeBehavior>
           <Behavior>1</Behavior>
           <displaynames>
             <displayname description="[IJ] Endtime" languagecode="1033" />
+            <displayname description="Hora de fin" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Moment ProcessChunk finished the last row of the job." languagecode="1033" />
+            <Description description="Momento en que ProcessChunk terminó la última fila del job." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_failedcount">
@@ -562,9 +651,52 @@
           <MaxValue>2147483647</MaxValue>
           <displaynames>
             <displayname description="[IJ] Fail Count" languagecode="1033" />
+            <displayname description="Filas fallidas" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Rows that failed. The detail of each one is in the Import Job Logs." languagecode="1033" />
+            <Description description="Filas que fallaron. El detalle de cada una está en los Import Job Logs." languagecode="3082" />
+          </Descriptions>
+        </attribute>
+        <attribute PhysicalName="sanic_smlt_ij_failurereason">
+          <Type>ntext</Type>
+          <Name>sanic_smlt_ij_failurereason</Name>
+          <LogicalName>sanic_smlt_ij_failurereason</LogicalName>
+          <RequiredLevel>none</RequiredLevel>
+          <DisplayMask>ValidForAdvancedFind|ValidForForm|ValidForGrid</DisplayMask>
+          <ImeMode>auto</ImeMode>
+          <ValidForUpdateApi>1</ValidForUpdateApi>
+          <ValidForReadApi>1</ValidForReadApi>
+          <ValidForCreateApi>1</ValidForCreateApi>
+          <IsCustomField>1</IsCustomField>
+          <IsAuditEnabled>1</IsAuditEnabled>
+          <IsSecured>0</IsSecured>
+          <IntroducedVersion>1.0.0.0</IntroducedVersion>
+          <IsCustomizable>1</IsCustomizable>
+          <IsRenameable>1</IsRenameable>
+          <CanModifySearchSettings>1</CanModifySearchSettings>
+          <CanModifyRequirementLevelSettings>1</CanModifyRequirementLevelSettings>
+          <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
+          <SourceType>0</SourceType>
+          <IsGlobalFilterEnabled>0</IsGlobalFilterEnabled>
+          <IsSortableEnabled>0</IsSortableEnabled>
+          <CanModifyGlobalFilterSettings>1</CanModifyGlobalFilterSettings>
+          <CanModifyIsSortableSettings>1</CanModifyIsSortableSettings>
+          <IsDataSourceSecret>0</IsDataSourceSecret>
+          <AutoNumberFormat></AutoNumberFormat>
+          <IsSearchable>0</IsSearchable>
+          <IsFilterable>0</IsFilterable>
+          <IsRetrievable>0</IsRetrievable>
+          <IsLocalizable>0</IsLocalizable>
+          <Format>textarea</Format>
+          <MaxLength>4000</MaxLength>
+          <displaynames>
+            <displayname description="[IJ] Failure Reason" languagecode="1033" />
+            <displayname description="Motivo de la falla" languagecode="3082" />
+          </displaynames>
+          <Descriptions>
+            <Description description="Reason the job ended in Failed (message of the step that failed: preparation or processing). Written by the Cloud Flow; empty if the job did not fail. The per-row detail is in the Import Job Logs." languagecode="1033" />
+            <Description description="Motivo por el que el job quedó en Failed (mensaje del paso que falló: preparación o procesamiento). Lo escribe el Cloud Flow; vacío si el job no falló. El detalle por fila está en los Import Job Logs." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_importtemplateid">
@@ -600,9 +732,11 @@
           <LookupTypes />
           <displaynames>
             <displayname description="[IJ] Import Template" languagecode="1033" />
+            <displayname description="Template de importación" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Template that defines how the file is interpreted. The template must be Active for the job to run." languagecode="1033" />
+            <Description description="Template que define cómo se interpreta el archivo. El template debe estar Active para poder ejecutar." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_isdryrun">
@@ -651,20 +785,24 @@
               <option value="1" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Yes" languagecode="1033" />
+                  <label description="Sí" languagecode="3082" />
                 </labels>
               </option>
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="No" languagecode="1033" />
+                  <label description="No" languagecode="3082" />
                 </labels>
               </option>
             </options>
           </optionset>
           <displaynames>
             <displayname description="[IJ] Is Dry Run" languagecode="1033" />
+            <displayname description="Es simulación (Dry Run)" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Yes = validates parsing, types and transforms of all rows without writing to Dataverse or simulating skipped (Skipped) rows or existing keys." languagecode="1033" />
+            <Description description="Sí = valida parseo, tipos y transforms de todas las filas sin escribir en Dataverse ni simular omitidos (Skipped) o claves existentes." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_name">
@@ -702,9 +840,11 @@
           <Length>1700</Length>
           <displaynames>
             <displayname description="[IJ] Name" languagecode="1033" />
+            <displayname description="Nombre" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Descriptive name of the job, for example template and date. Informational only." languagecode="1033" />
+            <Description description="Nombre descriptivo del job, por ejemplo template y fecha. Solo informativo." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_processedrows">
@@ -742,9 +882,11 @@
           <MaxValue>2147483647</MaxValue>
           <displaynames>
             <displayname description="[IJ] Processed Rows" languagecode="1033" />
+            <displayname description="Filas procesadas" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Rows already processed, successful or not. ProcessChunk advances it after each chunk." languagecode="1033" />
+            <Description description="Filas ya procesadas, exitosas o no. Lo avanza ProcessChunk después de cada chunk." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_processingbatch">
@@ -782,9 +924,11 @@
           <MaxValue>2147483647</MaxValue>
           <displaynames>
             <displayname description="[IJ] Processing Batch" languagecode="1033" />
+            <displayname description="Offset de procesamiento" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Offset of rows already processed: the next ProcessChunk call resumes from there. It advances when each chunk finishes." languagecode="1033" />
+            <Description description="Es el offset de filas ya procesadas: desde ahí retoma la siguiente invocación de ProcessChunk. Avanza al terminar cada chunk." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_progress">
@@ -822,9 +966,11 @@
           <MaxValue>2147483647</MaxValue>
           <displaynames>
             <displayname description="[IJ] Progreso" languagecode="1033" />
+            <displayname description="Progreso" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Progress percentage, calculated by formula as processed rows over total rows. Informational only." languagecode="1033" />
+            <Description description="Porcentaje de avance, calculado por fórmula como filas procesadas sobre total de filas. Solo informativo." languagecode="3082" />
           </Descriptions>
           <FormulaDefinitionFileName>/Formulas/sanic_tbl_smlt_importjob-FormulaDefinitions.yaml</FormulaDefinitionFileName>
         </attribute>
@@ -863,16 +1009,18 @@
           <MaxValue>2147483647</MaxValue>
           <displaynames>
             <displayname description="[IJ] Skipped Count" languagecode="1033" />
+            <displayname description="Filas omitidas" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Rows skipped by the Table Mapping's Create If Not Exists / Update If Exists flags. They are not recorded in the log." languagecode="1033" />
+            <Description description="Filas omitidas por los flags Create If Not Exists / Update If Exists del Table Mapping. No se registran en el log." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_sourcefile">
           <Type>file</Type>
           <Name>sanic_smlt_ij_sourcefile</Name>
           <LogicalName>sanic_smlt_ij_sourcefile</LogicalName>
-          <RequiredLevel>required</RequiredLevel>
+          <RequiredLevel>none</RequiredLevel>
           <DisplayMask>ValidForForm|ValidForGrid</DisplayMask>
           <ImeMode>disabled</ImeMode>
           <ValidForUpdateApi>0</ValidForUpdateApi>
@@ -901,9 +1049,11 @@
           <MaxValue>131072</MaxValue>
           <displaynames>
             <displayname description="[IJ] Source File" languagecode="1033" />
+            <displayname description="Archivo de origen" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="CSV file to import (up to 128 MB). It is read by byte ranges, without downloading it whole on every chunk." languagecode="1033" />
+            <Description description="Archivo CSV a importar (hasta 128 MB). Se lee por rangos de bytes, sin descargarlo entero en cada chunk." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_starttime">
@@ -937,12 +1087,15 @@
           <IsRetrievable>0</IsRetrievable>
           <IsLocalizable>0</IsLocalizable>
           <Format>datetime</Format>
+          <CanChangeDateTimeBehavior>0</CanChangeDateTimeBehavior>
           <Behavior>1</Behavior>
           <displaynames>
             <displayname description="[IJ] Starttime" languagecode="1033" />
+            <displayname description="Hora de inicio" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Moment PrepareImport started processing." languagecode="1033" />
+            <Description description="Momento en que PrepareImport inició el procesamiento." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_status">
@@ -991,6 +1144,7 @@
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Queued" languagecode="1033" />
+                  <label description="En cola" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -999,6 +1153,7 @@
               <option value="1" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Processing" languagecode="1033" />
+                  <label description="Procesando" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -1007,6 +1162,7 @@
               <option value="2" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Completed" languagecode="1033" />
+                  <label description="Completado" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -1015,6 +1171,7 @@
               <option value="3" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="CompletedWithErrors" languagecode="1033" />
+                  <label description="Completado con errores" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -1023,6 +1180,7 @@
               <option value="4" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Failed" languagecode="1033" />
+                  <label description="Fallido" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -1032,9 +1190,11 @@
           </optionset>
           <displaynames>
             <displayname description="[IJ] Status" languagecode="1033" />
+            <displayname description="Estado" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Job status: Queued, Processing, Completed, CompletedWithErrors or Failed. Driven by the Cloud Flow and the engine; do not edit by hand." languagecode="1033" />
+            <Description description="Estado del job: Queued (en cola), Processing, Completed, CompletedWithErrors o Failed. Lo gobierna el Cloud Flow y el motor; no se edita a mano." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_successcount">
@@ -1072,9 +1232,11 @@
           <MaxValue>2147483647</MaxValue>
           <displaynames>
             <displayname description="[IJ] Success Count" languagecode="1033" />
+            <displayname description="Filas exitosas" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Rows successfully written to Dataverse (created or updated)." languagecode="1033" />
+            <Description description="Filas escritas con éxito en Dataverse (creadas o actualizadas)." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ij_totalrows">
@@ -1112,9 +1274,11 @@
           <MaxValue>2147483647</MaxValue>
           <displaynames>
             <displayname description="[IJ] Total Rows" languagecode="1033" />
+            <displayname description="Total de filas" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Total data rows in the CSV (excluding the header). Calculated by PrepareImport." languagecode="1033" />
+            <Description description="Total de filas de datos del CSV (sin encabezado). Lo calcula PrepareImport." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_tbl_smlt_importjobId">
@@ -1407,6 +1571,7 @@
       <CanCreateViews>1</CanCreateViews>
       <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
       <CanEnableSyncToExternalSearchIndex>1</CanEnableSyncToExternalSearchIndex>
+      <IconVectorName>sanic_/smelter/icons/job.svg</IconVectorName>
       <EnforceStateTransitions>0</EnforceStateTransitions>
       <CanChangeHierarchicalRelationship>1</CanChangeHierarchicalRelationship>
       <EntityHelpUrlEnabled>0</EntityHelpUrlEnabled>

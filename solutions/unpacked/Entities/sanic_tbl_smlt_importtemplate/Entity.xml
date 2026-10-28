@@ -5,9 +5,11 @@
     <entity Name="sanic_tbl_smlt_importtemplate">
       <LocalizedNames>
         <LocalizedName description="TBL | SMLT | Import Template" languagecode="1033" />
+        <LocalizedName description="Template de importación" languagecode="3082" />
       </LocalizedNames>
       <LocalizedCollectionNames>
         <LocalizedCollectionName description="TBL | SMLT | Import Templates" languagecode="1033" />
+        <LocalizedCollectionName description="Templates de importación" languagecode="3082" />
       </LocalizedCollectionNames>
       <Descriptions>
         <Description description="" languagecode="1033" />
@@ -519,13 +521,15 @@
           <IsRetrievable>0</IsRetrievable>
           <IsLocalizable>0</IsLocalizable>
           <Format>none</Format>
-          <MinValue>0</MinValue>
-          <MaxValue>100000</MaxValue>
+          <MinValue>100</MinValue>
+          <MaxValue>10000</MaxValue>
           <displaynames>
             <displayname description="[IT] Chunk Size" languagecode="1033" />
+            <displayname description="Tamaño de chunk" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Rows processed by each ProcessChunk call. Must be between 100 and 10000; empty uses the system default (1000). A value outside that range is rejected on save." languagecode="1033" />
+            <Description description="Filas que procesa cada invocación de ProcessChunk. Debe estar entre 100 y 10000; vacío usa el default del sistema (1000). Un valor fuera de rango se rechaza al guardar." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_it_delimiter">
@@ -563,9 +567,11 @@
           <Length>10</Length>
           <displaynames>
             <displayname description="[IT] Delimiter" languagecode="1033" />
+            <displayname description="Delimitador" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="CSV column separator (comma by default). For tab, type TAB or \t (case-insensitive); any other text is used literally." languagecode="1033" />
+            <Description description="Separador de columnas del CSV (por defecto coma). Para tabulador escribí TAB o \t (sin distinguir mayúsculas); cualquier otro texto se usa literal." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_it_description">
@@ -602,9 +608,11 @@
           <MaxLength>2000</MaxLength>
           <displaynames>
             <displayname description="[IT] Description" languagecode="1033" />
+            <displayname description="Descripción" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Free text for the team: what file this template is for. The engine does not use it; it travels with the export/import." languagecode="1033" />
+            <Description description="Texto libre para el equipo: para qué archivo sirve este template. El motor no lo usa; viaja en el export/import." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_it_hasheaderrow">
@@ -653,20 +661,24 @@
               <option value="1" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Yes" languagecode="1033" />
+                  <label description="Sí" languagecode="3082" />
                 </labels>
               </option>
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="No" languagecode="1033" />
+                  <label description="No" languagecode="3082" />
                 </labels>
               </option>
             </options>
           </optionset>
           <displaynames>
             <displayname description="[IT] Has Header Row" languagecode="1033" />
+            <displayname description="Tiene fila de encabezados" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Yes = the first CSV row holds the headers and Source Column values are resolved by name. No = there are no headers and columns are named Column0, Column1, ..." languagecode="1033" />
+            <Description description="Sí = la primera fila del CSV son los encabezados y los Source Column se resuelven por nombre. No = no hay encabezados y las columnas se llaman Column0, Column1, ..." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_it_name">
@@ -704,9 +716,11 @@
           <Length>1700</Length>
           <displaynames>
             <displayname description="[IT] Name" languagecode="1033" />
+            <displayname description="Nombre" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Template name. It is the key the template export/import uses to decide whether to create a new one or update an existing one." languagecode="1033" />
+            <Description description="Nombre del template. Es la clave con la que el export/import de templates decide si crea uno nuevo o actualiza uno existente." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_it_sourcetype">
@@ -739,7 +753,7 @@
           <IsFilterable>0</IsFilterable>
           <IsRetrievable>0</IsRetrievable>
           <IsLocalizable>0</IsLocalizable>
-          <AppDefaultValue>-1</AppDefaultValue>
+          <AppDefaultValue>0</AppDefaultValue>
           <optionset Name="sanic_tbl_smlt_importtemplate_sanic_smlt_it_sourcetype">
             <OptionSetType>picklist</OptionSetType>
             <IntroducedVersion>1.0.0.0</IntroducedVersion>
@@ -755,6 +769,7 @@
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="CSV" languagecode="1033" />
+                  <label description="CSV" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -764,9 +779,11 @@
           </optionset>
           <displaynames>
             <displayname description="[IT] Source Type" languagecode="1033" />
+            <displayname description="Tipo de origen" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Source file type. Only CSV exists and the engine does not read it; kept for export/import compatibility." languagecode="1033" />
+            <Description description="Tipo de archivo fuente. Solo existe CSV y el motor no lo lee; se conserva por compatibilidad con el export/import." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_it_status">
@@ -815,6 +832,7 @@
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Draft" languagecode="1033" />
+                  <label description="Borrador" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -823,6 +841,7 @@
               <option value="1" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Active" languagecode="1033" />
+                  <label description="Activo" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -831,6 +850,7 @@
               <option value="2" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Archived" languagecode="1033" />
+                  <label description="Archivado" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -840,9 +860,11 @@
           </optionset>
           <displaynames>
             <displayname description="[IT] Status" languagecode="1033" />
+            <displayname description="Estado" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Draft = being configured, Active = ready, Archived = retired. Only an Active template can run imports: PrepareImport rejects the others." languagecode="1033" />
+            <Description description="Draft = en configuración, Active = listo, Archived = retirado. Solo un template Active puede correr imports: PrepareImport rechaza los demás." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_tbl_smlt_importtemplateId">
@@ -1135,6 +1157,7 @@
       <CanCreateViews>1</CanCreateViews>
       <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
       <CanEnableSyncToExternalSearchIndex>1</CanEnableSyncToExternalSearchIndex>
+      <IconVectorName>sanic_/smelter/icons/template.svg</IconVectorName>
       <EnforceStateTransitions>0</EnforceStateTransitions>
       <CanChangeHierarchicalRelationship>1</CanChangeHierarchicalRelationship>
       <EntityHelpUrlEnabled>0</EntityHelpUrlEnabled>

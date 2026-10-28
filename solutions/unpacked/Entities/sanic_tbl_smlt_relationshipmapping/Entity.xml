@@ -5,9 +5,11 @@
     <entity Name="sanic_tbl_smlt_relationshipmapping">
       <LocalizedNames>
         <LocalizedName description="TBL | SMLT | Relationship Mapping" languagecode="1033" />
+        <LocalizedName description="Mapping de relación" languagecode="3082" />
       </LocalizedNames>
       <LocalizedCollectionNames>
         <LocalizedCollectionName description="TBL | SMLT | Relationship Mappings" languagecode="1033" />
+        <LocalizedCollectionName description="Mappings de relación" languagecode="3082" />
       </LocalizedCollectionNames>
       <Descriptions>
         <Description description="" languagecode="1033" />
@@ -521,9 +523,11 @@
           <LookupTypes />
           <displaynames>
             <displayname description="[RM[ Child Table Mapping" languagecode="1033" />
+            <displayname description="Mapping de tabla hija" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Table Mapping on the child side (many): the one that receives the lookup to the parent." languagecode="1033" />
+            <Description description="Table Mapping del lado hijo (muchos): es el que recibe el lookup al padre." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_rm_importtemplateid">
@@ -559,9 +563,11 @@
           <LookupTypes />
           <displaynames>
             <displayname description="[RM] Import Template" languagecode="1033" />
+            <displayname description="Template de importación" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Template the relationship belongs to. Filters the Table Mappings that can be chosen as parent and child." languagecode="1033" />
+            <Description description="Template al que pertenece la relación. Filtra los Table Mappings elegibles como padre e hijo." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_rm_lookupcolumnonchild">
@@ -599,9 +605,11 @@
           <Length>400</Length>
           <displaynames>
             <displayname description="[RM] Lookup column on child" languagecode="1033" />
+            <displayname description="Columna lookup en la tabla hija" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Logical name of the lookup column on the child table that points to the parent. Required: PrepareImport rejects the template if it is missing." languagecode="1033" />
+            <Description description="Nombre lógico de la columna lookup de la tabla hija que apunta al padre. Obligatorio: PrepareImport rechaza el template si falta." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_rm_name">
@@ -639,9 +647,11 @@
           <Length>1700</Length>
           <displaynames>
             <displayname description="[RM] Name" languagecode="1033" />
+            <displayname description="Nombre" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Descriptive name of the relationship (for example, Customer to Account). Informational only." languagecode="1033" />
+            <Description description="Nombre descriptivo de la relación (por ejemplo, Cliente a Cuenta). Solo informativo." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_rm_parentdedupcolumns">
@@ -679,9 +689,11 @@
           <Length>1000</Length>
           <displaynames>
             <displayname description="[RM] Parent Dedup Columns" languagecode="1033" />
+            <displayname description="Columnas de deduplicación del padre" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="CSV columns (or parent transform outputs), comma-separated, that identify the parent. They are matched by position with the parent Table Mapping's Dedup Columns and must be the same number." languagecode="1033" />
+            <Description description="Columnas del CSV (o del transform del padre), separadas por coma, que identifican al padre. Se emparejan por posición con las Dedup Columns del Table Mapping padre y deben ser la misma cantidad." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_rm_parenttablemappingid">
@@ -717,9 +729,11 @@
           <LookupTypes />
           <displaynames>
             <displayname description="[RM] Parent Table Mapping" languagecode="1033" />
+            <displayname description="Mapping de tabla padre" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Table Mapping on the parent side (one). It must have Dedup Columns so its key can be resolved." languagecode="1033" />
+            <Description description="Table Mapping del lado padre (uno). Debe tener Dedup Columns para poder resolver su clave." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_rm_relationshiptype">
@@ -768,14 +782,7 @@
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="OneToMany" languagecode="1033" />
-                </labels>
-                <Descriptions>
-                  <Description description="" languagecode="1033" />
-                </Descriptions>
-              </option>
-              <option value="1" ExternalValue="" IsHidden="0">
-                <labels>
-                  <label description="ManyToMany" languagecode="1033" />
+                  <label description="Uno a muchos" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -785,9 +792,11 @@
           </optionset>
           <displaynames>
             <displayname description="[RM] Relationship Type" languagecode="1033" />
+            <displayname description="Tipo de relación" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Relationship type. Only OneToMany is supported: the child has a lookup to the parent." languagecode="1033" />
+            <Description description="Tipo de relación. Solo se soporta OneToMany: el hijo tiene un lookup al padre." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_tbl_smlt_relationshipmappingId">
@@ -1080,6 +1089,7 @@
       <CanCreateViews>1</CanCreateViews>
       <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
       <CanEnableSyncToExternalSearchIndex>1</CanEnableSyncToExternalSearchIndex>
+      <IconVectorName>sanic_/smelter/icons/relationshipmapping.svg</IconVectorName>
       <EnforceStateTransitions>0</EnforceStateTransitions>
       <CanChangeHierarchicalRelationship>1</CanChangeHierarchicalRelationship>
       <EntityHelpUrlEnabled>0</EntityHelpUrlEnabled>

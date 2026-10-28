@@ -8,30 +8,50 @@
   <SiteMap IntroducedVersion="7.0.0.0">
     <Area Id="area_a3db6788" ResourceId="SitemapDesigner.NewTitle" DescriptionResourceId="SitemapDesigner.NewTitle" ShowGroups="true" IntroducedVersion="7.0.0.0">
       <Titles>
-        <Title LCID="1033" Title="Area1" />
+        <Title LCID="1033" Title="Smelter" />
+        <Title LCID="3082" Title="Smelter" />
       </Titles>
       <Group Id="group_f9abc8da" ResourceId="SitemapDesigner.NewGroup" DescriptionResourceId="SitemapDesigner.NewGroup" IntroducedVersion="7.0.0.0" IsProfile="false" ToolTipResourseId="SitemapDesigner.Unknown">
         <Titles>
-          <Title LCID="1033" Title="Configuracion" />
+          <Title LCID="1033" Title="Configuration" />
+          <Title LCID="3082" Title="Configuración" />
         </Titles>
-        <SubArea Id="subarea_a5465f8e" Icon="/_imgs/imagestrips/transparent_spacer.gif" Entity="sanic_tbl_smlt_importtemplate" Client="All,Outlook,OutlookLaptopClient,OutlookWorkstationClient,Web" AvailableOffline="true" PassParams="false" Sku="All,OnPremise,Live,SPLA" />
+        <SubArea Id="subarea_a5465f8e" Entity="sanic_tbl_smlt_importtemplate" Client="All,Outlook,OutlookLaptopClient,OutlookWorkstationClient,Web" AvailableOffline="true" PassParams="false" Sku="All,OnPremise,Live,SPLA" VectorIcon="$webresource:sanic_/smelter/icons/template.svg">
+          <Titles>
+            <Title LCID="1033" Title="Import templates" />
+            <Title LCID="3082" Title="Templates de importación" />
+          </Titles>
+        </SubArea>
       </Group>
       <Group Id="group_d07a1763" ResourceId="SitemapDesigner.NewGroup" DescriptionResourceId="SitemapDesigner.NewGroup" IntroducedVersion="7.0.0.0" IsProfile="false" ToolTipResourseId="SitemapDesigner.Unknown">
         <Titles>
-          <Title LCID="1033" Title="Ejecución y Monitoreo" />
+          <Title LCID="1033" Title="Execution &amp; monitoring" />
+          <Title LCID="3082" Title="Ejecución y monitoreo" />
         </Titles>
-        <SubArea Id="subarea_6569ce1a" Icon="/_imgs/imagestrips/transparent_spacer.gif" Entity="sanic_tbl_smlt_importjob" Client="All,Outlook,OutlookLaptopClient,OutlookWorkstationClient,Web" AvailableOffline="true" PassParams="false" Sku="All,OnPremise,Live,SPLA" />
-        <SubArea Id="subarea_smlt_dashboard" Url="/main.aspx?pagetype=dashboard&amp;id=%7b0aaf3a0c-c3a8-4f67-a7b8-a1cfd5a5dfbd%7d" AvailableOffline="false">
+        <SubArea Id="subarea_6569ce1a" Entity="sanic_tbl_smlt_importjob" Client="All,Outlook,OutlookLaptopClient,OutlookWorkstationClient,Web" AvailableOffline="true" PassParams="false" Sku="All,OnPremise,Live,SPLA" VectorIcon="$webresource:sanic_/smelter/icons/job.svg">
           <Titles>
-            <Title LCID="1033" Title="Smelter Dashboard" />
+            <Title LCID="1033" Title="Import jobs" />
+            <Title LCID="3082" Title="Import Jobs" />
+          </Titles>
+        </SubArea>
+        <SubArea Id="subarea_smlt_dashboard" Url="/main.aspx?pagetype=dashboard&amp;id=%7b0aaf3a0c-c3a8-4f67-a7b8-a1cfd5a5dfbd%7d" AvailableOffline="false" VectorIcon="$webresource:sanic_/smelter/icons/dashboard.svg">
+          <Titles>
+            <Title LCID="1033" Title="Smelter dashboard" />
+            <Title LCID="3082" Title="Panel de Smelter" />
           </Titles>
         </SubArea>
       </Group>
       <Group Id="group_308470d1" ResourceId="SitemapDesigner.NewGroup" DescriptionResourceId="SitemapDesigner.NewGroup" IntroducedVersion="7.0.0.0" IsProfile="false" ToolTipResourseId="SitemapDesigner.Unknown">
         <Titles>
-          <Title LCID="1033" Title="Diagnóstico" />
+          <Title LCID="1033" Title="Diagnostics" />
+          <Title LCID="3082" Title="Diagnóstico" />
         </Titles>
-        <SubArea Id="subarea_a2da1554" Icon="/_imgs/imagestrips/transparent_spacer.gif" Entity="sanic_tbl_smlt_importjoblog" Client="All,Outlook,OutlookLaptopClient,OutlookWorkstationClient,Web" AvailableOffline="true" PassParams="false" Sku="All,OnPremise,Live,SPLA" />
+        <SubArea Id="subarea_a2da1554" Entity="sanic_tbl_smlt_importjoblog" Client="All,Outlook,OutlookLaptopClient,OutlookWorkstationClient,Web" AvailableOffline="true" PassParams="false" Sku="All,OnPremise,Live,SPLA" VectorIcon="$webresource:sanic_/smelter/icons/joblog.svg">
+          <Titles>
+            <Title LCID="1033" Title="Import logs" />
+            <Title LCID="3082" Title="Logs de importación" />
+          </Titles>
+        </SubArea>
       </Group>
     </Area>
   </SiteMap>

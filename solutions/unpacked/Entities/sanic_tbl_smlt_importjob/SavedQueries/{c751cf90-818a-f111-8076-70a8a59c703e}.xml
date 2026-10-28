@@ -38,10 +38,12 @@
     </fetchxml>
     <IntroducedVersion>1.0.0.0</IntroducedVersion>
     <LocalizedNames>
-      <LocalizedName description="Jobs Activos" languagecode="1033" />
+      <LocalizedName description="Active jobs" languagecode="1033" />
+      <LocalizedName description="Jobs activos" languagecode="3082" />
     </LocalizedNames>
     <Descriptions>
-      <Description description="Import Jobs en estado Queued (Pendiente) o Processing (En Progreso)." languagecode="1033" />
+      <Description description="Import Jobs in Queued or Processing status." languagecode="1033" />
+      <Description description="Import Jobs en estado Queued (Pendiente) o Processing (En Progreso)." languagecode="3082" />
     </Descriptions>
   </savedquery>
 </savedqueries>

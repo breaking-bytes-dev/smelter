@@ -6,8 +6,134 @@
   </LocalizedNames>
   <FormId>{0aaf3a0c-c3a8-4f67-a7b8-a1cfd5a5dfbd}</FormId>
   <IsCustomizable>1</IsCustomizable>
+  <IsDefault>0</IsDefault>
   <FormXml>
-    <forms type="dashboard"><form><tabs><tab showlabel="false" verticallayout="true" id="{bf43daa9-dcce-4f92-9582-6f7c590baaca}"><labels><label description="Tab" languagecode="1033" /></labels><columns><column width="100%"><sections><section showlabel="false" showbar="false" columns="1111" id="{1c3e4bf4-3a78-49ed-a812-9c44e697b459}"><labels><label description="Section" languagecode="1033" /></labels><rows><row><cell colspan="2" rowspan="12" showlabel="false" id="{d5b384c8-f3ce-4394-80eb-dfbd8911f4d5}" auto="false"><labels><label description="Import Jobs by status" languagecode="1033" /></labels><control id="ComponentSmltStatusChart" classid="{E7A81278-8635-4d9e-8D4D-59480B391C5B}" indicationOfSubgrid="true"><parameters><TargetEntityType>sanic_tbl_smlt_importjob</TargetEntityType><ChartGridMode>Chart</ChartGridMode><EnableQuickFind>false</EnableQuickFind><EnableViewPicker>false</EnableViewPicker><EnableJumpBar>false</EnableJumpBar><RecordsPerPage>10</RecordsPerPage><HeaderColorCode /><ViewId>{27b8d129-9055-4ca5-a051-961ff5d054ca}</ViewId><IsUserView>false</IsUserView><ViewIds /><AutoExpand>Fixed</AutoExpand><VisualizationId>{dc8cc371-1a64-f111-ab0c-0022480a5be8}</VisualizationId><IsUserChart>false</IsUserChart><EnableChartPicker>false</EnableChartPicker><RelationshipName /></parameters></control></cell><cell colspan="2" rowspan="12" showlabel="false" id="{b6b42157-9b53-4f0e-b3ff-cff2b5f0af75}" auto="false"><labels><label description="Import Jobs by template" languagecode="1033" /></labels><control id="ComponentSmltTemplateChart" classid="{E7A81278-8635-4d9e-8D4D-59480B391C5B}" indicationOfSubgrid="true"><parameters><TargetEntityType>sanic_tbl_smlt_importjob</TargetEntityType><ChartGridMode>Chart</ChartGridMode><EnableQuickFind>false</EnableQuickFind><EnableViewPicker>false</EnableViewPicker><EnableJumpBar>false</EnableJumpBar><RecordsPerPage>10</RecordsPerPage><HeaderColorCode /><ViewId>{27b8d129-9055-4ca5-a051-961ff5d054ca}</ViewId><IsUserView>false</IsUserView><ViewIds /><AutoExpand>Fixed</AutoExpand><VisualizationId>{0c1107f3-1a64-f111-ab0c-0022480a5be8}</VisualizationId><IsUserChart>false</IsUserChart><EnableChartPicker>false</EnableChartPicker><RelationshipName /></parameters></control></cell></row><row /><row /><row /><row /><row /><row /><row /><row /><row /><row /><row /><row><cell colspan="4" rowspan="12" showlabel="false" id="{93750f76-b381-4404-8a08-c4216a57d3a3}" auto="false"><labels><label description="Import Jobs" languagecode="1033" /></labels><control id="ComponentSmltJobsGrid" classid="{E7A81278-8635-4d9e-8D4D-59480B391C5B}" indicationOfSubgrid="true"><parameters><TargetEntityType>sanic_tbl_smlt_importjob</TargetEntityType><ChartGridMode>Grid</ChartGridMode><EnableQuickFind>false</EnableQuickFind><EnableViewPicker>false</EnableViewPicker><EnableJumpBar>false</EnableJumpBar><RecordsPerPage>10</RecordsPerPage><HeaderColorCode /><ViewId>{27b8d129-9055-4ca5-a051-961ff5d054ca}</ViewId><IsUserView>false</IsUserView><ViewIds /><AutoExpand>Fixed</AutoExpand><VisualizationId></VisualizationId><IsUserChart>false</IsUserChart><EnableChartPicker>false</EnableChartPicker><RelationshipName /></parameters></control></cell></row><row /><row /><row /><row /><row /><row /><row /><row /><row /><row /><row /></rows></section></sections></column></columns></tab></tabs></form></forms>
+    <forms type="dashboard">
+      <form>
+        <tabs>
+          <tab showlabel="false" verticallayout="true" id="{bf43daa9-dcce-4f92-9582-6f7c590baaca}">
+            <labels>
+              <label description="Tab" languagecode="1033" />
+            </labels>
+            <columns>
+              <column width="100%">
+                <sections>
+                  <section showlabel="false" showbar="false" columns="1111" id="{1c3e4bf4-3a78-49ed-a812-9c44e697b459}">
+                    <labels>
+                      <label description="Section" languagecode="1033" />
+                    </labels>
+                    <rows>
+                      <row>
+                        <cell colspan="2" rowspan="12" showlabel="false" id="{d5b384c8-f3ce-4394-80eb-dfbd8911f4d5}" auto="false">
+                          <labels>
+                            <label description="Import Jobs by status" languagecode="1033" />
+                            <label description="Import Jobs" languagecode="3082" />
+                          </labels>
+                          <control id="ComponentSmltStatusChart" classid="{E7A81278-8635-4d9e-8D4D-59480B391C5B}" indicationOfSubgrid="true">
+                            <parameters>
+                              <TargetEntityType>sanic_tbl_smlt_importjob</TargetEntityType>
+                              <ChartGridMode>Chart</ChartGridMode>
+                              <EnableQuickFind>false</EnableQuickFind>
+                              <EnableViewPicker>false</EnableViewPicker>
+                              <EnableJumpBar>false</EnableJumpBar>
+                              <RecordsPerPage>10</RecordsPerPage>
+                              <HeaderColorCode />
+                              <ViewId>{27b8d129-9055-4ca5-a051-961ff5d054ca}</ViewId>
+                              <IsUserView>false</IsUserView>
+                              <ViewIds />
+                              <AutoExpand>Fixed</AutoExpand>
+                              <VisualizationId>{dc8cc371-1a64-f111-ab0c-0022480a5be8}</VisualizationId>
+                              <IsUserChart>false</IsUserChart>
+                              <EnableChartPicker>false</EnableChartPicker>
+                              <RelationshipName />
+                            </parameters>
+                          </control>
+                        </cell>
+                        <cell colspan="2" rowspan="12" showlabel="false" id="{b6b42157-9b53-4f0e-b3ff-cff2b5f0af75}" auto="false">
+                          <labels>
+                            <label description="Import Jobs by template" languagecode="1033" />
+                            <label description="Import Jobs" languagecode="3082" />
+                          </labels>
+                          <control id="ComponentSmltTemplateChart" classid="{E7A81278-8635-4d9e-8D4D-59480B391C5B}" indicationOfSubgrid="true">
+                            <parameters>
+                              <TargetEntityType>sanic_tbl_smlt_importjob</TargetEntityType>
+                              <ChartGridMode>Chart</ChartGridMode>
+                              <EnableQuickFind>false</EnableQuickFind>
+                              <EnableViewPicker>false</EnableViewPicker>
+                              <EnableJumpBar>false</EnableJumpBar>
+                              <RecordsPerPage>10</RecordsPerPage>
+                              <HeaderColorCode />
+                              <ViewId>{27b8d129-9055-4ca5-a051-961ff5d054ca}</ViewId>
+                              <IsUserView>false</IsUserView>
+                              <ViewIds />
+                              <AutoExpand>Fixed</AutoExpand>
+                              <VisualizationId>{0c1107f3-1a64-f111-ab0c-0022480a5be8}</VisualizationId>
+                              <IsUserChart>false</IsUserChart>
+                              <EnableChartPicker>false</EnableChartPicker>
+                              <RelationshipName />
+                            </parameters>
+                          </control>
+                        </cell>
+                      </row>
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row>
+                        <cell colspan="4" rowspan="12" showlabel="false" id="{93750f76-b381-4404-8a08-c4216a57d3a3}" auto="false">
+                          <labels>
+                            <label description="Import Jobs" languagecode="1033" />
+                            <label description="Import Jobs" languagecode="3082" />
+                          </labels>
+                          <control id="ComponentSmltJobsGrid" classid="{E7A81278-8635-4d9e-8D4D-59480B391C5B}" indicationOfSubgrid="true">
+                            <parameters>
+                              <TargetEntityType>sanic_tbl_smlt_importjob</TargetEntityType>
+                              <ChartGridMode>Grid</ChartGridMode>
+                              <EnableQuickFind>false</EnableQuickFind>
+                              <EnableViewPicker>false</EnableViewPicker>
+                              <EnableJumpBar>false</EnableJumpBar>
+                              <RecordsPerPage>10</RecordsPerPage>
+                              <HeaderColorCode />
+                              <ViewId>{27b8d129-9055-4ca5-a051-961ff5d054ca}</ViewId>
+                              <IsUserView>false</IsUserView>
+                              <ViewIds />
+                              <AutoExpand>Fixed</AutoExpand>
+                              <VisualizationId></VisualizationId>
+                              <IsUserChart>false</IsUserChart>
+                              <EnableChartPicker>false</EnableChartPicker>
+                              <RelationshipName />
+                            </parameters>
+                          </control>
+                        </cell>
+                      </row>
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                      <row />
+                    </rows>
+                  </section>
+                </sections>
+              </column>
+            </columns>
+          </tab>
+        </tabs>
+      </form>
+    </forms>
   </FormXml>
   <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsTabletEnabled>0</IsTabletEnabled>
 </Dashboard>

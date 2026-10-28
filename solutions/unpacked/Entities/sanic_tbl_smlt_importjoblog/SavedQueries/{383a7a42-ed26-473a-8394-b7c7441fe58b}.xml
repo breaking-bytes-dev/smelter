@@ -22,7 +22,7 @@
           <attribute name="sanic_tbl_smlt_importjoblogid" />
           <attribute name="sanic_smlt_ijl_id" />
           <attribute name="createdon" />
-          <order attribute="sanic_smlt_ijl_id" descending="false" />
+          <order attribute="createdon" descending="true" />
           <filter type="and">
             <condition attribute="statecode" operator="eq" value="0" />
           </filter>

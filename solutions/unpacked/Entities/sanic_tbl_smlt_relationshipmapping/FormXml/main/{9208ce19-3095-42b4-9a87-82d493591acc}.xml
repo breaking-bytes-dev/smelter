@@ -10,6 +10,7 @@
         <tab verticallayout="true" id="{6c51a161-0b8a-474f-bfa2-0f9e3c63c595}" IsUserDefined="1">
           <labels>
             <label description="General" languagecode="1033" />
+            <label description="General" languagecode="3082" />
           </labels>
           <columns>
             <column width="100%">
@@ -17,36 +18,62 @@
                 <section showlabel="false" showbar="false" IsUserDefined="0" id="{2a13c8fc-e1ee-45e4-9e61-3c75b6600642}">
                   <labels>
                     <label description="General" languagecode="1033" />
+                    <label description="General" languagecode="3082" />
                   </labels>
                   <rows>
                     <row>
                       <cell id="{290f6081-cb46-47ad-9273-ad074f4fb077}">
                         <labels>
                           <label description="[RM] Name" languagecode="1033" />
+                          <label description="Nombre" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_rm_name" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_rm_name" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{e67bba7e-3398-41bc-9eb1-d5e752a39074}">
+                        <labels>
+                          <label description="[RM] Import Template" languagecode="1033" />
+                          <label description="Template de importación" languagecode="3082" />
+                        </labels>
+                        <control id="sanic_smlt_rm_importtemplateid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_rm_importtemplateid" />
                       </cell>
                     </row>
                     <row>
                       <cell id="{d7d35f32-3ec7-4008-a358-f6d0a90ae424}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[RM] Parent Table Mapping" languagecode="1033" />
+                          <label description="Mapping de tabla padre" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_rm_parenttablemappingid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_rm_parenttablemappingid" disabled="false" />
+                        <control id="sanic_smlt_rm_parenttablemappingid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_rm_parenttablemappingid" disabled="false">
+                          <parameters>
+                            <FilterRelationshipName>sanic_tbl_smlt_tablemapping_smlt_tm_importtemplateid_sanic_tbl_smlt_importtemplate</FilterRelationshipName>
+                            <DependentAttributeName>sanic_smlt_rm_importtemplateid</DependentAttributeName>
+                            <DependentAttributeType>lookup</DependentAttributeType>
+                          </parameters>
+                        </control>
                       </cell>
                     </row>
                     <row>
                       <cell id="{92420941-b420-4049-ab77-23c1c5cace36}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[RM[ Child Table Mapping" languagecode="1033" />
+                          <label description="Mapping de tabla hija" languagecode="3082" />
                         </labels>
-                        <control id="sanic_smlt_rm_childtablemappingid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_rm_childtablemappingid" disabled="false" />
+                        <control id="sanic_smlt_rm_childtablemappingid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_rm_childtablemappingid" disabled="false">
+                          <parameters>
+                            <FilterRelationshipName>sanic_tbl_smlt_tablemapping_smlt_tm_importtemplateid_sanic_tbl_smlt_importtemplate</FilterRelationshipName>
+                            <DependentAttributeName>sanic_smlt_rm_importtemplateid</DependentAttributeName>
+                            <DependentAttributeType>lookup</DependentAttributeType>
+                          </parameters>
+                        </control>
                       </cell>
                     </row>
                     <row>
                       <cell id="{43723ddb-81cc-485d-9257-235096602e97}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[RM] Relationship Type" languagecode="1033" />
+                          <label description="Tipo de relación" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_rm_relationshiptype" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_rm_relationshiptype" disabled="false" />
                       </cell>
@@ -55,6 +82,7 @@
                       <cell id="{7ce9bc01-eafa-479d-90cd-d664a268f17b}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[RM] Lookup column on child" languagecode="1033" />
+                          <label description="Columna lookup en la tabla hija" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_rm_lookupcolumnonchild" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_rm_lookupcolumnonchild" disabled="false" />
                       </cell>
@@ -63,6 +91,7 @@
                       <cell id="{f2a77f58-230f-4d55-9ff4-af16e0d239e2}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[RM] Parent Dedup Columns" languagecode="1033" />
+                          <label description="Columnas de deduplicación del padre" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_rm_parentdedupcolumns" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_rm_parentdedupcolumns" disabled="false" />
                       </cell>

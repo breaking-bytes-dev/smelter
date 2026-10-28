@@ -5,9 +5,11 @@
     <entity Name="sanic_tbl_smlt_tablemapping">
       <LocalizedNames>
         <LocalizedName description="TBL | SMLT | Table Mapping" languagecode="1033" />
+        <LocalizedName description="Mapping de tabla" languagecode="3082" />
       </LocalizedNames>
       <LocalizedCollectionNames>
         <LocalizedCollectionName description="TBL | SMLT | Table Mappings" languagecode="1033" />
+        <LocalizedCollectionName description="Mappings de tabla" languagecode="3082" />
       </LocalizedCollectionNames>
       <Descriptions>
         <Description description="" languagecode="1033" />
@@ -534,20 +536,24 @@
               <option value="1" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Yes" languagecode="1033" />
+                  <label description="Sí" languagecode="3082" />
                 </labels>
               </option>
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="No" languagecode="1033" />
+                  <label description="No" languagecode="3082" />
                 </labels>
               </option>
             </options>
           </optionset>
           <displaynames>
             <displayname description="[TM] Create If Not Exists" languagecode="1033" />
+            <displayname description="Crear si no existe" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="If the record does not exist (the key does not match): Yes creates it, No skips the row and counts it as Skipped." languagecode="1033" />
+            <Description description="Si el registro no existe (la clave no coincide): Sí lo crea, No omite la fila y la cuenta como Skipped." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_tm_dedupcolumns">
@@ -585,9 +591,11 @@
           <Length>1000</Length>
           <displaynames>
             <displayname description="[TM] Dedup COlumns" languagecode="1033" />
+            <displayname description="Columnas de deduplicación" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Logical names of the TARGET columns (comma-separated) that form the key used to decide whether the record exists. Each one must be the Target Column of some Column Mapping of this mapping." languagecode="1033" />
+            <Description description="Nombres lógicos de las columnas DESTINO (separados por coma) que forman la clave para decidir si el registro existe. Cada una debe ser el Target Column de algún Column Mapping de este mapping." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_tm_importtemplateid">
@@ -623,15 +631,17 @@
           <LookupTypes />
           <displaynames>
             <displayname description="[TM] Import Template" languagecode="1033" />
+            <displayname description="Template de importación" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Template this mapping belongs to." languagecode="1033" />
+            <Description description="Template al que pertenece este mapping." languagecode="3082" />
           </Descriptions>
         </attribute>
-        <attribute PhysicalName="sanic_smlt_tm_isjunctiontable">
+        <attribute PhysicalName="sanic_smlt_tm_insertonly">
           <Type>bit</Type>
-          <Name>sanic_smlt_tm_isjunctiontable</Name>
-          <LogicalName>sanic_smlt_tm_isjunctiontable</LogicalName>
+          <Name>sanic_smlt_tm_insertonly</Name>
+          <LogicalName>sanic_smlt_tm_insertonly</LogicalName>
           <RequiredLevel>none</RequiredLevel>
           <DisplayMask>ValidForAdvancedFind|ValidForForm|ValidForGrid</DisplayMask>
           <ImeMode>auto</ImeMode>
@@ -659,35 +669,38 @@
           <IsRetrievable>0</IsRetrievable>
           <IsLocalizable>0</IsLocalizable>
           <AppDefaultValue>0</AppDefaultValue>
-          <optionset Name="sanic_tbl_smlt_tablemapping_sanic_smlt_tm_isjunctiontable">
+          <optionset Name="sanic_tbl_smlt_tablemapping_sanic_smlt_tm_insertonly">
             <OptionSetType>bit</OptionSetType>
             <IntroducedVersion>1.0.0.0</IntroducedVersion>
             <IsCustomizable>1</IsCustomizable>
-            <ExternalTypeName></ExternalTypeName>
             <displaynames>
-              <displayname description="[TM] Is Junction Table" languagecode="1033" />
+              <displayname description="[TM] Solo inserción (permite duplicados)" languagecode="1033" />
             </displaynames>
             <Descriptions>
-              <Description description="" languagecode="1033" />
+              <Description description="Opt-in: el mapping se escribe siempre con Create, sin alternate key (reprocesar puede duplicar). Sin esto, un mapping sin Dedup Columns es rechazado por PrepareImport." languagecode="1033" />
             </Descriptions>
             <options>
-              <option value="1" ExternalValue="" IsHidden="0">
+              <option value="1" IsHidden="0">
                 <labels>
                   <label description="Yes" languagecode="1033" />
+                  <label description="Sí" languagecode="3082" />
                 </labels>
               </option>
-              <option value="0" ExternalValue="" IsHidden="0">
+              <option value="0" IsHidden="0">
                 <labels>
                   <label description="No" languagecode="1033" />
+                  <label description="No" languagecode="3082" />
                 </labels>
               </option>
             </options>
           </optionset>
           <displaynames>
-            <displayname description="[TM] Is Junction Table" languagecode="1033" />
+            <displayname description="[TM] Solo inserción (permite duplicados)" languagecode="1033" />
+            <displayname description="Solo inserción (permite duplicados)" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Opt-in: the mapping is always written with Create, without an alternate key (reprocessing may duplicate). Without this, a mapping with no Dedup Columns is rejected by PrepareImport." languagecode="1033" />
+            <Description description="Opt-in: el mapping se escribe siempre con Create, sin alternate key (reprocesar puede duplicar). Sin esto, un mapping sin Dedup Columns es rechazado por PrepareImport." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_tm_name">
@@ -725,9 +738,11 @@
           <Length>1700</Length>
           <displaynames>
             <displayname description="[TM] Name" languagecode="1033" />
+            <displayname description="Nombre" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Descriptive name of the mapping (for example, the target table and its role). Informational only." languagecode="1033" />
+            <Description description="Nombre descriptivo del mapping (por ejemplo, la tabla destino y su rol). Solo informativo." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_tm_processingorder">
@@ -765,9 +780,11 @@
           <MaxValue>2147483647</MaxValue>
           <displaynames>
             <displayname description="[TM] Processing Order" languagecode="1033" />
+            <displayname description="Orden de procesamiento" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Order in which the template's mappings are processed: lowest first. Parents must come before their children (the engine also orders by relationships)." languagecode="1033" />
+            <Description description="Orden en que se procesan los mappings del template: el menor primero. Los padres deben ir antes que sus hijos (el motor además ordena por las relaciones)." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_tm_targettable">
@@ -805,9 +822,11 @@
           <Length>400</Length>
           <displaynames>
             <displayname description="[TM] Target Table" languagecode="1033" />
+            <displayname description="Tabla destino" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Logical name of the Dataverse table that receives the rows (for example, contact)." languagecode="1033" />
+            <Description description="Nombre lógico de la tabla de Dataverse que recibe las filas (por ejemplo, contact)." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_tm_updateifexists">
@@ -840,7 +859,7 @@
           <IsFilterable>0</IsFilterable>
           <IsRetrievable>0</IsRetrievable>
           <IsLocalizable>0</IsLocalizable>
-          <AppDefaultValue>0</AppDefaultValue>
+          <AppDefaultValue>1</AppDefaultValue>
           <optionset Name="sanic_tbl_smlt_tablemapping_sanic_smlt_tm_updateifexists">
             <OptionSetType>bit</OptionSetType>
             <IntroducedVersion>1.0.0.0</IntroducedVersion>
@@ -856,20 +875,24 @@
               <option value="1" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Yes" languagecode="1033" />
+                  <label description="Sí" languagecode="3082" />
                 </labels>
               </option>
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="No" languagecode="1033" />
+                  <label description="No" languagecode="3082" />
                 </labels>
               </option>
             </options>
           </optionset>
           <displaynames>
             <displayname description="[TM] Update If Exists" languagecode="1033" />
+            <displayname description="Actualizar si existe" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="If the record already exists (the key matches): Yes updates it, No skips the row and counts it as Skipped. Does not apply without Dedup Columns." languagecode="1033" />
+            <Description description="Si el registro ya existe (la clave coincide): Sí lo actualiza, No omite la fila y la cuenta como Skipped. Sin Dedup Columns no aplica." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_tbl_smlt_tablemappingId">
@@ -1162,6 +1185,7 @@
       <CanCreateViews>1</CanCreateViews>
       <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
       <CanEnableSyncToExternalSearchIndex>1</CanEnableSyncToExternalSearchIndex>
+      <IconVectorName>sanic_/smelter/icons/tablemapping.svg</IconVectorName>
       <EnforceStateTransitions>0</EnforceStateTransitions>
       <CanChangeHierarchicalRelationship>1</CanChangeHierarchicalRelationship>
       <EntityHelpUrlEnabled>0</EntityHelpUrlEnabled>

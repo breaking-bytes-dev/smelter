@@ -5,9 +5,11 @@
     <entity Name="sanic_tbl_smlt_columnmapping">
       <LocalizedNames>
         <LocalizedName description="TBL | SMLT | Column Mapping" languagecode="1033" />
+        <LocalizedName description="Mapping de columna" languagecode="3082" />
       </LocalizedNames>
       <LocalizedCollectionNames>
         <LocalizedCollectionName description="TBL | SMLT | Column Mappings" languagecode="1033" />
+        <LocalizedCollectionName description="Mappings de columna" languagecode="3082" />
       </LocalizedCollectionNames>
       <Descriptions>
         <Description description="" languagecode="1033" />
@@ -534,6 +536,7 @@
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="String" languagecode="1033" />
+                  <label description="Texto" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -542,6 +545,7 @@
               <option value="1" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Integer" languagecode="1033" />
+                  <label description="Entero" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -550,6 +554,7 @@
               <option value="2" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Decimal" languagecode="1033" />
+                  <label description="Decimal" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -558,6 +563,7 @@
               <option value="3" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="DateTime" languagecode="1033" />
+                  <label description="Fecha y hora" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -566,6 +572,7 @@
               <option value="4" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Boolean" languagecode="1033" />
+                  <label description="Booleano" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -574,6 +581,7 @@
               <option value="5" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Lookup" languagecode="1033" />
+                  <label description="Lookup" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -582,6 +590,7 @@
               <option value="6" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="OptionSet" languagecode="1033" />
+                  <label description="Conjunto de opciones" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -590,6 +599,7 @@
               <option value="7" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Money" languagecode="1033" />
+                  <label description="Moneda" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -598,6 +608,7 @@
               <option value="8" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="GUID" languagecode="1033" />
+                  <label description="GUID" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -607,9 +618,11 @@
           </optionset>
           <displaynames>
             <displayname description="[CM] Data Type" languagecode="1033" />
+            <displayname description="Tipo de dato" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Type the CSV value is converted to before it is written. If the value cannot be converted, the row fails with TypeError in the log." languagecode="1033" />
+            <Description description="Tipo al que se convierte el valor del CSV antes de escribirlo. Si el valor no se puede convertir, la fila falla con TypeError en el log." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_defaultvalue">
@@ -647,9 +660,11 @@
           <Length>1000</Length>
           <displaynames>
             <displayname description="[CM] Default Value" languagecode="1033" />
+            <displayname description="Valor por defecto" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Value used when the CSV cell is empty. Applied before Is Required is validated." languagecode="1033" />
+            <Description description="Valor que se usa cuando la celda del CSV viene vacía. Se aplica antes de validar Is Required." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_isrequired">
@@ -698,20 +713,24 @@
               <option value="1" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Yes" languagecode="1033" />
+                  <label description="Sí" languagecode="3082" />
                 </labels>
               </option>
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="No" languagecode="1033" />
+                  <label description="No" languagecode="3082" />
                 </labels>
               </option>
             </options>
           </optionset>
           <displaynames>
             <displayname description="[CM] Is Required" languagecode="1033" />
+            <displayname description="Es obligatoria" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Yes = if the value ends up empty (and there is no Default Value), the row is rejected with ValidationError." languagecode="1033" />
+            <Description description="Sí = si el valor queda vacío (y no hay Default Value), la fila se rechaza con ValidationError." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_lookupmatchcolumn">
@@ -749,9 +768,11 @@
           <Length>400</Length>
           <displaynames>
             <displayname description="[CM] Lookup Match Column" languagecode="1033" />
+            <displayname description="Columna de coincidencia del lookup" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Only for Lookup: column of the referenced table used to find the record when the value is not a GUID (must be an alternate key)." languagecode="1033" />
+            <Description description="Solo para Lookup: columna de la tabla referenciada por la que se busca el registro cuando el valor no es un GUID (debe ser clave alternativa)." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_lookuptable">
@@ -789,9 +810,11 @@
           <Length>400</Length>
           <displaynames>
             <displayname description="[CM] Lookup Table" languagecode="1033" />
+            <displayname description="Tabla del lookup" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Only for Data Type Lookup: logical name of the table the lookup points to. Required with that type." languagecode="1033" />
+            <Description description="Solo para Data Type Lookup: nombre lógico de la tabla a la que apunta el lookup. Obligatorio con ese tipo." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_name">
@@ -829,9 +852,11 @@
           <Length>1700</Length>
           <displaynames>
             <displayname description="[CM] Name" languagecode="1033" />
+            <displayname description="Nombre" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Descriptive name of the column mapping. Informational only." languagecode="1033" />
+            <Description description="Nombre descriptivo del mapping de columna. Solo informativo." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_optionsetmapping">
@@ -868,9 +893,11 @@
           <MaxLength>2000</MaxLength>
           <displaynames>
             <displayname description="[CM] Option Set Mapping" languagecode="1033" />
+            <displayname description="Mapeo de opciones" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Only for Data Type OptionSet: JSON that translates the CSV text to the numeric value, for example {&quot;Active&quot;: 1}. With no match the value is used as is." languagecode="1033" />
+            <Description description="Solo para Data Type OptionSet: JSON que traduce el texto del CSV al valor numérico, por ejemplo {&quot;Activo&quot;: 1}. Sin match se usa el valor tal cual." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_sourcecolumn">
@@ -908,9 +935,11 @@
           <Length>400</Length>
           <displaynames>
             <displayname description="[CM] Source Column" languagecode="1033" />
+            <displayname description="Columna de origen" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Name of the column in the CSV (case-insensitive, surrounding spaces ignored). Optional if the Transform Expression does not read from the CSV, for example STATIC()." languagecode="1033" />
+            <Description description="Nombre de la columna en el CSV (sin distinguir mayúsculas ni espacios alrededor). Opcional si el Transform Expression no lee del CSV, por ejemplo STATIC()." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_tablemappingid">
@@ -946,9 +975,11 @@
           <LookupTypes />
           <displaynames>
             <displayname description="[CM] Table Mapping" languagecode="1033" />
+            <displayname description="Mapping de tabla" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Table Mapping this column belongs to." languagecode="1033" />
+            <Description description="Table Mapping al que pertenece esta columna." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_targetcolumn">
@@ -986,9 +1017,11 @@
           <Length>400</Length>
           <displaynames>
             <displayname description="[CM] Target Column" languagecode="1033" />
+            <displayname description="Columna destino" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Logical name of the Dataverse column the value is written to (for example, emailaddress1)." languagecode="1033" />
+            <Description description="Nombre lógico de la columna de Dataverse donde se escribe el valor (por ejemplo, emailaddress1)." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_cm_transformexpression">
@@ -1026,9 +1059,11 @@
           <Length>2000</Length>
           <displaynames>
             <displayname description="[CM] Transform Expression" languagecode="1033" />
+            <displayname description="Expresión de transformación" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Expression in the transform DSL (CONCAT, MAP, DATEPARSE, IF, SPLIT, HMAC, STATIC ...). If present, it takes priority over the raw CSV value." languagecode="1033" />
+            <Description description="Expresión del DSL de transformaciones (CONCAT, MAP, DATEPARSE, IF, SPLIT, HMAC, STATIC ...). Si está, tiene prioridad sobre el valor crudo del CSV." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_tbl_smlt_columnmappingId">
@@ -1322,7 +1357,7 @@
       <CanCreateViews>1</CanCreateViews>
       <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
       <CanEnableSyncToExternalSearchIndex>1</CanEnableSyncToExternalSearchIndex>
-      <IconVectorName></IconVectorName>
+      <IconVectorName>sanic_/smelter/icons/columnmapping.svg</IconVectorName>
       <EnforceStateTransitions>0</EnforceStateTransitions>
       <CanChangeHierarchicalRelationship>1</CanChangeHierarchicalRelationship>
       <EntityHelpUrlEnabled>0</EntityHelpUrlEnabled>

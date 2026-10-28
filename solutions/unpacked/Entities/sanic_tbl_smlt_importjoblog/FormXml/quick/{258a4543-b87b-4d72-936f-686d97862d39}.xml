@@ -23,6 +23,7 @@
                       <cell id="{8849a8b3-0fd4-49bd-835c-7db3bbc7ac4b}">
                         <labels>
                           <label description="[IJL] ID" languagecode="1033" />
+                          <label description="Identificador" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_ijl_id" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_ijl_id" />
                       </cell>

@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SdkMessageProcessingStep Name="Smelter.Plugins.ValidateQueueAccessPlugin: Update of sanic_tbl_smlt_importjob" SdkMessageProcessingStepId="{eeeaecaf-35d2-f111-a05b-70a8a5b2a2b2}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SdkMessageId>20bebb1b-ea3e-db11-86a7-000a3a5473e8</SdkMessageId>
+  <PluginTypeExportKey>56197DF88CA68B4077E3376679221F29623EEBABFD940F163A28FFBADDB0EDE5</PluginTypeExportKey>
+  <PrimaryEntity>sanic_tbl_smlt_importjob</PrimaryEntity>
+  <AsyncAutoDelete>0</AsyncAutoDelete>
+  <Description>Pre-operation sync en Update de sanic_smlt_ij_status: al poner el job en Queued, el usuario iniciador debe poder leer el Import Template.</Description>
+  <FilteringAttributes>sanic_smlt_ij_status</FilteringAttributes>
+  <ImpersonatingUserIdName></ImpersonatingUserIdName>
+  <InvocationSource>1</InvocationSource>
+  <Mode>0</Mode>
+  <Rank>1</Rank>
+  <EventHandlerTypeCode>4602</EventHandlerTypeCode>
+  <Stage>20</Stage>
+  <IsCustomizable>1</IsCustomizable>
+  <IsHidden>0</IsHidden>
+  <SupportedDeployment>0</SupportedDeployment>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <SdkMessageProcessingStepImages />
+</SdkMessageProcessingStep>

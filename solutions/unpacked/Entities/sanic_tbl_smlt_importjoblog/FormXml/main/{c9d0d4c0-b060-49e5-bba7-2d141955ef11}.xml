@@ -10,6 +10,7 @@
         <tab verticallayout="true" id="{53a4e397-583d-47d1-bae9-a407f63d31db}" IsUserDefined="1">
           <labels>
             <label description="General" languagecode="1033" />
+            <label description="General" languagecode="3082" />
           </labels>
           <columns>
             <column width="100%">
@@ -17,14 +18,70 @@
                 <section showlabel="false" showbar="false" IsUserDefined="0" id="{7d07b804-bc9d-459f-92b8-15fd18d91edc}">
                   <labels>
                     <label description="General" languagecode="1033" />
+                    <label description="General" languagecode="3082" />
                   </labels>
                   <rows>
                     <row>
                       <cell id="{fb3c7b56-12f6-4ea2-abb9-0bc2a0eca23a}">
                         <labels>
                           <label description="[IJL] ID" languagecode="1033" />
+                          <label description="Identificador" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_ijl_id" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_ijl_id" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{edb9393e-5963-4f94-ac3f-aad497729408}">
+                        <labels>
+                          <label description="[IJL] Import Job" languagecode="1033" />
+                          <label description="Import Job" languagecode="3082" />
+                        </labels>
+                        <control id="sanic_smlt_ijl_importjobid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="sanic_smlt_ijl_importjobid" disabled="true" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{93d14fa2-b5b5-4e98-b0a8-3a1de3dcd73b}">
+                        <labels>
+                          <label description="[IJL] Row Number" languagecode="1033" />
+                          <label description="Número de fila" languagecode="3082" />
+                        </labels>
+                        <control id="sanic_smlt_ijl_rownumber" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_ijl_rownumber" disabled="true" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{1cff1a46-c5d2-4eb4-a425-fc96bca4f1f0}">
+                        <labels>
+                          <label description="[IJL] Target Table" languagecode="1033" />
+                          <label description="Tabla destino" languagecode="3082" />
+                        </labels>
+                        <control id="sanic_smlt_ijl_targettable" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_ijl_targettable" disabled="true" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{3807fb00-0521-48bc-96a0-7d0900a59242}">
+                        <labels>
+                          <label description="[IJL] Status" languagecode="1033" />
+                          <label description="Estado" languagecode="3082" />
+                        </labels>
+                        <control id="sanic_smlt_ijl_status" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_ijl_status" disabled="true" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{e2ee6ae3-2fe3-41c5-a46f-41fcca1b6a99}">
+                        <labels>
+                          <label description="[IJL] Error Category" languagecode="1033" />
+                          <label description="Categoría del error" languagecode="3082" />
+                        </labels>
+                        <control id="sanic_smlt_ijl_errorcategory" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_ijl_errorcategory" disabled="true" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{f617786d-c3c7-4bc8-94f1-c44f90fed005}">
+                        <labels>
+                          <label description="[IJL] Error Message" languagecode="1033" />
+                          <label description="Mensaje de error" languagecode="3082" />
+                        </labels>
+                        <control id="sanic_smlt_ijl_errormessage" classid="{E0DECE4B-6FC8-4A8F-A065-082708572369}" datafieldname="sanic_smlt_ijl_errormessage" disabled="true" />
                       </cell>
                     </row>
                     <row>

@@ -57,6 +57,7 @@
                       <cell id="{3d3c2511-b586-449f-8664-50fda88396db}" showlabel="true" locklevel="0">
                         <labels>
                           <label description="[TM] Name" languagecode="1033" />
+                          <label description="Nombre" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_tm_name" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_tm_name" disabled="false" />
                       </cell>

@@ -18,7 +18,8 @@
     <ReferencingAttributeName>sanic_smlt_ij_importtemplateid</ReferencingAttributeName>
     <RelationshipDescription>
       <Descriptions>
-        <Description description="" languagecode="1033" />
+        <Description description="Template that defines how the file is interpreted. The template must be Active for the job to run." languagecode="1033" />
+        <Description description="Template que define cómo se interpreta el archivo. El template debe estar Active para poder ejecutar." languagecode="3082" />
       </Descriptions>
     </RelationshipDescription>
     <EntityRelationshipRoles>
@@ -53,7 +54,8 @@
     <ReferencingAttributeName>sanic_smlt_rm_importtemplateid</ReferencingAttributeName>
     <RelationshipDescription>
       <Descriptions>
-        <Description description="" languagecode="1033" />
+        <Description description="Template the relationship belongs to. Filters the Table Mappings that can be chosen as parent and child." languagecode="1033" />
+        <Description description="Template al que pertenece la relación. Filtra los Table Mappings elegibles como padre e hijo." languagecode="3082" />
       </Descriptions>
     </RelationshipDescription>
     <EntityRelationshipRoles>
@@ -88,7 +90,8 @@
     <ReferencingAttributeName>sanic_smlt_tm_importtemplateid</ReferencingAttributeName>
     <RelationshipDescription>
       <Descriptions>
-        <Description description="" languagecode="1033" />
+        <Description description="Template this mapping belongs to." languagecode="1033" />
+        <Description description="Template al que pertenece este mapping." languagecode="3082" />
       </Descriptions>
     </RelationshipDescription>
     <EntityRelationshipRoles>

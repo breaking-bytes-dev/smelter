@@ -5,9 +5,11 @@
     <entity Name="sanic_tbl_smlt_importjoblog">
       <LocalizedNames>
         <LocalizedName description="TBL | SMLT | Import Job Log" languagecode="1033" />
+        <LocalizedName description="Log de importación" languagecode="3082" />
       </LocalizedNames>
       <LocalizedCollectionNames>
         <LocalizedCollectionName description="TBL | SMLT | Import Job Logs" languagecode="1033" />
+        <LocalizedCollectionName description="Logs de importación" languagecode="3082" />
       </LocalizedCollectionNames>
       <Descriptions>
         <Description description="" languagecode="1033" />
@@ -534,6 +536,7 @@
               <option value="0" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="SourceError" languagecode="1033" />
+                  <label description="Error de origen" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -542,6 +545,7 @@
               <option value="1" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="TransformError" languagecode="1033" />
+                  <label description="Error de transformación" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -550,6 +554,7 @@
               <option value="2" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="TypeError" languagecode="1033" />
+                  <label description="Error de tipo" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -558,6 +563,7 @@
               <option value="3" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="ValidationError" languagecode="1033" />
+                  <label description="Error de validación" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -566,6 +572,7 @@
               <option value="4" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="LookupUnresolved" languagecode="1033" />
+                  <label description="Lookup sin resolver" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -574,14 +581,7 @@
               <option value="5" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="TargetData" languagecode="1033" />
-                </labels>
-                <Descriptions>
-                  <Description description="" languagecode="1033" />
-                </Descriptions>
-              </option>
-              <option value="6" ExternalValue="" IsHidden="0">
-                <labels>
-                  <label description="Transient" languagecode="1033" />
+                  <label description="Datos de destino" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -591,9 +591,11 @@
           </optionset>
           <displaynames>
             <displayname description="[IJL] Error Category" languagecode="1033" />
+            <displayname description="Categoría del error" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Pipeline stage where it failed: SourceError, TransformError, TypeError, ValidationError, LookupUnresolved or TargetData." languagecode="1033" />
+            <Description description="Etapa del pipeline donde falló: SourceError, TransformError, TypeError, ValidationError, LookupUnresolved o TargetData." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ijl_errormessage">
@@ -630,9 +632,11 @@
           <MaxLength>20000</MaxLength>
           <displaynames>
             <displayname description="[IJL] Error Message" languagecode="1033" />
+            <displayname description="Mensaje de error" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Error detail, with the column involved and the cause." languagecode="1033" />
+            <Description description="Detalle del error, con la columna implicada y la causa." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ijl_id">
@@ -670,9 +674,11 @@
           <Length>1700</Length>
           <displaynames>
             <displayname description="[IJL] ID" languagecode="1033" />
+            <displayname description="Identificador" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Autonumber identifier of the log record (IJL-0001 ...). It is not a lookup to the job." languagecode="1033" />
+            <Description description="Identificador autonumérico del registro de log (IJL-0001 ...). No es un lookup al job." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ijl_importjobid">
@@ -708,9 +714,11 @@
           <LookupTypes />
           <displaynames>
             <displayname description="[IJL] Import Job" languagecode="1033" />
+            <displayname description="Import Job" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Job this record belongs to." languagecode="1033" />
+            <Description description="Job al que pertenece este registro." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ijl_rownumber">
@@ -748,9 +756,11 @@
           <MaxValue>2147483647</MaxValue>
           <displaynames>
             <displayname description="[IJL] Row Number" languagecode="1033" />
+            <displayname description="Número de fila" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="CSV row number where the failure occurred." languagecode="1033" />
+            <Description description="Número de fila del CSV donde ocurrió el fallo." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ijl_status">
@@ -796,33 +806,10 @@
               <Description description="" languagecode="1033" />
             </Descriptions>
             <options>
-              <option value="0" ExternalValue="" IsHidden="0">
-                <labels>
-                  <label description="Created" languagecode="1033" />
-                </labels>
-                <Descriptions>
-                  <Description description="" languagecode="1033" />
-                </Descriptions>
-              </option>
-              <option value="1" ExternalValue="" IsHidden="0">
-                <labels>
-                  <label description="Updated" languagecode="1033" />
-                </labels>
-                <Descriptions>
-                  <Description description="" languagecode="1033" />
-                </Descriptions>
-              </option>
-              <option value="2" ExternalValue="" IsHidden="0">
-                <labels>
-                  <label description="Skipped" languagecode="1033" />
-                </labels>
-                <Descriptions>
-                  <Description description="" languagecode="1033" />
-                </Descriptions>
-              </option>
               <option value="3" ExternalValue="" IsHidden="0">
                 <labels>
                   <label description="Failed" languagecode="1033" />
+                  <label description="Fallido" languagecode="3082" />
                 </labels>
                 <Descriptions>
                   <Description description="" languagecode="1033" />
@@ -832,9 +819,11 @@
           </optionset>
           <displaynames>
             <displayname description="[IJL] Status" languagecode="1033" />
+            <displayname description="Estado" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Recorded result. The log stores only failed rows (Failed); successes and skipped rows live in the job counters." languagecode="1033" />
+            <Description description="Resultado registrado. El log guarda únicamente filas fallidas (Failed); éxitos y omitidos viven en los contadores del job." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_smlt_ijl_targettable">
@@ -872,9 +861,11 @@
           <Length>510</Length>
           <displaynames>
             <displayname description="[IJL] Target Table" languagecode="1033" />
+            <displayname description="Tabla destino" languagecode="3082" />
           </displaynames>
           <Descriptions>
-            <Description description="" languagecode="1033" />
+            <Description description="Logical name of the target table where the operation failed." languagecode="1033" />
+            <Description description="Nombre lógico de la tabla destino donde falló la operación." languagecode="3082" />
           </Descriptions>
         </attribute>
         <attribute PhysicalName="sanic_tbl_smlt_importjoblogId">
@@ -1183,6 +1174,7 @@
       <CanCreateViews>1</CanCreateViews>
       <CanModifyAdditionalSettings>1</CanModifyAdditionalSettings>
       <CanEnableSyncToExternalSearchIndex>1</CanEnableSyncToExternalSearchIndex>
+      <IconVectorName>sanic_/smelter/icons/joblog.svg</IconVectorName>
       <EnforceStateTransitions>0</EnforceStateTransitions>
       <CanChangeHierarchicalRelationship>1</CanChangeHierarchicalRelationship>
       <EntityHelpUrlEnabled>0</EntityHelpUrlEnabled>

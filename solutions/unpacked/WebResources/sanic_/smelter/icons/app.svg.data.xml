@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WebResource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <WebResourceId>{c33b12b3-6bd2-f111-a05b-70a8a5b2a2b2}</WebResourceId>
+  <Name>sanic_/smelter/icons/app.svg</Name>
+  <DisplayName>Icon | SMLT | App</DisplayName>
+  <WebResourceType>11</WebResourceType>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsEnabledForMobileClient>0</IsEnabledForMobileClient>
+  <IsAvailableForMobileOffline>0</IsAvailableForMobileOffline>
+  <IsCustomizable>1</IsCustomizable>
+  <CanBeDeleted>1</CanBeDeleted>
+  <IsHidden>0</IsHidden>
+  <FileName>/WebResources/sanic_smeltericonsappsvgC33B12B3-6BD2-F111-A05B-70A8A5B2A2B2</FileName>
+</WebResource>

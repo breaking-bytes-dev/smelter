@@ -17,7 +17,8 @@
     <ReferencingAttributeName>sanic_smlt_ij_sourcefile</ReferencingAttributeName>
     <RelationshipDescription>
       <Descriptions>
-        <Description description="" languagecode="1033" />
+        <Description description="CSV file to import (up to 128 MB). It is read by byte ranges, without downloading it whole on every chunk." languagecode="1033" />
+        <Description description="Archivo CSV a importar (hasta 128 MB). Se lee por rangos de bytes, sin descargarlo entero en cada chunk." languagecode="3082" />
       </Descriptions>
     </RelationshipDescription>
   </EntityRelationship>

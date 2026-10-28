@@ -57,6 +57,7 @@
                       <cell id="{99b55f40-2c29-45ac-8e23-96590f8a2047}" showlabel="true" locklevel="0">
                         <labels>
                           <label description="[IJL] ID" languagecode="1033" />
+                          <label description="Identificador" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_ijl_id" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_ijl_id" disabled="false" />
                       </cell>

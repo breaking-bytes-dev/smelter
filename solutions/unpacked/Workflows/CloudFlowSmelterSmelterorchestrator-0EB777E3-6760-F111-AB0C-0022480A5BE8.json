@@ -111,7 +111,7 @@
               "entityName": "sanic_tbl_smlt_importjobs",
               "recordId": "@triggerOutputs()?['body/sanic_tbl_smlt_importjobid']",
               "item/sanic_smlt_ij_status": 4,
-        "item/sanic_smlt_ij_failurereason": "@take(if(equals(actions('Perform_an_unbound_action_2')?['status'], 'Failed'), coalesce(actions('Perform_an_unbound_action_2')?['outputs']?['body']?['error']?['message'], actions('Perform_an_unbound_action_2')?['error']?['message'], 'Falló la preparación del import. Revisá el historial de ejecuciones del flujo.'), coalesce(actions('Perform_an_unbound_action')?['outputs']?['body']?['error']?['message'], actions('Perform_an_unbound_action')?['error']?['message'], 'Falló el procesamiento del import o excedió el tiempo límite. Revisá el historial de ejecuciones del flujo.')), 4000)"
+              "item/sanic_smlt_ij_failurereason": "@take(if(equals(actions('Perform_an_unbound_action_2')?['status'], 'Failed'), coalesce(actions('Perform_an_unbound_action_2')?['outputs']?['body']?['error']?['message'], actions('Perform_an_unbound_action_2')?['error']?['message'], 'Falló la preparación del import. Revisá el historial de ejecuciones del flujo.'), coalesce(actions('Perform_an_unbound_action')?['outputs']?['body']?['error']?['message'], actions('Perform_an_unbound_action')?['error']?['message'], 'Falló el procesamiento del import o excedió el tiempo límite. Revisá el historial de ejecuciones del flujo.')), 4000)"
             },
             "host": {
               "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",

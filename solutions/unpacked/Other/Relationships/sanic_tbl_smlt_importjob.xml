@@ -18,7 +18,8 @@
     <ReferencingAttributeName>sanic_smlt_ijl_importjobid</ReferencingAttributeName>
     <RelationshipDescription>
       <Descriptions>
-        <Description description="" languagecode="1033" />
+        <Description description="Job this record belongs to." languagecode="1033" />
+        <Description description="Job al que pertenece este registro." languagecode="3082" />
       </Descriptions>
     </RelationshipDescription>
     <EntityRelationshipRoles>

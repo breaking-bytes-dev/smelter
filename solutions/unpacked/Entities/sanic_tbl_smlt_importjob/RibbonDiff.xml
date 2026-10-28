@@ -19,10 +19,8 @@
     <CommandDefinition Id="sanic.smlt.EjecutarImportJob.Command">
       <EnableRules>
         <EnableRule Id="sanic.sanic_tbl_smlt_importjob.FormStateEnableRule.EnableRule" />
+        <EnableRule Id="sanic.smlt.EjecutarImportJob.EnableRule" />
       </EnableRules>
-      <DisplayRules>
-        <DisplayRule Id="sanic.smlt.EjecutarImportJob.DisplayRule" />
-      </DisplayRules>
       <Actions>
         <JavaScriptFunction FunctionName="Sanic.Smelter.executeImportJob" Library="$webresource:sanic_smlt_importjob_actions.js">
           <CrmParameter Value="PrimaryControl" />
@@ -32,10 +30,8 @@
     <CommandDefinition Id="sanic.smlt.ReintentarImportJob.Command">
       <EnableRules>
         <EnableRule Id="sanic.sanic_tbl_smlt_importjob.FormStateEnableRule.EnableRule" />
+        <EnableRule Id="sanic.smlt.ReintentarImportJob.EnableRule" />
       </EnableRules>
-      <DisplayRules>
-        <DisplayRule Id="sanic.smlt.ReintentarImportJob.DisplayRule" />
-      </DisplayRules>
       <Actions>
         <JavaScriptFunction FunctionName="Sanic.Smelter.retryImportJob" Library="$webresource:sanic_smlt_importjob_actions.js">
           <CrmParameter Value="PrimaryControl" />
@@ -45,17 +41,20 @@
   </CommandDefinitions>
   <RuleDefinitions>
     <TabDisplayRules />
-    <DisplayRules>
-      <DisplayRule Id="sanic.smlt.EjecutarImportJob.DisplayRule">
-        <ValueRule Field="sanic_smlt_ij_status" Value="0" Default="false" InvertResult="false" />
-      </DisplayRule>
-      <DisplayRule Id="sanic.smlt.ReintentarImportJob.DisplayRule">
-        <ValueRule Field="sanic_smlt_ij_status" Value="4" Default="false" InvertResult="false" />
-      </DisplayRule>
-    </DisplayRules>
+    <DisplayRules />
     <EnableRules>
       <EnableRule Id="sanic.sanic_tbl_smlt_importjob.FormStateEnableRule.EnableRule">
         <FormStateRule State="Create" InvertResult="true" />
+      </EnableRule>
+      <EnableRule Id="sanic.smlt.EjecutarImportJob.EnableRule">
+        <CustomRule FunctionName="Sanic.Smelter.canExecuteImportJob" Library="$webresource:sanic_smlt_importjob_actions.js" Default="false">
+          <CrmParameter Value="PrimaryControl" />
+        </CustomRule>
+      </EnableRule>
+      <EnableRule Id="sanic.smlt.ReintentarImportJob.EnableRule">
+        <CustomRule FunctionName="Sanic.Smelter.canRetryImportJob" Library="$webresource:sanic_smlt_importjob_actions.js" Default="false">
+          <CrmParameter Value="PrimaryControl" />
+        </CustomRule>
       </EnableRule>
     </EnableRules>
   </RuleDefinitions>
@@ -67,7 +66,7 @@
     </LocLabel>
     <LocLabel Id="sanic.smlt.EjecutarImportJob.Button.ToolTipDescription">
       <Titles>
-        <Title description="Corre PrepareImport + ProcessChunk hasta completar el job." languagecode="1033" />
+        <Title description="Pone el job en cola: el procesamiento corre en el servidor (Cloud Flow)." languagecode="1033" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.EjecutarImportJob.Button.ToolTipTitle">
@@ -82,7 +81,7 @@
     </LocLabel>
     <LocLabel Id="sanic.smlt.ReintentarImportJob.Button.ToolTipDescription">
       <Titles>
-        <Title description="Reintenta un job Fallido (vuelve a correr Prepare + ProcessChunk)." languagecode="1033" />
+        <Title description="Vuelve a encolar un job terminado (Completed, CompletedWithErrors o Failed); se re-procesa desde cero." languagecode="1033" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.ReintentarImportJob.Button.ToolTipTitle">

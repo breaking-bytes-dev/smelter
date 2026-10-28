@@ -10,6 +10,7 @@
         <tab verticallayout="true" id="{17061f27-5d35-4706-a274-0aec77dc2d0e}" IsUserDefined="1">
           <labels>
             <label description="General" languagecode="1033" />
+            <label description="General" languagecode="3082" />
           </labels>
           <columns>
             <column width="100%">
@@ -17,12 +18,14 @@
                 <section showlabel="false" showbar="false" IsUserDefined="0" id="{8adc49c9-9a71-4264-89e1-6213bffc35f2}">
                   <labels>
                     <label description="General" languagecode="1033" />
+                    <label description="General" languagecode="3082" />
                   </labels>
                   <rows>
                     <row>
                       <cell id="{399df9f0-1964-4eed-b86c-924f3223d6ab}">
                         <labels>
                           <label description="[CM] Name" languagecode="1033" />
+                          <label description="Nombre" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_name" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_cm_name" />
                       </cell>
@@ -31,6 +34,7 @@
                       <cell id="{8177c803-5b1a-4024-92bd-786a826de011}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[CM] Source Column" languagecode="1033" />
+                          <label description="Columna de origen" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_sourcecolumn" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_cm_sourcecolumn" disabled="false" />
                       </cell>
@@ -39,6 +43,7 @@
                       <cell id="{4e3e0324-51f7-46be-ba4b-7cd3b0453cef}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[CM] Target Column" languagecode="1033" />
+                          <label description="Columna destino" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_targetcolumn" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_cm_targetcolumn" disabled="false" />
                       </cell>
@@ -47,6 +52,7 @@
                       <cell id="{c55719c4-cd0c-4ae0-bfeb-8cab0b7c1007}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[CM] Data Type" languagecode="1033" />
+                          <label description="Tipo de dato" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_datatype" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_cm_datatype" disabled="false" />
                       </cell>
@@ -55,6 +61,7 @@
                       <cell id="{59839058-a74a-449d-9d04-aec38cbba39f}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[CM] Is Required" languagecode="1033" />
+                          <label description="Es obligatoria" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_isrequired" classid="{67FAC785-CD58-4F9F-ABB3-4B7DDC6ED5ED}" datafieldname="sanic_smlt_cm_isrequired" disabled="false" />
                       </cell>
@@ -63,6 +70,7 @@
                       <cell id="{d3825f5c-3356-40f9-861c-b3c2a1840f9e}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[CM] Default Value" languagecode="1033" />
+                          <label description="Valor por defecto" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_defaultvalue" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_cm_defaultvalue" disabled="false" />
                       </cell>
@@ -71,6 +79,7 @@
                       <cell id="{2e3f70d3-050a-4a23-bfe6-7de2ed8becf0}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[CM] Lookup Table" languagecode="1033" />
+                          <label description="Tabla del lookup" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_lookuptable" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_cm_lookuptable" disabled="false" />
                       </cell>
@@ -79,6 +88,7 @@
                       <cell id="{eed38921-1984-4451-aa52-f62c86d687e2}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[CM] Lookup Match Column" languagecode="1033" />
+                          <label description="Columna de coincidencia del lookup" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_lookupmatchcolumn" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_cm_lookupmatchcolumn" disabled="false" />
                       </cell>
@@ -87,6 +97,7 @@
                       <cell id="{0a3ec3dd-1c44-4392-8233-51ae1615d243}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[CM] Option Set Mapping" languagecode="1033" />
+                          <label description="Mapeo de opciones" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_optionsetmapping" classid="{E0DECE4B-6FC8-4A8F-A065-082708572369}" datafieldname="sanic_smlt_cm_optionsetmapping" disabled="false" />
                       </cell>
@@ -95,6 +106,7 @@
                       <cell id="{017048e1-67d2-42fa-a363-849acfddd0a9}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[CM] Transform Expression" languagecode="1033" />
+                          <label description="Expresión de transformación" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_cm_transformexpression" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_cm_transformexpression" disabled="false" />
                       </cell>

@@ -10,6 +10,7 @@
         <tab verticallayout="true" id="{7716f683-d402-486e-bf90-3cb85ef00a85}" IsUserDefined="1">
           <labels>
             <label description="General" languagecode="1033" />
+            <label description="General" languagecode="3082" />
           </labels>
           <columns>
             <column width="100%">
@@ -17,20 +18,23 @@
                 <section showlabel="false" showbar="false" IsUserDefined="0" id="{242280c5-bb80-40ed-9033-dd08ddf42851}">
                   <labels>
                     <label description="General" languagecode="1033" />
+                    <label description="General" languagecode="3082" />
                   </labels>
                   <rows>
                     <row>
                       <cell id="{d6532272-d7ba-4d76-820e-03bb8cf6119c}">
                         <labels>
                           <label description="[IT] Name" languagecode="1033" />
+                          <label description="Nombre" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_it_name" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_it_name" />
                       </cell>
                     </row>
                     <row>
-                      <cell id="{455a39f0-3ed5-47f9-a1b6-d62d13eaa322}" locklevel="0" colspan="1" rowspan="1">
+                      <cell id="{455a39f0-3ed5-47f9-a1b6-d62d13eaa322}" locklevel="0" colspan="1" rowspan="1" visible="false">
                         <labels>
                           <label description="[IT] Source Type" languagecode="1033" />
+                          <label description="Tipo de origen" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_it_sourcetype" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_it_sourcetype" disabled="false" />
                       </cell>
@@ -39,6 +43,7 @@
                       <cell id="{cdb5de80-449b-451f-85f4-d720ec0180ba}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IT] Has Header Row" languagecode="1033" />
+                          <label description="Tiene fila de encabezados" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_it_hasheaderrow" classid="{67FAC785-CD58-4F9F-ABB3-4B7DDC6ED5ED}" datafieldname="sanic_smlt_it_hasheaderrow" disabled="false" />
                       </cell>
@@ -47,6 +52,7 @@
                       <cell id="{168a91d5-a527-48eb-92b2-d861b07dd050}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IT] Delimiter" languagecode="1033" />
+                          <label description="Delimitador" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_it_delimiter" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_it_delimiter" disabled="false" />
                       </cell>
@@ -55,6 +61,7 @@
                       <cell id="{753a14e4-38ce-409f-b3ff-8560af41b1b4}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IT] Chunk Size" languagecode="1033" />
+                          <label description="Tamaño de chunk" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_it_chunksize" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_it_chunksize" disabled="false" />
                       </cell>
@@ -63,6 +70,7 @@
                       <cell id="{61ab2232-4bae-42bf-b918-0d1614afc84f}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IT] Description" languagecode="1033" />
+                          <label description="Descripción" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_it_description" classid="{E0DECE4B-6FC8-4A8F-A065-082708572369}" datafieldname="sanic_smlt_it_description" disabled="false" />
                       </cell>
@@ -71,6 +79,7 @@
                       <cell id="{bbcc6718-8c15-4467-b360-140c43bda6e3}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="[IT] Status" languagecode="1033" />
+                          <label description="Estado" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_it_status" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_it_status" disabled="false" />
                       </cell>
@@ -87,6 +96,7 @@
                       <cell locklevel="0" id="{4ce1ba01-4f01-4f31-839c-a1a20617094b}" rowspan="4" colspan="1" auto="false">
                         <labels>
                           <label description="Table mappings" languagecode="1033" />
+                          <label description="Mappings de tabla" languagecode="3082" />
                         </labels>
                         <control indicationOfSubgrid="true" id="Subgrid_new_1" classid="{E7A81278-8635-4D9E-8D4D-59480B391C5B}">
                           <parameters>
@@ -111,6 +121,7 @@
                       <cell locklevel="0" id="{22cf7573-f3a3-4276-9ed9-a9cbff9bcd63}" rowspan="4" colspan="1" auto="false">
                         <labels>
                           <label description="Relationship mappings" languagecode="1033" />
+                          <label description="Mappings de relación" languagecode="3082" />
                         </labels>
                         <control indicationOfSubgrid="true" id="Subgrid_new_2" classid="{E7A81278-8635-4D9E-8D4D-59480B391C5B}">
                           <parameters>

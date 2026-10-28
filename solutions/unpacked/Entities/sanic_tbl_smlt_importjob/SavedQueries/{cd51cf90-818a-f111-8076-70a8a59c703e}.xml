@@ -34,10 +34,12 @@
     </fetchxml>
     <IntroducedVersion>1.0.0.0</IntroducedVersion>
     <LocalizedNames>
-      <LocalizedName description="Todos los Jobs" languagecode="1033" />
+      <LocalizedName description="All jobs" languagecode="1033" />
+      <LocalizedName description="Todos los jobs" languagecode="3082" />
     </LocalizedNames>
     <Descriptions>
-      <Description description="Todos los Import Jobs, sin filtro, orden descendente por fecha de creación." languagecode="1033" />
+      <Description description="All Import Jobs, unfiltered, newest first." languagecode="1033" />
+      <Description description="Todos los Import Jobs, sin filtro, orden descendente por fecha de creación." languagecode="3082" />
     </Descriptions>
   </savedquery>
 </savedqueries>

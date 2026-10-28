@@ -23,6 +23,7 @@
                       <cell id="{da734640-8ef8-4b93-a1e6-ea8bdb5d93eb}">
                         <labels>
                           <label description="[TM] Name" languagecode="1033" />
+                          <label description="Nombre" languagecode="3082" />
                         </labels>
                         <control id="sanic_smlt_tm_name" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_tm_name" />
                       </cell>

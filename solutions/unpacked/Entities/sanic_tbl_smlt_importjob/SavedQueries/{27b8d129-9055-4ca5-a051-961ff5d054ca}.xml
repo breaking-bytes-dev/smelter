@@ -11,6 +11,7 @@
       <grid name="resultset" jump="sanic_smlt_ij_name" select="1" icon="1" preview="1">
         <row name="result" id="sanic_tbl_smlt_importjobid">
           <cell name="sanic_smlt_ij_name" width="300" />
+          <cell name="sanic_smlt_ij_status" width="150" />
           <cell name="sanic_smlt_ij_totalrows" width="127" />
           <cell name="sanic_smlt_ij_successcount" width="145" />
           <cell name="sanic_smlt_ij_failedcount" width="123" />
@@ -29,6 +30,7 @@
         <entity name="sanic_tbl_smlt_importjob">
           <attribute name="sanic_tbl_smlt_importjobid" />
           <attribute name="sanic_smlt_ij_name" />
+          <attribute name="sanic_smlt_ij_status" />
           <attribute name="createdon" />
           <order attribute="sanic_smlt_ij_name" descending="false" />
           <filter type="and">

@@ -9,6 +9,8 @@
   <EntityRelationship Name="FileAttachment_sanic_tbl_smlt_importjob_sanic_smlt_ij_sourcefile" />
   <EntityRelationship Name="lk_sanic_tbl_smlt_columnmapping_createdby" />
   <EntityRelationship Name="lk_sanic_tbl_smlt_columnmapping_modifiedby" />
+  <EntityRelationship Name="lk_sanic_tbl_smlt_hmackey_createdby" />
+  <EntityRelationship Name="lk_sanic_tbl_smlt_hmackey_modifiedby" />
   <EntityRelationship Name="lk_sanic_tbl_smlt_importjob_createdby" />
   <EntityRelationship Name="lk_sanic_tbl_smlt_importjob_modifiedby" />
   <EntityRelationship Name="lk_sanic_tbl_smlt_importjoblog_createdby" />
@@ -19,6 +21,7 @@
   <EntityRelationship Name="lk_sanic_tbl_smlt_relationshipmapping_modifiedby" />
   <EntityRelationship Name="lk_sanic_tbl_smlt_tablemapping_createdby" />
   <EntityRelationship Name="lk_sanic_tbl_smlt_tablemapping_modifiedby" />
+  <EntityRelationship Name="organization_sanic_tbl_smlt_hmackey" />
   <EntityRelationship Name="owner_sanic_tbl_smlt_columnmapping" />
   <EntityRelationship Name="owner_sanic_tbl_smlt_importjob" />
   <EntityRelationship Name="owner_sanic_tbl_smlt_importjoblog" />
