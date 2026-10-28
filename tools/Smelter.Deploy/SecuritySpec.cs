@@ -103,6 +103,8 @@ internal static class SecuritySpec
     internal const string AppModuleUniqueName = "sanic_MDASMLTImportConfigurationdandMoni";
 
     // ── Vistas custom de Import Job (Requirement "Vistas custom de Import Job", smelter-mda-ux) ─
+    // Name/Description son el valor BASE (1033, inglés); la traducción 3082 (y el nombre legacy en español con el que nacieron
+    // en Dev, que UpsertViews renombra) viven en ViewLabelsSpec.cs.
     // Status: Queued=0 ("Pendiente"/"Preparando"), Processing=1 ("En Progreso") — ver
     // src/Smelter.Core/Models/ImportJobStatus.cs (contrato con el optionset real vía ChoicesContractTests).
     private const string ImportJobGridColumns =
@@ -145,8 +147,8 @@ internal static class SecuritySpec
         """;
 
     internal static readonly ViewSpec ActiveJobsView = new(
-        Name: "Jobs Activos",
-        Description: "Import Jobs en estado Queued (Pendiente) o Processing (En Progreso).",
+        Name: "Active jobs",
+        Description: "Import Jobs in Queued or Processing status.",
         FetchXml: ImportJobFetchXml(
             """
             <filter type="or">
@@ -157,8 +159,8 @@ internal static class SecuritySpec
         LayoutXml: ImportJobLayoutXml());
 
     internal static readonly ViewSpec CompletedWithErrorsView = new(
-        Name: "Completados con Errores",
-        Description: "Import Jobs con al menos una fila fallida (failedcount > 0).",
+        Name: "Completed with errors",
+        Description: "Import Jobs with at least one failed row (failedcount > 0).",
         FetchXml: ImportJobFetchXml(
             """
             <filter type="and">
@@ -168,8 +170,8 @@ internal static class SecuritySpec
         LayoutXml: ImportJobLayoutXml());
 
     internal static readonly ViewSpec AllJobsView = new(
-        Name: "Todos los Jobs",
-        Description: "Todos los Import Jobs, sin filtro, orden descendente por fecha de creación.",
+        Name: "All jobs",
+        Description: "All Import Jobs, unfiltered, newest first.",
         FetchXml: ImportJobFetchXml(filterXml: ""),
         LayoutXml: ImportJobLayoutXml());
 

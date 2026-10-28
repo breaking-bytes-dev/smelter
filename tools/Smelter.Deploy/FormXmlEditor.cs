@@ -114,7 +114,7 @@ internal static class FormXmlEditor
     /// subgrid; devuelve <c>false</c> si ya existe o si el form no tiene pestañas.
     /// </summary>
     internal static bool TryAddSubgridTab(XDocument doc, string tabLabel, string subgridId, string relationshipName,
-        string targetEntity, string viewId)
+        string targetEntity, string viewId, string? tabLabelEs = null)
     {
         if (doc.Descendants("control").Any(c => string.Equals((string?)c.Attribute("id"), subgridId, StringComparison.OrdinalIgnoreCase)))
             return false;
@@ -124,8 +124,14 @@ internal static class FormXmlEditor
             return false;
 
         static string NewId() => "{" + Guid.NewGuid().ToString("D") + "}";
-        static XElement Labels(string text) =>
-            new("labels", new XElement("label", new XAttribute("description", text), new XAttribute("languagecode", "1033")));
+        // 1033 (inglés) y, si se pasa, 3082 (español): el usuario ve el idioma de su interfaz.
+        XElement Labels(string text)
+        {
+            var labels = new XElement("labels", new XElement("label", new XAttribute("description", text), new XAttribute("languagecode", "1033")));
+            if (tabLabelEs is not null)
+                labels.Add(new XElement("label", new XAttribute("description", tabLabelEs), new XAttribute("languagecode", "3082")));
+            return labels;
+        }
 
         const int rowSpan = 8;
         var rows = new XElement("rows",
@@ -167,6 +173,47 @@ internal static class FormXmlEditor
                             rows)))));
 
         lastTab.AddAfterSelf(tab);
+        return true;
+    }
+
+    /// <summary>
+    /// Deja las etiquetas de pestañas, secciones y celdas de subgrid cuyo texto 1033 sea <paramref name="english"/> (o el
+    /// <paramref name="legacyEnglish"/> con el que nacieron, p.ej. un texto en español bajo 1033) con
+    /// <c>&lt;label languagecode="1033"&gt;</c> = inglés y <c>&lt;label languagecode="3082"&gt;</c> = español. No toca las
+    /// etiquetas de campos. Devuelve <c>false</c> si no hay nada que cambiar (o no hay ningún elemento con ese texto).
+    /// </summary>
+    internal static bool TrySetLabels(XDocument doc, string english, string spanish, string? legacyEnglish = null)
+    {
+        var changed = false;
+        var targets = doc.Descendants().Where(e =>
+            e.Name.LocalName is "tab" or "section"
+            || (e.Name.LocalName == "cell" && e.Descendants("control").Any(c => (string?)c.Attribute("indicationOfSubgrid") == "true")));
+
+        foreach (var element in targets)
+        {
+            var labels = element.Element("labels");
+            var current = labels?.Elements("label").FirstOrDefault(l => (string?)l.Attribute("languagecode") == "1033");
+            var text = (string?)current?.Attribute("description");
+            if (labels is null || text is null || (text != english && text != legacyEnglish))
+                continue;
+
+            changed |= EnsureLabel(labels, "1033", english);
+            changed |= EnsureLabel(labels, "3082", spanish);
+        }
+        return changed;
+    }
+
+    private static bool EnsureLabel(XElement labels, string languageCode, string text)
+    {
+        var label = labels.Elements("label").FirstOrDefault(l => (string?)l.Attribute("languagecode") == languageCode);
+        if (label is null)
+        {
+            labels.Add(new XElement("label", new XAttribute("description", text), new XAttribute("languagecode", languageCode)));
+            return true;
+        }
+        if ((string?)label.Attribute("description") == text)
+            return false;
+        label.SetAttributeValue("description", text);
         return true;
     }
 

@@ -50,21 +50,47 @@ public class ColumnDescriptionsSpecContractTests
     }
 
     [Fact]
-    public void Descriptions_AreShortSpanishTextsOnExistingSmelterTables()
+    public void Descriptions_AreShortBilingualTextsOnExistingSmelterTables()
     {
-        foreach (var d in ColumnDescriptionsCatalogo.Descriptions)
+        foreach (var d in ColumnDescriptionsCatalogo.All)
         {
             SecuritySpec.Tables.All.Should().Contain(d.Entity);
             d.Column.Should().StartWith("sanic_smlt_");
-            d.Text.Should().NotBeNullOrWhiteSpace();
-            d.Text.Length.Should().BeLessThanOrEqualTo(400, $"{d.Column}: 1-2 líneas");
+            d.Text.En.Should().NotBeNullOrWhiteSpace(d.Column);
+            d.Text.Es.Should().NotBeNullOrWhiteSpace(d.Column);
+            d.Text.En.Should().NotBe(d.Text.Es, $"{d.Column}: el inglés (1033) tiene que ser una traducción, no el mismo texto");
+            d.Text.En.Length.Should().BeLessThanOrEqualTo(400, $"{d.Column}: 1-2 líneas");
+            d.Text.Es.Length.Should().BeLessThanOrEqualTo(400, $"{d.Column}: 1-2 líneas");
         }
+    }
+
+    [Fact]
+    public void EnglishTexts_AreNotLeftInSpanish()
+    {
+        // Heurística: el inglés no debe llevar signos ni palabras típicas del español.
+        string[] spanishMarks = ["ñ", "¿", "¡", " del ", " los ", " las ", " para ", " con "];
+        foreach (var d in ColumnDescriptionsCatalogo.All)
+        {
+            var en = " " + d.Text.En.ToLowerInvariant() + " ";
+            spanishMarks.Where(m => en.Contains(m)).Should()
+                .BeEmpty($"{d.Column}: el texto 1033 parece español: {d.Text.En}");
+        }
+    }
+
+    [Fact]
+    public void AddedColumnDescriptions_CoverExactlyTheColumnsOfTheAdditionsSpec_AndAreIncludedInAll()
+    {
+        ColumnDescriptionsCatalogo.AddedColumnDescriptions.Select(d => (d.Entity, d.Column)).Should()
+            .BeEquivalentTo(SchemaAdditionsCatalogo.Columns.Select(c => (c.EntityLogicalName, c.SchemaName)));
+        ColumnDescriptionsCatalogo.All.Should().HaveCount(
+            ColumnDescriptionsCatalogo.Descriptions.Length + ColumnDescriptionsCatalogo.AddedColumnDescriptions.Length);
+        ColumnDescriptionsCatalogo.All.Select(d => (d.Entity, d.Column)).Should().OnlyHaveUniqueItems();
     }
 
     [Fact]
     public void KeyColumns_ExplainTheirSemantics()
     {
-        string Text(string col) => ColumnDescriptionsCatalogo.Descriptions.Single(d => d.Column == col).Text;
+        string Text(string col) => ColumnDescriptionsCatalogo.Descriptions.Single(d => d.Column == col).Text.Es;
 
         Text("sanic_smlt_tm_dedupcolumns").Should().Contain("DESTINO");
         Text("sanic_smlt_rm_parentdedupcolumns").Should().Contain("CSV");
@@ -75,6 +101,17 @@ public class ColumnDescriptionsSpecContractTests
     }
 
     [Fact]
+    public void KeyColumns_ExplainTheirSemanticsInEnglishToo()
+    {
+        string En(string col) => ColumnDescriptionsCatalogo.Descriptions.Single(d => d.Column == col).Text.En;
+
+        En("sanic_smlt_tm_dedupcolumns").Should().Contain("TARGET");
+        En("sanic_smlt_ij_processingbatch").Should().Contain("Offset");
+        En("sanic_smlt_it_chunksize").Should().Contain("1000").And.Contain("100").And.Contain("10000");
+        En("sanic_smlt_it_delimiter").Should().Contain("TAB");
+    }
+
+    [Fact]
     public void ChunkSize_IsBoundedTo0Through10000_BySchemaTuning()
     {
         var tune = SchemaTuningCatalogo.Attributes.Single(a => a.Attribute == "sanic_smlt_it_chunksize");
@@ -82,6 +119,16 @@ public class ColumnDescriptionsSpecContractTests
         tune.Entity.Should().Be(SecuritySpec.Tables.ImportTemplate);
         tune.IntMin.Should().Be(0, "0 = usar el default del sistema (1000)");
         tune.IntMax.Should().Be(10000);
+    }
+
+    [Fact]
+    public void BilingualDescription_NeedsUpdate_WhenEitherLanguageDiffers()
+    {
+        var wanted = new Bilingual("en", "es");
+        ColumnDescriptionsCatalogo.NeedsUpdate((Microsoft.Xrm.Sdk.Label?)null, wanted).Should().BeTrue();
+        ColumnDescriptionsCatalogo.NeedsUpdate(wanted.ToLabel(), wanted).Should().BeFalse();
+        ColumnDescriptionsCatalogo.NeedsUpdate(new Microsoft.Xrm.Sdk.Label("en", 1033), wanted).Should().BeTrue("falta el 3082");
+        ColumnDescriptionsCatalogo.NeedsUpdate(new Bilingual("viejo", "es").ToLabel(), wanted).Should().BeTrue("el 1033 difiere");
     }
 
     [Fact]

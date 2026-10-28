@@ -14,10 +14,10 @@ internal static class ColumnDescriptionsProvisioner
 {
     internal static void Run(ServiceClient client)
     {
-        Console.WriteLine("[4i] ColumnDescriptionsProvisioner: Description de columnas (ColumnDescriptionsSpec.cs) ...");
+        Console.WriteLine("[4i] ColumnDescriptionsProvisioner: Description de columnas, 1033 + 3082 (ColumnDescriptionsSpec.cs) ...");
 
         var updated = 0;
-        foreach (var porEntidad in ColumnDescriptionsCatalogo.Descriptions.GroupBy(d => d.Entity))
+        foreach (var porEntidad in ColumnDescriptionsCatalogo.All.GroupBy(d => d.Entity))
         {
             var touched = 0;
             foreach (var spec in porEntidad)
@@ -29,10 +29,11 @@ internal static class ColumnDescriptionsProvisioner
                     RetrieveAsIfPublished = true,
                 })).AttributeMetadata;
 
-                if (!ColumnDescriptionsCatalogo.NeedsUpdate(CurrentDescription(attribute), spec.Text))
+                if (!ColumnDescriptionsCatalogo.NeedsUpdate(attribute.Description, spec.Text))
                     continue;
 
-                attribute.Description = new Label(spec.Text, ColumnDescriptionsCatalogo.LanguageCode);
+                // 1033 (inglés, base) + 3082 (español); MergeLabels conserva cualquier otro idioma.
+                attribute.Description = spec.Text.ToLabel();
                 client.Execute(new UpdateAttributeRequest { EntityName = spec.Entity, Attribute = attribute, MergeLabels = true });
                 Console.WriteLine($"[4i]   {spec.Entity}.{spec.Column}: Description actualizada.");
                 touched++;
@@ -50,8 +51,8 @@ internal static class ColumnDescriptionsProvisioner
         }
 
         Console.WriteLine(updated == 0
-            ? $"[4i] Descriptions OK: las {ColumnDescriptionsCatalogo.Descriptions.Length} ya estaban — nada que hacer."
-            : $"[4i] Descriptions OK: {updated} de {ColumnDescriptionsCatalogo.Descriptions.Length} actualizadas.");
+            ? $"[4i] Descriptions OK: las {ColumnDescriptionsCatalogo.All.Count()} ya estaban — nada que hacer."
+            : $"[4i] Descriptions OK: {updated} de {ColumnDescriptionsCatalogo.All.Count()} actualizadas.");
     }
 
     internal static string? CurrentDescription(AttributeMetadata attribute) =>

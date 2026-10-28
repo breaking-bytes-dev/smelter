@@ -125,7 +125,7 @@ public class SecuritySpecContractTests
     public void Views_ThreeViewsDefined_WithDistinctFetchXmlAndImportJobEntity()
     {
         SecuritySpec.Views.Should().HaveCount(3);
-        SecuritySpec.Views.Select(v => v.Name).Should().BeEquivalentTo("Jobs Activos", "Completados con Errores", "Todos los Jobs");
+        SecuritySpec.Views.Select(v => v.Name).Should().BeEquivalentTo("Active jobs", "Completed with errors", "All jobs");
         SecuritySpec.Views.Select(v => v.FetchXml).Distinct().Should().HaveCount(3);
         SecuritySpec.Views.Should().OnlyContain(v => v.FetchXml.Contains($"<entity name=\"{SecuritySpec.Tables.ImportJob}\">"));
     }

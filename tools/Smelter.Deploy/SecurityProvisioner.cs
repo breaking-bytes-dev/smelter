@@ -327,7 +327,8 @@ internal static class SecurityProvisioner
                 {
                     Conditions =
                     {
-                        new ConditionExpression("name", ConditionOperator.Equal, view.Name),
+                        // Nombre actual (inglés) o legacy (español, ViewLabelsSpec.cs): así se renombra en vez de duplicar.
+                        new ConditionExpression("name", ConditionOperator.In, ViewLabelsCatalogo.KnownNames(view).Cast<object>().ToArray()),
                         new ConditionExpression("returnedtypecode", ConditionOperator.Equal, SecuritySpec.Tables.ImportJob),
                     },
                 },
@@ -337,6 +338,7 @@ internal static class SecurityProvisioner
             {
                 client.Update(new Entity("savedquery", existentes[0].Id)
                 {
+                    ["name"] = view.Name,
                     ["description"] = view.Description,
                     ["fetchxml"] = view.FetchXml,
                     ["layoutxml"] = layoutXml,
@@ -478,19 +480,19 @@ internal static class SecurityProvisioner
             return;
         }
 
+        // Sin <Titles> ni VectorIcon: los completa SiteMapCatalogo.Apply (títulos 1033 + 3082 e ícono) justo abajo.
         var subArea = new System.Xml.Linq.XElement("SubArea",
             new System.Xml.Linq.XAttribute("Id", subAreaId),
             new System.Xml.Linq.XAttribute("Url", $"/main.aspx?pagetype=dashboard&id=%7b{dashboardId:D}%7d"),
-            new System.Xml.Linq.XAttribute("AvailableOffline", "false"),
-            new System.Xml.Linq.XElement("Titles",
-                new System.Xml.Linq.XElement("Title",
-                    new System.Xml.Linq.XAttribute("LCID", "1033"),
-                    new System.Xml.Linq.XAttribute("Title", SiteMapCatalogo.Labels.Single(l => l.Id == subAreaId).Title))));
+            new System.Xml.Linq.XAttribute("AvailableOffline", "false"));
 
         // Append al FINAL del Group: el XSD del sitemap exige <Titles> del grupo primero y
         // después los <SubArea> — AddFirst lo rompía ("Group has invalid child element Titles",
         // run 30361175930).
         targetGroup.Add(subArea);
+
+        var (labeledXml, _) = SiteMapCatalogo.Apply(doc.ToString());
+        doc = System.Xml.Linq.XDocument.Parse(labeledXml);
 
         client.Update(new Entity("sitemap", sitemap.Id) { ["sitemapxml"] = doc.ToString() });
         Console.WriteLine($"[6]   sitemap: entrada '{SecuritySpec.DashboardName}' agregada.");

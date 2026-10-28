@@ -126,8 +126,20 @@ try
     // ── [POLISH] Forms y vistas según FormPolishSpec (job read-only + logs, log form, filtro del RM) ──
     FormPolishAssertions.RunAll(client);
 
-    // ── [SITEMAP] Etiquetas de la MDA en español, sin prefijos técnicos (SiteMapSpec.cs) ──
+    // ── [SITEMAP] Etiquetas de la MDA bilingües (1033 inglés + 3082 español), sin prefijos técnicos, con VectorIcon (SiteMapSpec.cs) ──
     SiteMapAssertions.RunAll(client);
+
+    // ── [SOLNAME] Friendly name de la solución (SolutionNameSpec.cs) ──
+    SolutionNameAssertions.RunAll(client);
+
+    // ── [ICONS] Web resources SVG en la solución, IconVectorName de las tablas e ícono de la app (IconsSpec.cs) ──
+    IconsAssertions.RunAll(client);
+
+    // ── [LABELS] Nombres 3082 de tablas, columnas y opciones locales (TableLabelsSpec.cs) ──
+    TableLabelsAssertions.RunAll(client);
+
+    // ── [VIEWS] Nombres 1033 + 3082 de las vistas custom del Import Job y del dashboard (ViewLabelsSpec.cs) ──
+    ViewLabelsAssertions.RunAll(client);
 
     // ── [HMAC] Tabla de keys HMAC según HmacKeyTableSpec (incluye column security) ──
     HmacKeyAssertions.RunAll(client);

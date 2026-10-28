@@ -129,9 +129,70 @@ public class FormPolishSpecContractTests
     }
 
     [Fact]
-    public void Apply_OnATableWithoutSpec_ReturnsNothing()
+    public void Apply_OnATableWithoutFieldEdits_OnlyTranslatesLabels()
     {
-        FormPolishCatalogo.Apply(MainForm(SecuritySpec.Tables.ColumnMapping), SecuritySpec.Tables.ColumnMapping).Should().BeEmpty();
+        var applied = FormPolishCatalogo.Apply(MainForm(SecuritySpec.Tables.ColumnMapping), SecuritySpec.Tables.ColumnMapping);
+
+        applied.Should().OnlyContain(l => l.StartsWith("etiqueta "), "Column Mapping no tiene ediciones de campos, solo etiquetas bilingües");
+    }
+
+    private static IEnumerable<(string? Lcid, string? Text)> LabelsOf(XElement element) =>
+        element.Element("labels")!.Elements("label").Select(l => ((string?)l.Attribute("languagecode"), (string?)l.Attribute("description")));
+
+    [Fact]
+    public void Tabs_AndSections_GetEnglishUnder1033AndSpanishUnder3082()
+    {
+        var doc = MainForm(SecuritySpec.Tables.ImportTemplate);
+
+        FormPolishCatalogo.Apply(doc, SecuritySpec.Tables.ImportTemplate);
+
+        foreach (var spec in FormPolishCatalogo.Labels.Where(l => l.Entity == SecuritySpec.Tables.ImportTemplate))
+        {
+            var holders = doc.Descendants().Where(e => e.Name.LocalName is "tab" or "section" or "cell" && e.Element("labels") != null
+                && LabelsOf(e).Any(l => l.Lcid == "1033" && l.Text == spec.Label.En)).ToList();
+            holders.Should().NotBeEmpty($"'{spec.Label.En}' existe en el form del template");
+            foreach (var h in holders)
+                LabelsOf(h).Should().Contain(("1033", spec.Label.En)).And.Contain(("3082", spec.Label.Es));
+        }
+    }
+
+    [Fact]
+    public void ImportJobForm_LogsTab_IsCreatedBilingual()
+    {
+        var doc = MainForm(SecuritySpec.Tables.ImportJob);
+
+        FormPolishCatalogo.Apply(doc, SecuritySpec.Tables.ImportJob);
+
+        var tab = doc.Descendants("tab").Last();
+        LabelsOf(tab).Should().Equal(("1033", "Import logs"), ("3082", "Logs de importación"));
+        tab.Descendants("section").Single().Element("labels")!.Elements("label").Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ImportJobForm_LegacySpanishLogsTab_IsRelabeledNotDuplicated()
+    {
+        // Estado de Dev antes de este cambio: la pestaña existe con el texto español bajo 1033.
+        var doc = MainForm(SecuritySpec.Tables.ImportJob);
+        var s = FormPolishCatalogo.Subgrids.Single();
+        FormXmlEditor.TryAddSubgridTab(doc, "Logs de importación", s.SubgridId, s.Relationship, s.TargetEntity, s.ViewId).Should().BeTrue();
+        doc.Descendants("tab").Count(t => LabelsOf(t).Any(l => l.Text == "Logs de importación")).Should().Be(1);
+
+        FormPolishCatalogo.Apply(doc, SecuritySpec.Tables.ImportJob);
+
+        doc.Descendants("control").Count(c => (string?)c.Attribute("indicationOfSubgrid") == "true").Should().Be(1);
+        var tab = doc.Descendants("tab").Last();
+        LabelsOf(tab).Should().Equal(("1033", "Import logs"), ("3082", "Logs de importación"));
+        var cell = tab.Descendants("cell").Single();
+        LabelsOf(cell).Should().Equal(("1033", "Import logs"), ("3082", "Logs de importación"));
+        FormPolishCatalogo.Apply(doc, SecuritySpec.Tables.ImportJob).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Labels_TargetOnlyEntitiesWithAMainForm_AndHaveBothTexts()
+    {
+        FormPolishCatalogo.Labels.Should().OnlyContain(l => SecuritySpec.Tables.All.Contains(l.Entity));
+        FormPolishCatalogo.Labels.Should().OnlyContain(l => !string.IsNullOrWhiteSpace(l.Label.En) && !string.IsNullOrWhiteSpace(l.Label.Es));
+        FormPolishCatalogo.FormEntities.Should().Contain(FormPolishCatalogo.Labels.Select(l => l.Entity));
     }
 
     [Fact]

@@ -133,8 +133,18 @@ ColumnDescriptionsProvisioner.Run(client);
 // ── 4j. Forms y vistas (FormPolishSpec.cs): job read-only + logs, log form, filtro de lookups del RM, errorcategory en la vista ──
 FormPolishProvisioner.Run(client);
 
-// ── 4k. Etiquetas de la MDA en español (SiteMapSpec.cs): títulos del sitemap + nombre de la app ──
+// ── 4k. Etiquetas e íconos de la MDA (SiteMapSpec.cs): títulos 1033 (inglés) + 3082 (español) y VectorIcon del sitemap + nombre de la app ──
 SiteMapProvisioner.Run(client);
+
+// ── 4l. Friendly name de la solución (SolutionNameSpec.cs): "SMLT | Core | Smelter" ──
+SolutionNameProvisioner.Run(client);
+
+// ── 4m. Íconos (IconsSpec.cs): web resources SVG en la solución + IconVectorName de las tablas + ícono de la app.
+//        (El VectorIcon del sitemap, 4k, es solo un atributo del XML: los web resources se publican acá y en el [5].) ──
+IconsProvisioner.Run(client);
+
+// ── 4n. Nombres en español (3082) de tablas, columnas y opciones locales (TableLabelsSpec.cs); el 1033 no se toca ──
+TableLabelsProvisioner.Run(client);
 
 // ── 5. Publicar: refresca la metadata OData del Web API ────────────────────
 Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del Web API) ...");
@@ -143,6 +153,10 @@ Console.WriteLine("[5]   PublishAllXml OK.");
 
 // ── 6. Seguridad + UX (roles, cascade, ExecutePrivilegeName, MDA, vistas, ribbon, dashboard) ──
 SecurityProvisioner.Run(client);
+
+// ── 6a. Nombres 1033 + 3082 de las vistas custom del Import Job y del dashboard (ViewLabelsSpec.cs): van DESPUÉS del [6],
+//        que es quien crea/renombra las vistas y enlaza el dashboard ──
+ViewLabelsProvisioner.Run(client);
 
 // ── 7. Cloud Flow: rename aditivo de processchunk (Fase 6) — anic_... → sanic_..., sin ventana rota ──
 CloudFlowUpdater.UpdateProcessChunkReference(client);

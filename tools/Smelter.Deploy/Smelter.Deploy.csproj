@@ -21,6 +21,8 @@
          embebidos en el assembly: SecurityProvisioner los lee vía GetManifestResourceStream, sin
          depender del working directory del proceso que corre el deploy (CI vs local). -->
     <EmbeddedResource Include="Assets\*" />
+    <!-- Íconos SVG de la MDA/tablas (IconsSpec.cs): se leen con AssetLoader.ReadText("icons.<archivo>"). -->
+    <EmbeddedResource Include="Assets\icons\*.svg" />
   </ItemGroup>
 
   <ItemGroup>

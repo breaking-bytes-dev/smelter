@@ -14,7 +14,7 @@
 //
 // Column Mapping pertenece a UN Table Mapping (no a un template): el filtro no aplica.
 // NO se tocan display names de tablas ni columnas (otras canvas apps los usan en Power Fx): solo labels de controles
-// nuevos dentro del form.
+// nuevos dentro del form y las etiquetas de pestañas/secciones, que son bilingües (1033 inglés + 3082 español, Labels).
 
 using System.Xml.Linq;
 
@@ -24,8 +24,11 @@ internal sealed record FormReadOnlySpec(string Entity, string Field, string Reas
 
 internal sealed record FormFieldAddSpec(string Entity, string AfterField, string Field, string Label, string ClassId, bool ReadOnly);
 
-internal sealed record FormSubgridSpec(string Entity, string TabLabel, string SubgridId, string Relationship,
+internal sealed record FormSubgridSpec(string Entity, Bilingual TabLabel, string SubgridId, string Relationship,
     string TargetEntity, string ViewId);
+
+/// <summary>Etiqueta bilingüe de una pestaña/sección del main form, ubicada por su texto 1033 (o el legacy con el que nació).</summary>
+internal sealed record FormLabelSpec(string Entity, Bilingual Label, string? LegacyEnglish = null);
 
 internal sealed record FormLookupFilterSpec(string Entity, string Field, string FilterRelationship, string DependentAttribute);
 
@@ -81,7 +84,7 @@ internal static class FormPolishCatalogo
 
     internal static readonly FormSubgridSpec[] Subgrids =
     [
-        new(Job, "Logs de importación", "Subgrid_importjoblogs", JobToLogsRelationship, Log, LogDefaultViewId),
+        new(Job, new("Import logs", "Logs de importación"), "Subgrid_importjoblogs", JobToLogsRelationship, Log, LogDefaultViewId),
     ];
 
     /// <summary>Relación Table Mapping → Import Template (la que comparten el mapping y la relación a filtrar).</summary>
@@ -99,12 +102,31 @@ internal static class FormPolishCatalogo
         new(Log, Guid.Parse("6752f00a-34e0-43fd-ba73-9a9cbec00991"), "sanic_smlt_ijl_status", "sanic_smlt_ijl_errorcategory", 130),
     ];
 
+    // Etiquetas de pestañas y secciones en los dos idiomas (1033 inglés, 3082 español). Las pestañas/secciones que trae el
+    // form de fábrica ("General", los subgrids del template y del table mapping) ya estaban en inglés bajo 1033: solo ganan el
+    // 3082. La pestaña "Logs de importación" nació en español bajo 1033: LegacyEnglish la reconoce y la pasa a inglés.
+    // NO toca las etiquetas de los campos (siguen el display name de la columna).
+    internal static readonly FormLabelSpec[] Labels =
+    [
+        new(SecuritySpec.Tables.ImportTemplate, new("General", "General")),
+        new(SecuritySpec.Tables.ImportTemplate, new("Table mappings", "Mappings de tabla")),
+        new(SecuritySpec.Tables.ImportTemplate, new("Relationship mappings", "Mappings de relación")),
+        new(SecuritySpec.Tables.TableMapping, new("General", "General")),
+        new(SecuritySpec.Tables.TableMapping, new("Column Mappings", "Mappings de columna")),
+        new(SecuritySpec.Tables.ColumnMapping, new("General", "General")),
+        new(SecuritySpec.Tables.RelationshipMapping, new("General", "General")),
+        new(Job, new("General", "General")),
+        new(Job, new("Import logs", "Logs de importación"), LegacyEnglish: "Logs de importación"),
+        new(Log, new("General", "General")),
+    ];
+
     /// <summary>Entidades con ediciones de form (para que el provisioner/verify sepan qué forms tocar).</summary>
     internal static IEnumerable<string> FormEntities =>
         ReadOnlyFields.Select(f => f.Entity)
             .Concat(AddedFields.Select(f => f.Entity))
             .Concat(Subgrids.Select(f => f.Entity))
             .Concat(LookupFilters.Select(f => f.Entity))
+            .Concat(Labels.Select(f => f.Entity))
             .Distinct();
 
     /// <summary>
@@ -128,8 +150,12 @@ internal static class FormPolishCatalogo
                 applied.Add($"{f.Field} filtrado por {f.DependentAttribute}");
 
         foreach (var s in Subgrids.Where(g => g.Entity == entity))
-            if (FormXmlEditor.TryAddSubgridTab(doc, s.TabLabel, s.SubgridId, s.Relationship, s.TargetEntity, s.ViewId))
-                applied.Add($"pestaña '{s.TabLabel}' con subgrid {s.SubgridId}");
+            if (FormXmlEditor.TryAddSubgridTab(doc, s.TabLabel.En, s.SubgridId, s.Relationship, s.TargetEntity, s.ViewId, s.TabLabel.Es))
+                applied.Add($"pestaña '{s.TabLabel.En}' / '{s.TabLabel.Es}' con subgrid {s.SubgridId}");
+
+        foreach (var l in Labels.Where(l => l.Entity == entity))
+            if (FormXmlEditor.TrySetLabels(doc, l.Label.En, l.Label.Es, l.LegacyEnglish))
+                applied.Add($"etiqueta '{l.Label.En}' en 1033 + '{l.Label.Es}' en 3082");
 
         return applied;
     }

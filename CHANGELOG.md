@@ -6,6 +6,41 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+### Added (UI bilingüe 1033/3082, íconos y nombre de la solución; solo DEV, `Smelter.Deploy` 4k-4n y 6a)
+- **Etiquetas bilingües: inglés bajo LCID 1033 (idioma base de la org, el que leen las canvas apps) y español bajo 3082.**
+  Antes la MDA tenía el español escrito bajo 1033. Cada usuario ve el idioma de su interfaz (si no tiene 3082, el 1033). Nuevo
+  record compartido `Bilingual(En, Es)` + `Lcids`, `LabelEditor` (edita solo el 3082 de un `Label`, el 1033 existente no se
+  toca) y `LocLabels` (`RetrieveLocLabels`/`SetLocLabels` para atributos de registros). Los mensajes que guardan plugins/flow
+  (motivos de falla, validaciones, logs) siguen en inglés.
+  - **4k `SiteMapSpec`**: cada Area/Group/SubArea con `Title` 1033 (inglés) + 3082 (español); `Violations` marca cualquier
+    título que falte en alguno de los dos idiomas. Nombre de la app: `appmodule.name` (1033) = "Smelter — Import configuration"
+    y el 3082 "Smelter — Configuración de importaciones" con `SetLocLabelsRequest` (`appmodule.name` es `IsLocalizable = True`
+    según la referencia de la tabla AppModule de Microsoft Learn). La entrada del dashboard que crea el paso [6] nace con los
+    dos títulos y su ícono.
+  - **4j `FormPolishSpec`**: etiquetas de pestañas y secciones con `languagecode` 1033 + 3082 dentro del formxml
+    (`FormXmlEditor.TrySetLabels`); la pestaña "Logs de importación" del Import Job pasa a "Import logs" (1033) y conserva el
+    español en 3082 (se reconoce por su texto legacy, no se duplica).
+  - **4i `ColumnDescriptionsSpec`**: las Description (tooltips) pasan a inglés 1033 + español 3082 (los textos actuales son el
+    español); también las 3 columnas que crea `SchemaAdditionsSpec`.
+  - **6a `ViewLabelsSpec`** (nuevo, corre después del [6]): las 3 vistas custom del Import Job pasan a inglés bajo 1033 ("Active
+    jobs", "Completed with errors", "All jobs"; `UpsertViews` renombra las existentes en vez de duplicarlas) con nombre y
+    descripción 3082; el dashboard conserva "Smelter Dashboard" y gana "Panel de Smelter" en 3082.
+  - **4n `TableLabelsSpec`** (nuevo): nombres 3082 de las 6 tablas + la de keys HMAC (DisplayName y DisplayCollectionName), de
+    todas sus columnas `sanic_smlt_*` y de las opciones de sus choices locales (Sí/No incluidos). El 1033 de tablas y columnas
+    no se toca (se lee y se reenvía con `MergeLabels = true`).
+- **Íconos (4m `IconsSpec`)**: 9 SVG Fluent-style 24x24 de un solo color (`Assets/icons/`, embebidos) como web resources SVG
+  (`sanic_/smelter/icons/*.svg`, webresourcetype 11) DENTRO de `smlt_core_smelter`; `IconVectorName` de cada tabla de Smelter
+  (incluida la de keys HMAC si existe), `VectorIcon="$webresource:..."` en cada SubArea del sitemap (reemplaza al
+  `transparent_spacer.gif`) y `appmodule.webresourceid` con el ícono de la app.
+- **Nombre de la solución (4l `SolutionNameSpec`)**: `solution.friendlyname` = "SMLT | Core | Smelter" (convención "CM | Core |
+  Cobranza Movil" del proyecto hermano). El unique name `smlt_core_smelter` no cambia.
+- `Smelter.Verify`: nuevos `[SOLNAME]`, `[ICONS]`, `[LABELS]` y `[VIEWS]`; `[SITEMAP]` y `[DESC]` ahora exigen los dos idiomas,
+  los íconos y el nombre 3082 de la app.
+- Tests de contrato: `BilingualTests`, `IconsSpecContractTests` (SVG parsea, viewBox, color, existe y está embebido),
+  `TableLabelsSpecContractTests` (cada columna/opción de la spec existe en `solutions/unpacked`; sin duplicados ni textos
+  vacíos; toda columna/opción viva tiene su 3082), `MiscLabelSpecsContractTests`; ampliados los de sitemap, formularios y
+  descripciones.
+
 ### Fixed (guarda de re-encolado, Plugins 1.0.13)
 - **Poner `Queued` sobre un job que está `Processing` ya no se permite** (`ValidateQueueAccess`, Pre-op Update): un
   Update por API durante la corrida disparaba otra corrida del flow cuyo claim veía `Queued` y reseteaba el job a

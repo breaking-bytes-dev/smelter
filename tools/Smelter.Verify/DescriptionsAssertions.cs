@@ -1,5 +1,6 @@
 // Asserts E2E de ColumnDescriptionsSpec.cs: toda columna custom (sanic_smlt_*) de las 6 tablas de Smelter tiene
-// Description, y las de la spec valen exactamente el texto declarado. Solo lee metadata.
+// Description en inglés (1033) y en español (3082), y las de la spec valen exactamente los textos declarados.
+// Solo lee metadata.
 
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk.Messages;
@@ -14,7 +15,7 @@ internal static class DescriptionsAssertions
     {
         Console.WriteLine("[DESC] Verificando Description de columnas (ColumnDescriptionsSpec.cs) ...");
 
-        var expected = ColumnDescriptionsCatalogo.Descriptions.ToDictionary(d => (d.Entity, d.Column), d => d.Text);
+        var expected = ColumnDescriptionsCatalogo.All.ToDictionary(d => (d.Entity, d.Column), d => d.Text);
         var checkedCount = 0;
 
         foreach (var table in SecuritySpec.Tables.All)
@@ -36,15 +37,17 @@ internal static class DescriptionsAssertions
 
             foreach (var attribute in custom)
             {
-                var current = ColumnDescriptionsProvisioner.CurrentDescription(attribute);
-                Assert(!string.IsNullOrWhiteSpace(current), $"{table}.{attribute.LogicalName} no tiene Description");
+                var en = LabelEditor.TextFor(attribute.Description, Lcids.English);
+                var es = LabelEditor.TextFor(attribute.Description, Lcids.Spanish);
+                Assert(!string.IsNullOrWhiteSpace(en), $"{table}.{attribute.LogicalName} no tiene Description en inglés (1033)");
+                Assert(!string.IsNullOrWhiteSpace(es), $"{table}.{attribute.LogicalName} no tiene Description en español (3082)");
                 if (expected.TryGetValue((table, attribute.LogicalName), out var text))
-                    Assert(current == text, $"{table}.{attribute.LogicalName}: Description distinta de la spec");
+                    Assert(en == text.En && es == text.Es, $"{table}.{attribute.LogicalName}: Description distinta de la spec");
                 checkedCount++;
             }
         }
 
-        Console.WriteLine($"[DESC] OK: {checkedCount} columnas custom con Description.");
+        Console.WriteLine($"[DESC] OK: {checkedCount} columnas custom con Description en 1033 y 3082.");
     }
 
     private static void Assert(bool condition, string message)
