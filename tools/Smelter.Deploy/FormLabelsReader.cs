@@ -22,7 +22,7 @@ internal static class FormLabelsReader
     {
         var english = Query(client, entity, onlyActive);
 
-        var userId = client.GetMyUserId();
+        var userId = ((Microsoft.Crm.Sdk.Messages.WhoAmIResponse)client.Execute(new Microsoft.Crm.Sdk.Messages.WhoAmIRequest())).UserId;
         var settings = client.Retrieve("usersettings", userId, new ColumnSet("uilanguageid"));
         var original = settings.GetAttributeValue<int>("uilanguageid");
 

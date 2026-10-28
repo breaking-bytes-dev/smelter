@@ -12,7 +12,6 @@ namespace Smelter.Deploy;
 
 internal static class FormPolishProvisioner
 {
-
     internal static void Run(ServiceClient client)
     {
         Console.WriteLine("[4j] FormPolishProvisioner: forms y vistas (FormPolishSpec.cs) ...");
