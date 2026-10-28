@@ -44,6 +44,28 @@ internal static class ViewXmlEditor
             : (layoutXml, fetchXml, false);
     }
 
+    /// <summary>
+    /// Deja el fetch con UN solo &lt;order&gt; (el pedido) en la entidad raíz: reemplaza los que hubiera. Idempotente.
+    /// </summary>
+    internal static (string FetchXml, bool Changed) TrySetOrder(string fetchXml, string attribute, bool descending)
+    {
+        var fetch = XDocument.Parse(fetchXml);
+        var entity = fetch.Descendants("entity").First();
+        var orders = entity.Elements("order").ToList();
+        var wanted = descending ? "true" : "false";
+
+        if (orders.Count == 1 && Is(orders[0], "attribute", attribute)
+            && string.Equals((string?)orders[0].Attribute("descending") ?? "false", wanted, StringComparison.OrdinalIgnoreCase))
+            return (fetchXml, false);
+
+        var order = new XElement("order", new XAttribute("attribute", attribute), new XAttribute("descending", wanted));
+        if (orders.Count > 0) orders[0].AddBeforeSelf(order); // misma posición que el orden anterior (el XSD de fetch acepta order tras attribute)
+        else (entity.Elements("attribute").LastOrDefault() ?? (XNode?)null)?.AddAfterSelf(order);
+        if (order.Parent is null) entity.AddFirst(order);
+        foreach (var o in orders) o.Remove();
+        return (fetch.ToString(SaveOptions.DisableFormatting), true);
+    }
+
     private static bool Is(XElement e, string attribute, string value) =>
         string.Equals((string?)e.Attribute(attribute), value, StringComparison.OrdinalIgnoreCase);
 }

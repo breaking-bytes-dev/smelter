@@ -34,6 +34,9 @@ internal sealed record FormLookupFilterSpec(string Entity, string Field, string 
 
 internal sealed record ViewColumnSpec(string Entity, Guid ViewId, string AfterColumn, string Column, int Width);
 
+/// <summary>Orden de una vista (fetchxml &lt;order&gt;): reemplaza cualquier orden previo por este.</summary>
+internal sealed record ViewOrderSpec(string Entity, Guid ViewId, string Attribute, bool Descending);
+
 internal static class FormPolishCatalogo
 {
     // classid de los controles de formxml.
@@ -100,6 +103,24 @@ internal static class FormPolishCatalogo
     internal static readonly ViewColumnSpec[] ViewColumns =
     [
         new(Log, Guid.Parse("6752f00a-34e0-43fd-ba73-9a9cbec00991"), "sanic_smlt_ijl_status", "sanic_smlt_ijl_errorcategory", 130),
+
+        // Import Job: el Estado (sanic_smlt_ij_status) tiene que verse en TODAS las vistas de la lista. La default "Active TBL |
+        // SMLT | Import Jobs" (la que abre el sitemap) no lo traía; las 3 vistas custom (SecuritySpec.Views) ya lo tienen: se
+        // declaran igual para que Verify las vigile.
+        new(Job, Guid.Parse("27b8d129-9055-4ca5-a051-961ff5d054ca"), "sanic_smlt_ij_name", "sanic_smlt_ij_status", 150),
+        new(Job, Guid.Parse("c751cf90-818a-f111-8076-70a8a59c703e"), "sanic_smlt_ij_name", "sanic_smlt_ij_status", 150),
+        new(Job, Guid.Parse("ca51cf90-818a-f111-8076-70a8a59c703e"), "sanic_smlt_ij_name", "sanic_smlt_ij_status", 150),
+        new(Job, Guid.Parse("cd51cf90-818a-f111-8076-70a8a59c703e"), "sanic_smlt_ij_name", "sanic_smlt_ij_status", 150),
+    ];
+
+    // Import Job Log: más nuevo primero. Las vistas nacieron ordenadas por el autonumérico ascendente (el más viejo arriba,
+    // y como es texto "LOG-9" > "LOG-10"): se ordena por createdon descendente. La default es la que abre el subgrid de logs
+    // del job (Subgrids) y la lista de la MDA; también la asociada y el quick find, para que busquen igual.
+    internal static readonly ViewOrderSpec[] ViewOrders =
+    [
+        new(Log, Guid.Parse("6752f00a-34e0-43fd-ba73-9a9cbec00991"), "createdon", true),
+        new(Log, Guid.Parse("383a7a42-ed26-473a-8394-b7c7441fe58b"), "createdon", true),
+        new(Log, Guid.Parse("f35f567a-fd58-4f3e-856d-efd8b975c097"), "createdon", true),
     ];
 
     // Etiquetas de pestañas y secciones en los dos idiomas (1033 inglés, 3082 español). Las pestañas/secciones que trae el

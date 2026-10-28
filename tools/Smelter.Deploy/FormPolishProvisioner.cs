@@ -18,6 +18,7 @@ internal static class FormPolishProvisioner
 
         var entities = FormPolishCatalogo.FormEntities
             .Concat(FormPolishCatalogo.ViewColumns.Select(v => v.Entity))
+            .Concat(FormPolishCatalogo.ViewOrders.Select(v => v.Entity))
             .Distinct()
             .ToList();
 
@@ -80,6 +81,21 @@ internal static class FormPolishProvisioner
 
             client.Update(new Entity("savedquery", spec.ViewId) { ["layoutxml"] = layout, ["fetchxml"] = fetch });
             Console.WriteLine($"[4j]   vista '{view.GetAttributeValue<string>("name")}': {spec.Column} agregada tras {spec.AfterColumn}.");
+            touched++;
+        }
+
+        foreach (var spec in FormPolishCatalogo.ViewOrders.Where(v => v.Entity == entity))
+        {
+            var view = client.Retrieve("savedquery", spec.ViewId, new ColumnSet("fetchxml", "name"));
+            var (fetch, changed) = ViewXmlEditor.TrySetOrder(view.GetAttributeValue<string>("fetchxml"), spec.Attribute, spec.Descending);
+            if (!changed)
+            {
+                Console.WriteLine($"[4j]   vista '{view.GetAttributeValue<string>("name")}': ya ordena por {spec.Attribute} — nada que hacer.");
+                continue;
+            }
+
+            client.Update(new Entity("savedquery", spec.ViewId) { ["fetchxml"] = fetch });
+            Console.WriteLine($"[4j]   vista '{view.GetAttributeValue<string>("name")}': orden = {spec.Attribute} {(spec.Descending ? "desc" : "asc")}.");
             touched++;
         }
         return touched;

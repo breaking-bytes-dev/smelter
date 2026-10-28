@@ -48,6 +48,14 @@ internal static class FormPolishAssertions
             Console.WriteLine($"[POLISH]   vista '{view.GetAttributeValue<string>("name")}': {spec.Column} OK.");
         }
 
+        foreach (var spec in FormPolishCatalogo.ViewOrders)
+        {
+            var view = client.Retrieve("savedquery", spec.ViewId, new ColumnSet("fetchxml", "name"));
+            var (_, changed) = ViewXmlEditor.TrySetOrder(view.GetAttributeValue<string>("fetchxml"), spec.Attribute, spec.Descending);
+            Assert(!changed, $"la vista '{view.GetAttributeValue<string>("name")}' no ordena por {spec.Attribute} {(spec.Descending ? "descendente" : "ascendente")} (más nuevo primero)");
+            Console.WriteLine($"[POLISH]   vista '{view.GetAttributeValue<string>("name")}': orden {spec.Attribute} {(spec.Descending ? "desc" : "asc")} OK.");
+        }
+
         Console.WriteLine("[POLISH] OK: forms y vistas según spec.");
     }
 

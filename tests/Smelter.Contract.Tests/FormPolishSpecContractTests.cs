@@ -220,7 +220,7 @@ public class FormPolishSpecContractTests
     public void LogDefaultView_GetsErrorCategoryRightAfterStatus_InLayoutAndFetch_Idempotently()
     {
         var (layout, fetch) = RealLogView();
-        var spec = FormPolishCatalogo.ViewColumns.Single();
+        var spec = FormPolishCatalogo.ViewColumns.Single(v => v.Column == "sanic_smlt_ijl_errorcategory");
 
         var (l1, f1, changed) = ViewXmlEditor.TryAddColumn(layout, fetch, spec.AfterColumn, spec.Column, spec.Width);
 
@@ -246,5 +246,86 @@ public class FormPolishSpecContractTests
 
         changed.Should().BeTrue();
         XDocument.Parse(l).Descendants("cell").Select(c => (string?)c.Attribute("name")).Should().Equal("a", "b");
+    }
+
+    // ── Vistas: Estado en las vistas del Import Job y orden "más nuevo primero" en las del log ───────────────
+
+    private static (string Layout, string Fetch) RealView(string table, Guid id)
+    {
+        var path = Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities", table, "SavedQueries", $"{{{id:D}}}.xml");
+        var sq = XDocument.Load(path).Descendants("savedquery").Single();
+        return (sq.Element("layoutxml")!.Elements().Single().ToString(), sq.Element("fetchxml")!.Elements().Single().ToString());
+    }
+
+    [Fact]
+    public void JobViews_AllCarryTheStatusColumn_AfterTheName()
+    {
+        var specs = FormPolishCatalogo.ViewColumns.Where(v => v.Entity == SecuritySpec.Tables.ImportJob && v.Column == "sanic_smlt_ij_status").ToList();
+        // La default "Active TBL | SMLT | Import Jobs" (no la tenía) + las 3 vistas custom (Jobs activos, Completados con errores, Todos).
+        specs.Select(v => v.ViewId).Should().BeEquivalentTo(new[]
+        {
+            Guid.Parse("27b8d129-9055-4ca5-a051-961ff5d054ca"), Guid.Parse("c751cf90-818a-f111-8076-70a8a59c703e"),
+            Guid.Parse("ca51cf90-818a-f111-8076-70a8a59c703e"), Guid.Parse("cd51cf90-818a-f111-8076-70a8a59c703e"),
+        });
+        foreach (var spec in specs)
+        {
+            var (layout, fetch) = RealView(spec.Entity, spec.ViewId);
+            var (l1, f1, _) = ViewXmlEditor.TryAddColumn(layout, fetch, spec.AfterColumn, spec.Column, spec.Width);
+            XDocument.Parse(l1).Descendants("cell").Select(c => (string?)c.Attribute("name")).Should().Contain(spec.Column);
+            XDocument.Parse(f1).Descendants("entity").Single().Elements("attribute").Select(a => (string?)a.Attribute("name")).Should().Contain(spec.Column);
+            MdaComponentsCatalogo.All.Should().Contain(c => c.Id == spec.ViewId, "la vista está pineada en la app");
+        }
+    }
+
+    [Fact]
+    public void JobDefaultView_GetsStatusRightAfterTheName()
+    {
+        var spec = FormPolishCatalogo.ViewColumns.Single(v => v.ViewId == Guid.Parse("27b8d129-9055-4ca5-a051-961ff5d054ca"));
+        var (layout, fetch) = RealView(spec.Entity, spec.ViewId);
+
+        var (l1, _, changed) = ViewXmlEditor.TryAddColumn(layout, fetch, spec.AfterColumn, spec.Column, spec.Width);
+
+        changed.Should().BeTrue("la vista por defecto del Import Job no mostraba el Estado");
+        XDocument.Parse(l1).Descendants("cell").Select(c => (string?)c.Attribute("name"))
+            .Should().ContainInOrder("sanic_smlt_ij_name", "sanic_smlt_ij_status");
+    }
+
+    [Fact]
+    public void LogViews_AreOrderedNewestFirst_ByCreatedOn_DefaultAssociatedAndQuickFind()
+    {
+        FormPolishCatalogo.ViewOrders.Select(o => o.ViewId).Should().BeEquivalentTo(new[]
+        {
+            Guid.Parse("6752f00a-34e0-43fd-ba73-9a9cbec00991"), // default: la usa el subgrid del job y la lista de logs
+            Guid.Parse("383a7a42-ed26-473a-8394-b7c7441fe58b"), // asociada
+            Guid.Parse("f35f567a-fd58-4f3e-856d-efd8b975c097"), // quick find
+        });
+        FormPolishCatalogo.ViewOrders.Should().OnlyContain(o => o.Entity == SecuritySpec.Tables.ImportJobLog && o.Attribute == "createdon" && o.Descending);
+        FormPolishCatalogo.Subgrids.Single().ViewId.Should().BeEquivalentTo(FormPolishCatalogo.LogDefaultViewId, "el subgrid del job usa la vista default del log");
+
+        foreach (var o in FormPolishCatalogo.ViewOrders)
+        {
+            var (_, fetch) = RealView(o.Entity, o.ViewId);
+            var (f1, changed) = ViewXmlEditor.TrySetOrder(fetch, o.Attribute, o.Descending);
+            changed.Should().BeTrue();
+            var orders = XDocument.Parse(f1).Descendants("entity").Single().Elements("order").ToList();
+            orders.Should().ContainSingle().Which.Attribute("attribute")!.Value.Should().Be("createdon");
+            orders.Single().Attribute("descending")!.Value.Should().Be("true");
+            ViewXmlEditor.TrySetOrder(f1, o.Attribute, o.Descending).Changed.Should().BeFalse("idempotente");
+            MdaComponentsCatalogo.All.Should().Contain(c => c.Id == o.ViewId);
+        }
+    }
+
+    [Fact]
+    public void TrySetOrder_ReplacesEveryExistingOrder_AndKeepsTheRestOfTheFetch()
+    {
+        const string fetch = "<fetch><entity name=\"t\"><attribute name=\"a\" /><order attribute=\"a\" descending=\"false\" /><order attribute=\"b\" /><filter type=\"and\"><condition attribute=\"s\" operator=\"eq\" value=\"0\" /></filter></entity></fetch>";
+
+        var (f, changed) = ViewXmlEditor.TrySetOrder(fetch, "createdon", true);
+
+        changed.Should().BeTrue();
+        var entity = XDocument.Parse(f).Descendants("entity").Single();
+        entity.Elements("order").Should().ContainSingle();
+        entity.Element("filter").Should().NotBeNull();
+        entity.Elements("attribute").Should().ContainSingle();
     }
 }
