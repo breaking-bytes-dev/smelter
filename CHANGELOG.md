@@ -6,6 +6,33 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+### Fixed (hallazgos del recorrido de la MDA en español como Configurador; Plugins 1.0.15, `Smelter.Deploy` 4f2, 4g, 4h-4j y 6b)
+- **Panel de Smelter (6b `DashboardSpec` + `DashboardProvisioner`)**: el dashboard interaction-centric (type 10, `590df35c-...`)
+  se renderizaba en la MDA como el overview genérico "Dynamics 365 Social" y no aparecía en el selector de dashboards. Ahora es un
+  dashboard CLÁSICO (systemform type 0, id `0aaf3a0c-...`) con los mismos gráficos del Import Job y el listado, creado por código
+  dentro de la solución (formxml `<form><tabs>…` con ids fijos), con nombre 1033 "Smelter Dashboard" / 3082 "Panel de Smelter"
+  (`SetLocLabels`), agregado como componente de la app y enlazado en el SubArea del sitemap. El viejo se saca de la app y se borra
+  (solo con `--allow-destructive`). `[MDA]` exige type 0, componente de la app, charts/listado de la spec y que el viejo no exista;
+  `[SITEMAP]` exige que el SubArea apunte al clásico. `solutions/unpacked` actualizado (`Dashboards/`, Solution.xml, AppModule.xml, sitemap).
+- **Import Jobs, vistas (4j)**: la vista por defecto "Active TBL | SMLT | Import Jobs" (la que abre el sitemap) no mostraba el Estado;
+  se agrega (`ViewColumns`). Las 3 vistas custom ya lo tenían: se declaran igual para que `[POLISH]` las vigile.
+- **Import Job Logs, orden (4j)**: la vista default (la que usa el subgrid del job y la lista) y la asociada ordenan por `createdon`
+  descendente (antes por el autonumérico ascendente, y como es texto "LOG-9" > "LOG-10"). `ViewXmlEditor.TrySetOrder`, `ViewOrders`.
+  El quick find no se toca: Dataverse falla con un NullReferenceException al actualizar su fetchxml.
+- **"Nuevo Log de importación" (6, `SecuritySpec`)**: los logs los crea SOLO el motor (`ProcessChunkPlugin` con un
+  `IOrganizationService` de SYSTEM, que ignora los privilegios del usuario), así que ningún rol necesita `Create` sobre el log. Se
+  quita `prvCreatesanic_tbl_smlt_importjoblog` del Configurador (`RoleSpec.Denied`; el provisioner usa `RemovePrivilegeRole` porque
+  `AddPrivilegesRole` es aditivo) y la plataforma esconde los botones de nuevo en subgrid, lista y form, sin tocar el ribbon.
+  `[SEC]` exige el privilegio ausente en ambos roles.
+- **Lookup de template del Import Job (4f2 + 4j)**: solo ofrece templates Active. Vista pública dedicada "Active templates" /
+  "Templates activos" (`LookupViewsProvisioner`, id fijo, pineada en la app) y el control con `DefaultViewId`, `AvailableViewIds`,
+  `DisableViewPicker` y `DisableMru` (`ViewIds` no pasa el schema del formxml). No se tocó la vista de lookup global del template
+  (la comparten los lookups de los mappings, que sí deben poder apuntar a un Draft). El rechazo server-side del Draft no cambia.
+- **Chunk Size (4h, 4i + core)**: la columna pasa a `MinValue=100` / `MaxValue=10000` (antes admitía desde 0 y el motor acotaba en
+  silencio: un 50 se aceptaba y corría con 100). El import de template rechaza (`TemplateFormatException`) un chunkSize fuera de
+  rango (0 = default sigue válido en el JSON y se guarda vacío). El motor sigue acotando como defensa. Descripción 1033/3082:
+  "entre 100 y 10000; vacío usa el default (1000)". `[TUNE]` intenta guardar 99, 50 y 10001 y exige el rechazo.
+
 ### Fixed (motivo de falla obsoleto tras Reintentar, Plugins 1.0.15)
 - **`PrepareImport` limpia `sanic_smlt_ij_failurereason` al resetear el job.** Un job `Failed` que se reintentaba y terminaba
   `Completed` seguía mostrando el motivo viejo. El reset (mismo `Update` que limpia `endtime`) ahora lo pone en null; solo el
