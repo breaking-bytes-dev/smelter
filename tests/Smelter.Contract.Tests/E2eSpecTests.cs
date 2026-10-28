@@ -23,7 +23,7 @@ public class E2eSpecTests
         E2eSteps.All.Select(s => s.Id).Should().OnlyHaveUniqueItems();
         E2eSteps.All.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Title));
         E2eSteps.All.Select(s => s.Id).Should().Contain(
-            ["1", "2", "2g", "3", "3b", "4a", "4b", "5a", "5b", "5c", "6", "7a", "7b", "7c", "7d", "7e", "8", "10", "11", "12", "13", "14"]);
+            ["1", "2", "2g", "3", "3b", "4a", "4b", "5a", "5b", "5c", "6", "7a", "7b", "7c", "7d", "7e", "7f", "8", "10", "11", "12", "13", "14"]);
     }
 
     [Theory]
@@ -182,7 +182,7 @@ public class E2eSpecTests
                     if (string.IsNullOrEmpty(email.TransformExpression) && key.Length > 0)
                     {
                         // 3b y 7e traen UNA fila con la clave vacía a propósito: no crea contact, no hay nada que limpiar.
-                        if (row.Values[key].Length == 0 && (c.Label.StartsWith("3b") || c.Label.StartsWith("7e"))) continue;
+                        if (row.Values[key].Length == 0 && (c.Label.StartsWith("3b") || c.Label.StartsWith("7e") || c.Label.StartsWith("7f"))) continue;
                         row.Values[key].Should().EndWith(E2eSpec.Domain, c.Label);
                     }
                 }
@@ -682,6 +682,7 @@ public class E2eSpecTests
         Add("3 required", E2eSpec.RequiredDefault.Dto(), E2eSpec.RequiredDefault.Csv(), 3);
 
         Add("3b empty dedup key", E2eSpec.EmptyDedupKey.Dto(E2eSpec.EmptyDedupKey.Key), E2eSpec.EmptyDedupKey.Csv("dk", E2eSpec.EmptyDedupKey.Rows, 2), E2eSpec.EmptyDedupKey.Rows);
+        Add("7f operator", E2eSpec.EmptyDedupKey.Dto("operator"), E2eSpec.EmptyDedupKey.Csv("op", E2eSpec.EmptyDedupKey.Rows, 2), E2eSpec.EmptyDedupKey.Rows);
         Add("7e retry logs", E2eSpec.EmptyDedupKey.Dto("retrylogs"), E2eSpec.EmptyDedupKey.Csv("rl", E2eSpec.EmptyDedupKey.Rows, 1), E2eSpec.EmptyDedupKey.Rows);
 
         Add("4a relationship", E2eSpec.Relationship.Dto(false), E2eSpec.Relationship.Csv(false, E2eSpec.Relationship.Rows), E2eSpec.Relationship.Rows);

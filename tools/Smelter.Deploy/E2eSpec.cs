@@ -31,7 +31,7 @@ internal static partial class E2eSpec
         "createifnotexists", "types", "types-guid", "required", "relationship", "relationship-hmac",
         "format-noheader", "format-semicolon", "format-tab", "caseinsensitive", "transforms",
         "dryrun", "flow", "flow-draft", "claim", "requeue", "archived", "manytomany", "roundtrip",
-        "dedupkey", "retrylogs",
+        "dedupkey", "retrylogs", "operator",
     ];
 
     internal static IReadOnlyList<string> AllTemplateNames => TemplateKeys.Select(TemplateName).ToList();

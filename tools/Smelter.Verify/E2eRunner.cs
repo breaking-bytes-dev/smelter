@@ -100,6 +100,7 @@ internal static partial class E2eRunner
             case "7c": CloudFlowDoubleQueue(env); break;
             case "7d": RequeueWhileProcessingRejected(env); break;
             case "7e": RetryClearsPreviousLogs(env); break;
+            case "7f": OperatorEndToEnd(env); break;
             case "8": DryRun(env); break;
             case "10": ExportImportRoundtrip(env); break;
             case "11": RunContactCase(env, E2eSpec.CaseInsensitive.Case(), id); break;

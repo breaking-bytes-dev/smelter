@@ -28,6 +28,7 @@ internal static class E2eSteps
         new("7c", "Cloud Flow anti-duplicados: el MISMO job encolado dos veces seguidas termina Completed, con conteos exactos y sin logs de clave duplicada"),
         new("7d", "Guard de re-encolado: con el job Processing (Prepare directo) poner Queued es rechazado; el job igual termina Completed"),
         new("7e", "Reintentar borra los Import Job Logs de la corrida anterior (Prepare) y deja solo los de la nueva"),
+        new("7f", "Operador real (impersonado): crea el job con template, sube el CSV, encola, ve su job y sus logs; no puede crear logs ni escribir el template"),
         new("8", "Dry run: no crea nada y termina Completed"),
         new("10", "Roundtrip Export -> Import con todos los campos del DTO"),
         new("11", "SourceColumn sin distinguir mayúsculas (header 'email' vs mapping 'Email')"),
