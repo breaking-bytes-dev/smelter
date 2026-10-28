@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WebResource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <WebResourceId>{104186b5-0ad3-f111-84e8-000d3a5b7546}</WebResourceId>
+  <Name>sanic_/smelter/icons/export.svg</Name>
+  <DisplayName>Icon | SMLT | Export Template</DisplayName>
+  <WebResourceType>11</WebResourceType>
+  <IntroducedVersion>1.4.0.0</IntroducedVersion>
+  <IsEnabledForMobileClient>0</IsEnabledForMobileClient>
+  <IsAvailableForMobileOffline>0</IsAvailableForMobileOffline>
+  <IsCustomizable>1</IsCustomizable>
+  <CanBeDeleted>1</CanBeDeleted>
+  <IsHidden>0</IsHidden>
+  <FileName>/WebResources/sanic_smeltericonsexportsvg104186B5-0AD3-F111-84E8-000D3A5B7546</FileName>
+</WebResource>

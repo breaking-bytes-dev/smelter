@@ -3,12 +3,12 @@
   <CustomActions>
     <CustomAction Id="sanic.smlt.ExportTemplate.Button.CustomAction" Location="Mscrm.HomepageGrid.sanic_tbl_smlt_importtemplate.MainTab.Management.Controls._children" Sequence="65">
       <CommandUIDefinition>
-        <Button Command="sanic.smlt.ExportTemplate.Command" Id="sanic.smlt.ExportTemplate.Button" LabelText="$LocLabels:sanic.smlt.ExportTemplate.Button.LabelText" Sequence="65" TemplateAlias="o3" ToolTipTitle="$LocLabels:sanic.smlt.ExportTemplate.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.ExportTemplate.Button.ToolTipDescription" />
+        <Button Command="sanic.smlt.ExportTemplate.Command" Id="sanic.smlt.ExportTemplate.Button" ModernImage="$webresource:sanic_/smelter/icons/export.svg" LabelText="$LocLabels:sanic.smlt.ExportTemplate.Button.LabelText" Sequence="65" TemplateAlias="o3" ToolTipTitle="$LocLabels:sanic.smlt.ExportTemplate.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.ExportTemplate.Button.ToolTipDescription" />
       </CommandUIDefinition>
     </CustomAction>
     <CustomAction Id="sanic.smlt.ImportTemplate.Button.CustomAction" Location="Mscrm.HomepageGrid.sanic_tbl_smlt_importtemplate.MainTab.Management.Controls._children" Sequence="70">
       <CommandUIDefinition>
-        <Button Command="sanic.smlt.ImportTemplate.Command" Id="sanic.smlt.ImportTemplate.Button" LabelText="$LocLabels:sanic.smlt.ImportTemplate.Button.LabelText" Sequence="70" TemplateAlias="o4" ToolTipTitle="$LocLabels:sanic.smlt.ImportTemplate.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.ImportTemplate.Button.ToolTipDescription" />
+        <Button Command="sanic.smlt.ImportTemplate.Command" Id="sanic.smlt.ImportTemplate.Button" ModernImage="$webresource:sanic_/smelter/icons/import.svg" LabelText="$LocLabels:sanic.smlt.ImportTemplate.Button.LabelText" Sequence="70" TemplateAlias="o4" ToolTipTitle="$LocLabels:sanic.smlt.ImportTemplate.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.ImportTemplate.Button.ToolTipDescription" />
       </CommandUIDefinition>
     </CustomAction>
   </CustomActions>
@@ -49,32 +49,38 @@
   <LocLabels>
     <LocLabel Id="sanic.smlt.ExportTemplate.Button.LabelText">
       <Titles>
-        <Title description="Exportar Smelter Template" languagecode="1033" />
+        <Title description="Export template" languagecode="1033" />
+        <Title description="Exportar template" languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.ExportTemplate.Button.ToolTipDescription">
       <Titles>
-        <Title description="Exportar" languagecode="1033" />
+        <Title description="Downloads the selected template as JSON." languagecode="1033" />
+        <Title description="Descarga el template seleccionado como JSON." languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.ExportTemplate.Button.ToolTipTitle">
       <Titles>
-        <Title description="Exportar" languagecode="1033" />
+        <Title description="Export template" languagecode="1033" />
+        <Title description="Exportar template" languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.ImportTemplate.Button.LabelText">
       <Titles>
-        <Title description="Importar Smelter Template" languagecode="1033" />
+        <Title description="Import template" languagecode="1033" />
+        <Title description="Importar template" languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.ImportTemplate.Button.ToolTipDescription">
       <Titles>
-        <Title description="Importar" languagecode="1033" />
+        <Title description="Creates or updates a template from a JSON file." languagecode="1033" />
+        <Title description="Crea o actualiza un template desde un archivo JSON." languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.ImportTemplate.Button.ToolTipTitle">
       <Titles>
-        <Title description="Importar" languagecode="1033" />
+        <Title description="Import template" languagecode="1033" />
+        <Title description="Importar template" languagecode="3082" />
       </Titles>
     </LocLabel>
   </LocLabels>

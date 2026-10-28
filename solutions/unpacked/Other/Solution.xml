@@ -6,7 +6,7 @@
       <LocalizedName description="SMLT | Core | Smelter" languagecode="1033" />
     </LocalizedNames>
     <Descriptions />
-    <Version>1.4.0.0</Version>
+    <Version>1.4.1.0</Version>
     <Managed>0</Managed>
     <Publisher>
       <UniqueName>Sistemas_Abiertos_Nicaragua</UniqueName>
@@ -37,10 +37,14 @@
       <RootComponent type="61" schemaName="sanic_/smelter/icons/app.svg" behavior="0" />
       <RootComponent type="61" schemaName="sanic_/smelter/icons/columnmapping.svg" behavior="0" />
       <RootComponent type="61" schemaName="sanic_/smelter/icons/dashboard.svg" behavior="0" />
+      <RootComponent type="61" schemaName="sanic_/smelter/icons/export.svg" behavior="0" />
       <RootComponent type="61" schemaName="sanic_/smelter/icons/hmackey.svg" behavior="0" />
+      <RootComponent type="61" schemaName="sanic_/smelter/icons/import.svg" behavior="0" />
       <RootComponent type="61" schemaName="sanic_/smelter/icons/job.svg" behavior="0" />
       <RootComponent type="61" schemaName="sanic_/smelter/icons/joblog.svg" behavior="0" />
       <RootComponent type="61" schemaName="sanic_/smelter/icons/relationshipmapping.svg" behavior="0" />
+      <RootComponent type="61" schemaName="sanic_/smelter/icons/retry.svg" behavior="0" />
+      <RootComponent type="61" schemaName="sanic_/smelter/icons/run.svg" behavior="0" />
       <RootComponent type="61" schemaName="sanic_/smelter/icons/tablemapping.svg" behavior="0" />
       <RootComponent type="61" schemaName="sanic_/smelter/icons/template.svg" behavior="0" />
       <RootComponent type="61" schemaName="sanic_smlt_exporttemplate.js" behavior="0" />
