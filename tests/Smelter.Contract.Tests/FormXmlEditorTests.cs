@@ -6,17 +6,13 @@ using Xunit;
 namespace Smelter.Contract.Tests;
 
 /// <summary>
-/// <see cref="FormXmlEditor"/> quitar / ocultar campos (auditoría 1.0.10), contra los main forms REALES de
-/// solutions/unpacked: junction table sale del form del Table Mapping; source type se oculta en el del Import Template.
+/// <see cref="FormXmlEditor"/> quitar / ocultar campos (auditoría 1.0.10), contra los main forms PRE-apply congelados
+/// (<see cref="PreApplyFixtures"/>; unpacked ya es post-deploy): junction table sale del form del Table Mapping;
+/// source type se oculta en el del Import Template.
 /// </summary>
 public class FormXmlEditorTests
 {
-    private static XDocument MainForm(string table)
-    {
-        var dir = Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities", table, "FormXml", "main");
-        var file = Directory.GetFiles(dir, "*.xml").Single();
-        return XDocument.Parse(XDocument.Load(file).Descendants("form").First().ToString());
-    }
+    private static XDocument MainForm(string table) => PreApplyFixtures.MainForm(table);
 
     private static IEnumerable<XElement> Controls(XDocument doc, string field) =>
         doc.Descendants("control").Where(c => (string?)c.Attribute("datafieldname") == field);

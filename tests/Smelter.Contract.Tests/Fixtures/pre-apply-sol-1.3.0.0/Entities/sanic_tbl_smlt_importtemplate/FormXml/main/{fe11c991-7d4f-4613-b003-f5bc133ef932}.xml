@@ -1,0 +1,196 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<forms xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <systemform>
+    <formid>{fe11c991-7d4f-4613-b003-f5bc133ef932}</formid>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <FormPresentation>1</FormPresentation>
+    <FormActivationState>1</FormActivationState>
+    <form headerdensity="HighWithControls">
+      <tabs>
+        <tab verticallayout="true" id="{7716f683-d402-486e-bf90-3cb85ef00a85}" IsUserDefined="1">
+          <labels>
+            <label description="General" languagecode="1033" />
+          </labels>
+          <columns>
+            <column width="100%">
+              <sections>
+                <section showlabel="false" showbar="false" IsUserDefined="0" id="{242280c5-bb80-40ed-9033-dd08ddf42851}">
+                  <labels>
+                    <label description="General" languagecode="1033" />
+                  </labels>
+                  <rows>
+                    <row>
+                      <cell id="{d6532272-d7ba-4d76-820e-03bb8cf6119c}">
+                        <labels>
+                          <label description="[IT] Name" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_it_name" classid="{4273EDBD-AC1D-40d3-9FB2-095C621B552D}" datafieldname="sanic_smlt_it_name" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{455a39f0-3ed5-47f9-a1b6-d62d13eaa322}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[IT] Source Type" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_it_sourcetype" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_it_sourcetype" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{cdb5de80-449b-451f-85f4-d720ec0180ba}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[IT] Has Header Row" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_it_hasheaderrow" classid="{67FAC785-CD58-4F9F-ABB3-4B7DDC6ED5ED}" datafieldname="sanic_smlt_it_hasheaderrow" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{168a91d5-a527-48eb-92b2-d861b07dd050}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[IT] Delimiter" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_it_delimiter" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="sanic_smlt_it_delimiter" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{753a14e4-38ce-409f-b3ff-8560af41b1b4}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[IT] Chunk Size" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_it_chunksize" classid="{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}" datafieldname="sanic_smlt_it_chunksize" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{61ab2232-4bae-42bf-b918-0d1614afc84f}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[IT] Description" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_it_description" classid="{E0DECE4B-6FC8-4A8F-A065-082708572369}" datafieldname="sanic_smlt_it_description" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{bbcc6718-8c15-4467-b360-140c43bda6e3}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="[IT] Status" languagecode="1033" />
+                        </labels>
+                        <control id="sanic_smlt_it_status" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="sanic_smlt_it_status" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{5efcd9ac-35e5-4631-9790-a7a6a7b695a8}">
+                        <labels>
+                          <label description="Owner" languagecode="1033" />
+                        </labels>
+                        <control id="ownerid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="ownerid" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell locklevel="0" id="{4ce1ba01-4f01-4f31-839c-a1a20617094b}" rowspan="4" colspan="1" auto="false">
+                        <labels>
+                          <label description="Table mappings" languagecode="1033" />
+                        </labels>
+                        <control indicationOfSubgrid="true" id="Subgrid_new_1" classid="{E7A81278-8635-4D9E-8D4D-59480B391C5B}">
+                          <parameters>
+                            <RecordsPerPage>4</RecordsPerPage>
+                            <AutoExpand>Fixed</AutoExpand>
+                            <EnableQuickFind>false</EnableQuickFind>
+                            <EnableViewPicker>false</EnableViewPicker>
+                            <EnableChartPicker>true</EnableChartPicker>
+                            <ChartGridMode>All</ChartGridMode>
+                            <RelationshipName>sanic_tbl_smlt_tablemapping_smlt_tm_importtemplateid_sanic_tbl_smlt_importtemplate</RelationshipName>
+                            <TargetEntityType>sanic_tbl_smlt_tablemapping</TargetEntityType>
+                            <ViewId>{A1E5E35D-6D1A-4B75-89EE-D1EB468C796B}</ViewId>
+                            <ViewIds>{A1E5E35D-6D1A-4B75-89EE-D1EB468C796B}</ViewIds>
+                          </parameters>
+                        </control>
+                      </cell>
+                    </row>
+                    <row />
+                    <row />
+                    <row />
+                    <row>
+                      <cell locklevel="0" id="{22cf7573-f3a3-4276-9ed9-a9cbff9bcd63}" rowspan="4" colspan="1" auto="false">
+                        <labels>
+                          <label description="Relationship mappings" languagecode="1033" />
+                        </labels>
+                        <control indicationOfSubgrid="true" id="Subgrid_new_2" classid="{E7A81278-8635-4D9E-8D4D-59480B391C5B}">
+                          <parameters>
+                            <RecordsPerPage>4</RecordsPerPage>
+                            <AutoExpand>Fixed</AutoExpand>
+                            <EnableQuickFind>false</EnableQuickFind>
+                            <EnableViewPicker>false</EnableViewPicker>
+                            <EnableChartPicker>true</EnableChartPicker>
+                            <ChartGridMode>All</ChartGridMode>
+                            <RelationshipName>sanic_tbl_smlt_relationshipmapping_smlt_rm_importtemplateid_sanic_tbl_smlt_importtemplate</RelationshipName>
+                            <TargetEntityType>sanic_tbl_smlt_relationshipmapping</TargetEntityType>
+                            <ViewId>{374A1AC9-D89B-4E99-9235-C73743EEDC81}</ViewId>
+                            <ViewIds>{374A1AC9-D89B-4E99-9235-C73743EEDC81}</ViewIds>
+                          </parameters>
+                        </control>
+                      </cell>
+                    </row>
+                    <row />
+                    <row />
+                    <row />
+                  </rows>
+                </section>
+              </sections>
+            </column>
+          </columns>
+        </tab>
+      </tabs>
+      <header id="{02264744-fe36-415d-a71e-7ed767dbc491}" celllabelposition="Top" columns="111" labelwidth="115" celllabelalignment="Left">
+        <rows>
+          <row>
+            <cell id="{38e01084-c7c5-4336-88b9-4c5072c279b0}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+            <cell id="{b5d8f730-5e32-4c91-837b-af0da4fd8904}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+            <cell id="{4a462257-91f2-43a3-bb22-6223bca776a7}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+          </row>
+        </rows>
+      </header>
+      <footer id="{a68b9676-f283-41f3-863e-65b42988216a}" celllabelposition="Top" columns="111" labelwidth="115" celllabelalignment="Left">
+        <rows>
+          <row>
+            <cell id="{4e88ae40-eaaf-4d4f-acf6-c1564fd63c5d}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+            <cell id="{7e43291d-6c26-4234-bfb1-d2c7ecc2f82c}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+            <cell id="{21bcc3ff-3545-446d-bea3-afb92a574da1}" showlabel="false">
+              <labels>
+                <label description="" languagecode="1033" />
+              </labels>
+            </cell>
+          </row>
+        </rows>
+      </footer>
+      <DisplayConditions Order="0" FallbackForm="true">
+        <Everyone />
+      </DisplayConditions>
+    </form>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>1</CanBeDeleted>
+    <LocalizedNames>
+      <LocalizedName description="Information" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions>
+      <Description description="A form for this entity." languagecode="1033" />
+    </Descriptions>
+  </systemform>
+</forms>

@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<savedqueries xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <savedquery>
+    <IsCustomizable>1</IsCustomizable>
+    <CanBeDeleted>0</CanBeDeleted>
+    <isquickfindquery>0</isquickfindquery>
+    <isprivate>0</isprivate>
+    <isdefault>1</isdefault>
+    <savedqueryid>{27b8d129-9055-4ca5-a051-961ff5d054ca}</savedqueryid>
+    <layoutxml>
+      <grid name="resultset" jump="sanic_smlt_ij_name" select="1" icon="1" preview="1">
+        <row name="result" id="sanic_tbl_smlt_importjobid">
+          <cell name="sanic_smlt_ij_name" width="300" />
+          <cell name="sanic_smlt_ij_totalrows" width="127" />
+          <cell name="sanic_smlt_ij_successcount" width="145" />
+          <cell name="sanic_smlt_ij_failedcount" width="123" />
+          <cell name="sanic_smlt_ij_skippedcount" width="147" />
+          <cell name="sanic_smlt_ij_processedrows" width="155" />
+          <cell name="sanic_smlt_ij_starttime" width="115" />
+          <cell name="sanic_smlt_ij_endtime" width="111" />
+          <cell name="sanic_smlt_ij_progress" width="113" />
+          <cell name="createdon" width="125" />
+        </row>
+      </grid>
+    </layoutxml>
+    <querytype>0</querytype>
+    <fetchxml>
+      <fetch version="1.0" mapping="logical">
+        <entity name="sanic_tbl_smlt_importjob">
+          <attribute name="sanic_tbl_smlt_importjobid" />
+          <attribute name="sanic_smlt_ij_name" />
+          <attribute name="createdon" />
+          <order attribute="sanic_smlt_ij_name" descending="false" />
+          <filter type="and">
+            <condition attribute="statecode" operator="eq" value="0" />
+          </filter>
+          <attribute name="sanic_smlt_ij_totalrows" />
+          <attribute name="sanic_smlt_ij_successcount" />
+          <attribute name="sanic_smlt_ij_failedcount" />
+          <attribute name="sanic_smlt_ij_processedrows" />
+          <attribute name="sanic_smlt_ij_skippedcount" />
+          <attribute name="sanic_smlt_ij_starttime" />
+          <attribute name="sanic_smlt_ij_endtime" />
+          <attribute name="sanic_smlt_ij_progress" />
+        </entity>
+      </fetch>
+    </fetchxml>
+    <IntroducedVersion>1.0</IntroducedVersion>
+    <LocalizedNames>
+      <LocalizedName description="Active TBL | SMLT | Import Jobs" languagecode="1033" />
+    </LocalizedNames>
+  </savedquery>
+</savedqueries>
