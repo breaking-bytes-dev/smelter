@@ -102,7 +102,7 @@ internal static class DashboardCatalogo
                                     new XAttribute("showlabel", "false"), new XAttribute("showbar", "false"),
                                     new XAttribute("columns", "1111"), new XAttribute("id", SectionId),
                                     Label("Section"),
-                                    rows))))))));
+                                    rows)))))));
         return form.ToString(SaveOptions.DisableFormatting);
     }
 
