@@ -181,6 +181,30 @@ internal static class FormPolishCatalogo
         new(Log, new("General", "General")),
     ];
 
+    /// <summary>
+    /// ¿El fetchxml guardado equivale al de la spec? Dataverse lo re-serializa (agrega savedqueryid al <c>&lt;fetch&gt;</c>, cambia
+    /// el formato), así que se comparan los atributos pedidos, las condiciones y los órdenes, no el texto.
+    /// </summary>
+    internal static bool FetchMatches(string? actual, string expected)
+    {
+        if (string.IsNullOrWhiteSpace(actual)) return false;
+        static (string Entity, string[] Attributes, string[] Conditions, string[] Orders) Shape(string xml)
+        {
+            var entity = XDocument.Parse(xml).Descendants("entity").First();
+            return ((string?)entity.Attribute("name") ?? "",
+                entity.Elements("attribute").Select(a => (string?)a.Attribute("name") ?? "").OrderBy(x => x, StringComparer.Ordinal).ToArray(),
+                entity.Descendants("condition").Select(c => $"{(string?)c.Attribute("attribute")}|{(string?)c.Attribute("operator")}|{(string?)c.Attribute("value")}").OrderBy(x => x, StringComparer.Ordinal).ToArray(),
+                entity.Elements("order").Select(o => $"{(string?)o.Attribute("attribute")}|{(string?)o.Attribute("descending") ?? "false"}").ToArray());
+        }
+        try
+        {
+            var a = Shape(actual);
+            var e = Shape(expected);
+            return a.Entity == e.Entity && a.Attributes.SequenceEqual(e.Attributes) && a.Conditions.SequenceEqual(e.Conditions) && a.Orders.SequenceEqual(e.Orders);
+        }
+        catch (System.Xml.XmlException) { return false; }
+    }
+
     /// <summary>Entidades con ediciones de form (para que el provisioner/verify sepan qué forms tocar).</summary>
     internal static IEnumerable<string> FormEntities =>
         ReadOnlyFields.Select(f => f.Entity)

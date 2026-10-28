@@ -385,4 +385,19 @@ public class FormPolishSpecContractTests
         doc.ToString().Should().Be(snapshot);
         FormXmlEditor.TrySetLookupView(doc, "nope", id).Should().BeFalse();
     }
+
+    [Fact]
+    public void FetchMatches_IgnoresDataverseReserialization_ButCatchesAChangedFilter()
+    {
+        var spec = FormPolishCatalogo.LookupViews.Single();
+        // Dataverse devuelve el fetch minificado, con savedqueryid en <fetch> y los attribute en otro orden.
+        var stored = "<fetch version=\"1.0\" mapping=\"logical\" savedqueryid=\"x\"><entity name=\"sanic_tbl_smlt_importtemplate\">" +
+            "<attribute name=\"createdon\" /><attribute name=\"sanic_smlt_it_status\" /><attribute name=\"sanic_smlt_it_name\" /><attribute name=\"sanic_tbl_smlt_importtemplateid\" />" +
+            "<order attribute=\"sanic_smlt_it_name\" descending=\"false\" /><filter type=\"and\"><condition attribute=\"statecode\" operator=\"eq\" value=\"0\" />" +
+            "<condition attribute=\"sanic_smlt_it_status\" operator=\"eq\" value=\"1\" /></filter></entity></fetch>";
+
+        FormPolishCatalogo.FetchMatches(stored, spec.FetchXml).Should().BeTrue();
+        FormPolishCatalogo.FetchMatches(stored.Replace("value=\"1\"", "value=\"0\""), spec.FetchXml).Should().BeFalse("el filtro cambió (Draft en vez de Active)");
+        FormPolishCatalogo.FetchMatches(null, spec.FetchXml).Should().BeFalse();
+    }
 }

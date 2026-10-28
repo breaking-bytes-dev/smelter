@@ -54,8 +54,7 @@ internal static class LookupViewsProvisioner
                 Console.WriteLine($"[4f2]   vista '{spec.Name.En}' creada: {spec.ViewId}.");
                 touched = true;
             }
-            else if (!DashboardProvisioner.XmlEquivalent(existing.GetAttributeValue<string>("fetchxml"), spec.FetchXml)
-                     || !DashboardProvisioner.XmlEquivalent(existing.GetAttributeValue<string>("layoutxml"), layoutXml))
+            else if (!FormPolishCatalogo.FetchMatches(existing.GetAttributeValue<string>("fetchxml"), spec.FetchXml))
             {
                 client.Update(new Entity("savedquery", spec.ViewId) { ["fetchxml"] = spec.FetchXml, ["layoutxml"] = layoutXml });
                 Console.WriteLine($"[4f2]   vista '{spec.Name.En}': fetch/layout actualizados.");
