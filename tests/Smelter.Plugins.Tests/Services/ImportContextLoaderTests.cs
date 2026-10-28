@@ -163,6 +163,30 @@ namespace Smelter.Plugins.Tests.Services
         }
 
         [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void LoadContext_LoadsTheJobStartTime_NullWhenTheJobWasNeverPrepared(bool hasStart)
+        {
+            var service = Substitute.For<IOrganizationService>();
+            var jobId = Guid.NewGuid();
+            var templateId = Guid.NewGuid();
+            var start = new DateTime(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
+            var job = new Entity("sanic_tbl_smlt_importjob", jobId);
+            job["sanic_smlt_ij_importtemplateid"] = new EntityReference("sanic_tbl_smlt_importtemplate", templateId);
+            if (hasStart) job["sanic_smlt_ij_starttime"] = start;
+            service.Retrieve("sanic_tbl_smlt_importjob", jobId, Arg.Any<ColumnSet>()).Returns(job);
+            service.Retrieve("sanic_tbl_smlt_importtemplate", templateId, Arg.Any<ColumnSet>())
+                .Returns(new Entity("sanic_tbl_smlt_importtemplate", templateId));
+            service.RetrieveMultiple(Arg.Any<QueryBase>()).Returns(new EntityCollection());
+
+            var context = new ImportContextLoader(service).LoadContext(jobId);
+
+            context.JobStartTime.Should().Be(hasStart ? (DateTime?)start : null);
+            service.Received().Retrieve("sanic_tbl_smlt_importjob", jobId,
+                Arg.Is<ColumnSet>(c => c.Columns.Contains("sanic_smlt_ij_starttime")));
+        }
+
+        [Theory]
         [InlineData(true, true)]
         [InlineData(false, false)]
         [InlineData(null, false)] // registros previos a 1.0.8: sin valor => false

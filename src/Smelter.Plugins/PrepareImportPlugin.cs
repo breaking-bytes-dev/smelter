@@ -46,7 +46,9 @@ namespace Smelter.Plugins
                     new CsvParserService(),
                     service,
                     new PrincipalAccessChecker(service),
-                    tracing);
+                    tracing,
+                    // Presupuesto de 40 s de los 120 del sandbox; lo que no alcance lo sigue borrando ProcessChunk.
+                    new StaleLogPurger(service, tracing, TimeSpan.FromSeconds(40)));
 
                 var result = handler.Prepare(jobId, context.InitiatingUserId);
                 tracing.Trace($"PrepareImport: COMPLETED. Claimed = {result.Claimed}, TotalRows = {result.TotalRows}");
@@ -110,6 +112,7 @@ namespace Smelter.Plugins
         private readonly IOrganizationService _service;
         private readonly IAccessChecker _accessChecker;
         private readonly ITracingService _tracing;
+        private readonly IStaleLogPurger _logPurger;
 
         /// <summary>
         /// Initializes a new instance of <see cref="PrepareImportHandler"/>.
@@ -125,8 +128,13 @@ namespace Smelter.Plugins
         /// scoped to the initiating user.
         /// </param>
         /// <param name="tracing">Optional tracing service; pass <c>null</c> in unit tests.</param>
+        /// <param name="logPurger">
+        /// Borra los Import Job Logs de la corrida anterior al reclamar el job (Reintentar). <c>null</c> = no borra (tests, o un
+        /// caller que no quiera esta limpieza).
+        /// </param>
         public PrepareImportHandler(IImportContextLoader loader, IFileDownloader downloader,
-            ICsvReader csv, IOrganizationService service, IAccessChecker accessChecker, ITracingService tracing = null)
+            ICsvReader csv, IOrganizationService service, IAccessChecker accessChecker, ITracingService tracing = null,
+            IStaleLogPurger logPurger = null)
         {
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
@@ -134,6 +142,7 @@ namespace Smelter.Plugins
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _accessChecker = accessChecker ?? throw new ArgumentNullException(nameof(accessChecker));
             _tracing = tracing;
+            _logPurger = logPurger;
         }
 
         /// <summary>
@@ -220,7 +229,14 @@ namespace Smelter.Plugins
                 ? $"Run: byte cursor starts at {byteCursor.Value}."
                 : "Run: file not walkable by bytes; ProcessChunk will use the legacy full-download path.");
 
-            Reset(importJobId, totalRows, byteCursor);
+            // Un Reintentar no debe mostrar los errores de la corrida anterior. Solo acá (job reclamado y validado): un job que
+            // falla una validación o que otra corrida ya posee conserva sus logs. El inicio de la corrida es el mismo instante
+            // que se escribe como starttime: «vieja» = no modificada desde entonces (ver StaleLogPurger).
+            var startedAt = DateTime.UtcNow;
+            var purged = _logPurger?.Purge(importJobId, startedAt) ?? 0;
+            _tracing?.Trace($"Run: purged {purged} Import Job Log(s) of the previous run.");
+
+            Reset(importJobId, totalRows, byteCursor, startedAt);
             return new PrepareResult(true, totalRows);
         }
 
@@ -318,7 +334,7 @@ namespace Smelter.Plugins
         /// Update plano: la exclusión ya la da el lock de fila de <see cref="Prepare"/>; sin try/catch a propósito
         /// (atrapar un fault de OrganizationService dentro de la transacción la doomea).
         /// </summary>
-        private void Reset(Guid jobId, int totalRows, long? byteCursor)
+        private void Reset(Guid jobId, int totalRows, long? byteCursor, DateTime startedAt)
         {
             _service.Update(new Entity(ImportJobTable, jobId)
             {
@@ -331,7 +347,7 @@ namespace Smelter.Plugins
                 ["sanic_smlt_ij_successcount"] = 0,
                 ["sanic_smlt_ij_failedcount"] = 0,
                 ["sanic_smlt_ij_skippedcount"] = 0,
-                ["sanic_smlt_ij_starttime"] = DateTime.UtcNow,
+                ["sanic_smlt_ij_starttime"] = startedAt,
                 // Un Reintentar no debe arrastrar el fin de la corrida anterior.
                 ["sanic_smlt_ij_endtime"] = null,
                 // Idem el motivo de la falla anterior: lo escribe solo el handler Failed del flow; un Reintentar que termina bien no debe mostrarlo.

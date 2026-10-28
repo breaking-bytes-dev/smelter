@@ -6,8 +6,9 @@ namespace Smelter.Plugins.Services
     /// and never travels in a template, a CSV, a log or a trace.
     /// <para>
     /// Implementations live outside <c>Smelter.Core</c> (the core has no Dataverse dependency):
-    /// <c>DataverseHmacKeyProvider</c> is the DEV-only one; PROD must use a managed-identity +
-    /// Azure Key Vault implementation.
+    /// <c>DataverseHmacKeyProvider</c> is the one in use in every environment: it reads the key table that
+    /// ships in the solution, and the key value is loaded manually per environment. A managed-identity +
+    /// Azure Key Vault implementation is a possible future hardening (same key, same hashes), not a requirement.
     /// </para>
     /// </summary>
     public interface IHmacKeyProvider

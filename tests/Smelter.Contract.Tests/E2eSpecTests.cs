@@ -23,7 +23,7 @@ public class E2eSpecTests
         E2eSteps.All.Select(s => s.Id).Should().OnlyHaveUniqueItems();
         E2eSteps.All.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s.Title));
         E2eSteps.All.Select(s => s.Id).Should().Contain(
-            ["1", "2", "2g", "3", "4a", "4b", "5a", "5b", "5c", "6", "7a", "7b", "7c", "7d", "8", "10", "11", "12", "13", "14"]);
+            ["1", "2", "2g", "3", "3b", "4a", "4b", "5a", "5b", "5c", "6", "7a", "7b", "7c", "7d", "7e", "8", "10", "11", "12", "13", "14"]);
     }
 
     [Theory]
@@ -180,7 +180,11 @@ public class E2eSpecTests
                 {
                     var key = email.SourceColumn ?? "";
                     if (string.IsNullOrEmpty(email.TransformExpression) && key.Length > 0)
+                    {
+                        // 3b y 7e traen UNA fila con la clave vacía a propósito: no crea contact, no hay nada que limpiar.
+                        if (row.Values[key].Length == 0 && (c.Label.StartsWith("3b") || c.Label.StartsWith("7e"))) continue;
                         row.Values[key].Should().EndWith(E2eSpec.Domain, c.Label);
+                    }
                 }
             }
         }
@@ -332,6 +336,36 @@ public class E2eSpecTests
         rows[E2eSpec.RequiredDefault.InvalidRow - 1].Values["First"].Should().BeEmpty();
         rows[E2eSpec.RequiredDefault.InvalidRow - 1].RowNumber.Should().Be(E2eSpec.RequiredDefault.InvalidRowNumber);
         E2eSpec.RequiredDefault.InvalidRowNumber.Should().Be(3); // cabecera = 1
+    }
+
+    // ─── [E2E-3b / 7e] clave de dedup vacía y logs de la corrida anterior ────────────────────────────
+
+    [Fact]
+    public void EmptyDedupKey_TheRowWithoutEmailIsTheOnlyOneWithAnEmptyKey_AndTheMessageNamesColumnAndSource()
+    {
+        var dto = E2eSpec.EmptyDedupKey.Dto(E2eSpec.EmptyDedupKey.Key);
+        var tm = dto.TableMappings.Single();
+        tm.InsertOnly.Should().BeFalse("el paso prueba el camino con lookup de dedup");
+        tm.DedupColumns.Should().Be("emailaddress1");
+
+        var rows = E2eSpecTestKit.ReadRows(dto, E2eSpec.EmptyDedupKey.Csv("dk", E2eSpec.EmptyDedupKey.Rows, emptyDataRow: 2));
+        rows.Should().HaveCount(E2eSpec.EmptyDedupKey.Rows);
+        rows.Where(r => string.IsNullOrEmpty(r.Values["Email"])).Select(r => r.RowNumber).Should().Equal(E2eSpec.EmptyDedupKey.RowNumberOf(2));
+        rows.Where(r => !string.IsNullOrEmpty(r.Values["Email"])).Should().OnlyContain(r => r.Values["Email"].EndsWith(E2eSpec.Domain));
+        E2eSpec.EmptyDedupKey.RowNumberOf(2).Should().Be(3); // cabecera = 1
+        E2eSpec.EmptyDedupKey.ExpectedMessage.Should().Be("Dedup key 'emailaddress1' is empty (Source: 'Email').");
+        E2eSpec.EmptyDedupKey.ExpectedMessage.Should().NotContain(E2eSpec.Domain);
+    }
+
+    [Fact]
+    public void EmptyDedupKey_TheRetryCsvMovesTheBadRow_SoTheOldLogCannotBeTheNewOne()
+    {
+        var first = E2eSpecTestKit.ReadRows(E2eSpec.EmptyDedupKey.Dto("retrylogs"), E2eSpec.EmptyDedupKey.Csv("rl", 3, emptyDataRow: 1));
+        var retry = E2eSpecTestKit.ReadRows(E2eSpec.EmptyDedupKey.Dto("retrylogs"), E2eSpec.EmptyDedupKey.Csv("rl", 3, emptyDataRow: 3));
+
+        first.Single(r => string.IsNullOrEmpty(r.Values["Email"])).RowNumber.Should().Be(E2eSpec.EmptyDedupKey.RowNumberOf(1));
+        retry.Single(r => string.IsNullOrEmpty(r.Values["Email"])).RowNumber.Should().Be(E2eSpec.EmptyDedupKey.RowNumberOf(3));
+        E2eSpec.EmptyDedupKey.RowNumberOf(1).Should().NotBe(E2eSpec.EmptyDedupKey.RowNumberOf(3));
     }
 
     // ─── [E2E-4] relaciones ──────────────────────────────────────────────────────────────────────────
@@ -646,6 +680,9 @@ public class E2eSpecTests
         Add("2g guid", g.Dto, g.Csv, g.Rows.Count);
 
         Add("3 required", E2eSpec.RequiredDefault.Dto(), E2eSpec.RequiredDefault.Csv(), 3);
+
+        Add("3b empty dedup key", E2eSpec.EmptyDedupKey.Dto(E2eSpec.EmptyDedupKey.Key), E2eSpec.EmptyDedupKey.Csv("dk", E2eSpec.EmptyDedupKey.Rows, 2), E2eSpec.EmptyDedupKey.Rows);
+        Add("7e retry logs", E2eSpec.EmptyDedupKey.Dto("retrylogs"), E2eSpec.EmptyDedupKey.Csv("rl", E2eSpec.EmptyDedupKey.Rows, 1), E2eSpec.EmptyDedupKey.Rows);
 
         Add("4a relationship", E2eSpec.Relationship.Dto(false), E2eSpec.Relationship.Csv(false, E2eSpec.Relationship.Rows), E2eSpec.Relationship.Rows);
         Add("4b relationship hmac", E2eSpec.Relationship.Dto(true), E2eSpec.Relationship.Csv(true, E2eSpec.Relationship.HmacRows), E2eSpec.Relationship.HmacRows);

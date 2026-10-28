@@ -7,9 +7,9 @@
 //
 // La tabla ES componente de la solución smlt_core_smelter: su SCHEMA viaja a Test/Prod con la
 // solución managed. El VALOR de la key (la fila) NUNCA viaja: lo carga a mano un administrador en
-// cada entorno (ni CI, ni repo, ni GitHub secret). Procedimiento: docs/04-admin-guide/security-and-roles.md.
+// cada entorno (ni CI, ni repo, ni GitHub secret). Procedimiento: docs/tecnica/03-seguridad.md (Clave HMAC) y docs/tecnica/09-instalacion-en-otro-tenant.md.
 //
-// Riesgo aceptado conscientemente (documentado en security-and-roles.md): cualquier System
+// Riesgo aceptado conscientemente (documentado en docs/tecnica/03-seguridad.md): cualquier System
 // Administrator del entorno puede leer la key; las copias/backups del entorno la arrastran; la
 // columna del valor no se audita. Mitigaciones: la tabla NO está en SecuritySpec.Tables ni en
 // ningún rol de Smelter (solo SYSTEM —el plugin— y System Administrator), es Organization-owned,

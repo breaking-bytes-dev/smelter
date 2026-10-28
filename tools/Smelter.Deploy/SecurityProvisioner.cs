@@ -80,28 +80,30 @@ internal static class SecurityProvisioner
             // privilegio+profundidad no duplica — no hace falta diff previo.
             client.Execute(new AddPrivilegesRoleRequest { RoleId = roleId, Privileges = rolePrivileges });
             Console.WriteLine($"[6]   role '{role.Name}': {rolePrivileges.Length} privilegios aplicados.");
-            RemoveDeniedPrivileges(client, roleId, role);
+            RemoveUnexpectedPrivileges(client, roleId, role);
         }
 
         return roleIds;
     }
 
-    // AddPrivilegesRole solo suma: un privilegio que la spec prohíbe (RoleSpec.Denied) hay que quitarlo explícitamente.
-    // RemovePrivilegeRole falla si el rol no lo tiene, por eso se lee primero lo que tiene.
-    private static void RemoveDeniedPrivileges(ServiceClient client, Guid roleId, RoleSpec role)
+    // AddPrivilegesRole solo suma: lo que el rol tiene de más (los prohibidos de RoleSpec.Denied, un Append/Write que la spec no declara, los
+    // privilegios de plataforma que arrastró un rol creado a mano) hay que quitarlo explícitamente. La regla es SecurityAudit.Unexpected.
+    // RemovePrivilegeRole falla si el rol no lo tiene, por eso se lee primero lo que tiene (después del Add, ya con las profundidades de la spec).
+    private static void RemoveUnexpectedPrivileges(ServiceClient client, Guid roleId, RoleSpec role)
     {
-        if (role.Denied.Length == 0) return;
         var actual = ((RetrieveRolePrivilegesRoleResponse)client.Execute(new RetrieveRolePrivilegesRoleRequest { RoleId = roleId }))
             .RolePrivileges.ToDictionary(p => p.PrivilegeName, p => p.PrivilegeId);
-        foreach (var denied in role.Denied)
+        var unexpected = SecurityAudit.Unexpected(role, actual.Keys.Select(name => (name, PrivilegeDepth.Basic)));
+        if (unexpected.Count == 0)
         {
-            if (!actual.TryGetValue(denied.PrivilegeName, out var privilegeId))
-            {
-                Console.WriteLine($"[6]   role '{role.Name}': no tiene '{denied.PrivilegeName}' (prohibido) — nada que quitar.");
-                continue;
-            }
-            client.Execute(new RemovePrivilegeRoleRequest { RoleId = roleId, PrivilegeId = privilegeId });
-            Console.WriteLine($"[6]   role '{role.Name}': privilegio prohibido '{denied.PrivilegeName}' QUITADO.");
+            Console.WriteLine($"[6]   role '{role.Name}': sin privilegios fuera de la spec — nada que quitar.");
+            return;
+        }
+
+        foreach (var name in unexpected)
+        {
+            client.Execute(new RemovePrivilegeRoleRequest { RoleId = roleId, PrivilegeId = actual[name] });
+            Console.WriteLine($"[6]   role '{role.Name}': privilegio fuera de la spec '{name}' QUITADO.");
         }
     }
 

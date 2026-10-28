@@ -37,8 +37,13 @@ namespace Smelter.Plugins.Tests.Plugins
 
             public Mocks() => Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(Bytes);
 
+            public IStaleLogPurger Purger = Substitute.For<IStaleLogPurger>();
+
             public ProcessChunkHandler Build() =>
                 new ProcessChunkHandler(Loader, Downloader, Csv, Engine, Writer, Service, Tracing);
+
+            public ProcessChunkHandler BuildWithPurger() =>
+                new ProcessChunkHandler(Loader, Downloader, Csv, Engine, Writer, Service, Tracing, Purger);
         }
 
         private static int Status(Entity e) => ((OptionSetValue)e["sanic_smlt_ij_status"]).Value;
@@ -332,6 +337,62 @@ namespace Smelter.Plugins.Tests.Plugins
             Action act = () => m.Build().Run(jobId, 0);
 
             act.Should().NotThrow();
+        }
+
+        // ── continuación del borrado de logs de la corrida anterior (1.0.16) ───────────────────────
+
+        [Fact]
+        public void Run_WithPurger_DeletesLeftoverLogsOfThePreviousRun_BeforeWritingThisChunksLogs()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var startedAt = new DateTime(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
+            var ctx = Ctx(offset: 0, chunkSize: 1000);
+            ctx.JobStartTime = startedAt;
+            var rows = Enumerable.Range(1, 3).Select(Row).ToList();
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            m.Csv.ReadRange(m.Bytes, true, ",", 0, 1000).Returns(rows);
+            m.Engine.ProcessBatch(ctx, Arg.Any<IList<SourceRow>>(), m.Writer).Returns(AllOk(rows));
+
+            m.BuildWithPurger().Run(jobId, 0);
+
+            Received.InOrder(() =>
+            {
+                m.Purger.Purge(jobId, startedAt);
+                m.Engine.ProcessBatch(ctx, Arg.Any<IList<SourceRow>>(), m.Writer);
+            });
+        }
+
+        [Fact]
+        public void Run_WithPurgerButNoStartTime_DoesNotPurge()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = Ctx(offset: 0, chunkSize: 1000); // job preparado por una versión anterior: sin starttime
+            var rows = Enumerable.Range(1, 3).Select(Row).ToList();
+            m.Loader.LoadContext(jobId).Returns(ctx);
+            m.Csv.ReadRange(m.Bytes, true, ",", 0, 1000).Returns(rows);
+            m.Engine.ProcessBatch(ctx, Arg.Any<IList<SourceRow>>(), m.Writer).Returns(AllOk(rows));
+
+            m.BuildWithPurger().Run(jobId, 0);
+
+            m.Purger.DidNotReceiveWithAnyArgs().Purge(Guid.Empty, default(DateTime));
+        }
+
+        [Fact]
+        public void Run_JobNotProcessing_DoesNotPurge()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = Ctx(offset: 0, chunkSize: 1000);
+            ctx.JobStartTime = DateTime.UtcNow;
+            ctx.JobStatus = (int)ImportJobStatus.Completed;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.BuildWithPurger().Run(jobId, 0);
+
+            act.Should().Throw<InvalidPluginExecutionException>();
+            m.Purger.DidNotReceiveWithAnyArgs().Purge(Guid.Empty, default(DateTime));
         }
     }
 }

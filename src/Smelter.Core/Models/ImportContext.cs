@@ -54,6 +54,12 @@ namespace Smelter.Plugins.Models
         public long? InitialByteCursor { get; set; }
 
         /// <summary>
+        /// <c>starttime</c> del job (UTC): lo escribe PrepareImport al arrancar la corrida. ProcessChunk lo usa para saber qué
+        /// Import Job Logs son de una corrida anterior (modificados antes de este instante). <c>null</c> = job que nunca se preparó.
+        /// </summary>
+        public DateTime? JobStartTime { get; set; }
+
+        /// <summary>
         /// The Import Template configuration.
         /// </summary>
         public ImportTemplateConfig Template { get; set; }

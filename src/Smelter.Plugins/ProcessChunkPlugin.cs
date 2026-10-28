@@ -39,11 +39,13 @@ namespace Smelter.Plugins
                     new ImportContextLoader(service),
                     new FileDownloader(service),
                     new CsvParserService(),
-                    // Key source for the HMAC transform: Dataverse table, accepted risk, Key Vault as future option (see DataverseHmacKeyProvider).
+                    // Key source for the HMAC transform: the key table that ships in the solution (value loaded manually per environment; accepted risk, see DataverseHmacKeyProvider).
                     new NormalizationEngine(service, tracing, new DataverseHmacKeyProvider(service)),
                     new UpsertWriter(service, tracing),
                     service,
-                    tracing);
+                    tracing,
+                    // 20 s por chunk: el chunk ya tiene su propio costo (descarga + upserts) y comparte los 120 s del sandbox.
+                    new StaleLogPurger(service, tracing, TimeSpan.FromSeconds(20)));
 
                 var result = handler.Run(jobId, chunkOverride);
                 tracing.Trace($"ProcessChunk: HasMore={result.HasMore}, ProcessedSoFar={result.ProcessedSoFar}");
@@ -118,6 +120,7 @@ namespace Smelter.Plugins
         private readonly IUpsertWriter _writer;
         private readonly IOrganizationService _service;
         private readonly ITracingService _tracing;
+        private readonly IStaleLogPurger _logPurger;
 
         /// <summary>
         /// Initializes a new instance of <see cref="ProcessChunkHandler"/>.
@@ -129,8 +132,13 @@ namespace Smelter.Plugins
         /// <param name="writer">Issues ExecuteMultiple upserts to Dataverse.</param>
         /// <param name="service">Organization service used to update the job record (SYSTEM context).</param>
         /// <param name="tracing">Optional tracing service; pass <c>null</c> in unit tests.</param>
+        /// <param name="logPurger">
+        /// Continúa el borrado de los logs de la corrida anterior que PrepareImport no alcanzó a borrar dentro de su presupuesto de
+        /// tiempo. <c>null</c> = no borra.
+        /// </param>
         public ProcessChunkHandler(IImportContextLoader loader, IFileDownloader downloader, ICsvReader csv,
-            INormalizationEngine engine, IUpsertWriter writer, IOrganizationService service, ITracingService tracing)
+            INormalizationEngine engine, IUpsertWriter writer, IOrganizationService service, ITracingService tracing,
+            IStaleLogPurger logPurger = null)
         {
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
@@ -139,6 +147,7 @@ namespace Smelter.Plugins
             _writer = writer ?? throw new ArgumentNullException(nameof(writer));
             _service = service ?? throw new ArgumentNullException(nameof(service));
             _tracing = tracing;
+            _logPurger = logPurger;
         }
 
         /// <summary>
@@ -163,6 +172,11 @@ namespace Smelter.Plugins
             PrepareImportHandler.ValidateTemplateStatus(template);
             ValidateJobStatus(context);
             PrepareImportHandler.ValidateDedupGate(context.TableMappings);
+
+            // Antes de escribir los logs de este chunk: si Prepare no terminó de borrar los de la corrida anterior (muchos miles), se
+            // sigue acá, acotado por tiempo. En el caso normal es una consulta que no devuelve nada.
+            if (_logPurger != null && context.JobStartTime.HasValue)
+                _logPurger.Purge(importJobId, context.JobStartTime.Value);
 
             var chunkSize = ResolveChunkSize(context, chunkSizeOverride);
             var offset = context.InitialProcessingBatch;

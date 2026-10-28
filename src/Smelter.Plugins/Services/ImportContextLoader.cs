@@ -62,7 +62,8 @@ namespace Smelter.Plugins.Services
                 "sanic_smlt_ij_importtemplateid", "sanic_smlt_ij_isdryrun",
                 "sanic_smlt_ij_processedrows", "sanic_smlt_ij_successcount",
                 "sanic_smlt_ij_failedcount", "sanic_smlt_ij_skippedcount",
-                "sanic_smlt_ij_processingbatch", "sanic_smlt_ij_status", "sanic_smlt_ij_bytecursor"));
+                "sanic_smlt_ij_processingbatch", "sanic_smlt_ij_status", "sanic_smlt_ij_bytecursor",
+                "sanic_smlt_ij_starttime"));
 
             var templateRef = job.GetAttributeValue<EntityReference>("sanic_smlt_ij_importtemplateid");
             if (templateRef == null)
@@ -78,6 +79,7 @@ namespace Smelter.Plugins.Services
                 InitialSkippedCount = job.GetAttributeValue<int?>("sanic_smlt_ij_skippedcount") ?? 0,
                 InitialProcessingBatch = job.GetAttributeValue<int?>("sanic_smlt_ij_processingbatch") ?? 0,
                 InitialByteCursor = ToLong(job.GetAttributeValue<decimal?>("sanic_smlt_ij_bytecursor")),
+                JobStartTime = job.GetAttributeValue<DateTime?>("sanic_smlt_ij_starttime"),
                 JobStatus = job.GetAttributeValue<OptionSetValue>("sanic_smlt_ij_status")?.Value
                     ?? (int)ImportJobStatus.Queued,
                 Template = LoadTemplateConfig(templateRef.Id)

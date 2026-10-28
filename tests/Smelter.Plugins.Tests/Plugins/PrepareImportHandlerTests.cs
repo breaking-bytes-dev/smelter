@@ -85,7 +85,12 @@ namespace Smelter.Plugins.Tests.Plugins
                 Access.HasReadAccess(Arg.Any<Guid>(), Arg.Any<EntityReference>()).Returns(true);
             }
 
+            public IStaleLogPurger Purger = Substitute.For<IStaleLogPurger>();
+
             public PrepareImportHandler Build() => new PrepareImportHandler(Loader, Downloader, Csv, Service, Access);
+
+            public PrepareImportHandler BuildWithPurger() =>
+                new PrepareImportHandler(Loader, Downloader, Csv, Service, Access, null, Purger);
         }
 
         [Fact]
@@ -605,6 +610,68 @@ namespace Smelter.Plugins.Tests.Plugins
             Action act = () => PrepareImportHandler.ValidateDedupGate(mappings);
 
             act.Should().NotThrow();
+        }
+
+        // ── Reintentar borra los logs de la corrida anterior (1.0.16) ──────────────────────────────
+
+        private static void ClaimableJob(Mocks m, Guid jobId)
+        {
+            var bytes = new byte[] { 1 };
+            m.Loader.LoadContext(jobId).Returns(ContextWith(true, "name"));
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name" });
+            m.Csv.CountRows(bytes, true, ",").Returns(1);
+        }
+
+        [Fact]
+        public void Prepare_Claimed_PurgesThePreviousRunLogs_BeforeTheResetAndWithTheResetStartTime()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            ClaimableJob(m, jobId);
+            DateTime? purgedAt = null;
+            m.Purger.Purge(jobId, Arg.Do<DateTime>(t => purgedAt = t)).Returns(7);
+
+            var result = m.BuildWithPurger().Prepare(jobId, Guid.NewGuid());
+
+            result.Claimed.Should().BeTrue();
+            var reset = m.Resets.Should().ContainSingle().Subject;
+            purgedAt.Should().NotBeNull();
+            reset["sanic_smlt_ij_starttime"].Should().Be(purgedAt, "los logs «viejos» son los anteriores al inicio de esta corrida");
+            Received.InOrder(() =>
+            {
+                m.Purger.Purge(jobId, Arg.Any<DateTime>());
+                m.Service.Update(Arg.Is<Entity>(e => e.Contains("sanic_smlt_ij_status")));
+            });
+        }
+
+        [Fact]
+        public void Prepare_JobNotClaimed_DoesNotPurge()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            ClaimableJob(m, jobId);
+            m.JobIs((int)ImportJobStatus.Processing); // otra corrida es dueña del job
+
+            var result = m.BuildWithPurger().Prepare(jobId, Guid.NewGuid());
+
+            result.Claimed.Should().BeFalse();
+            m.Purger.DidNotReceiveWithAnyArgs().Purge(Guid.Empty, default(DateTime));
+        }
+
+        [Fact]
+        public void Prepare_ValidationFails_DoesNotPurge()
+        {
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var ctx = ContextWith(true, "name");
+            ctx.Template.Status = (int)ImportTemplateStatus.Draft;
+            m.Loader.LoadContext(jobId).Returns(ctx);
+
+            Action act = () => m.BuildWithPurger().Prepare(jobId, Guid.NewGuid());
+
+            act.Should().Throw<InvalidPluginExecutionException>();
+            m.Purger.DidNotReceiveWithAnyArgs().Purge(Guid.Empty, default(DateTime));
         }
     }
 }

@@ -132,6 +132,9 @@ namespace Smelter.Plugins.Services
                     if (!ApplyColumnMappings(tableMapping, sourceRow, record, result))
                         continue; // required field missing — already logged as failure
 
+                    if (!HasDedupKey(tableMapping, record, sourceRow, result))
+                        continue; // empty dedup key — already logged as failure
+
                     ApplyParentLookups(context, parentRelations, sourceRow, record);
                     result.Records.Add(record);
                 }
@@ -199,6 +202,39 @@ namespace Smelter.Plugins.Services
 
             return true;
         }
+
+        /// <summary>
+        /// Guard de la clave de dedup (1.0.16): un upsert con la clave vacía no puede matchear a nadie, así que cada corrida
+        /// crearía un registro nuevo (duplicado silencioso). La fila falla (<see cref="ErrorCategory.ValidationError"/>, como
+        /// un campo requerido vacío) en lugar de escribirse. Los mappings «Solo inserción» no buscan por clave: no aplican.
+        /// El mensaje nombra la columna destino y la de origen, nunca el valor.
+        /// </summary>
+        /// <returns><c>false</c> (con la falla ya registrada en <paramref name="result"/>) si alguna columna de la clave quedó vacía.</returns>
+        private static bool HasDedupKey(TableMappingConfig tableMapping, TargetRecord record, SourceRow sourceRow, BatchBuildResult result)
+        {
+            if (tableMapping.InsertOnly) return true;
+
+            foreach (var keyColumn in tableMapping.GetDedupColumnNames())
+            {
+                var value = record.Attributes.FirstOrDefault(kv => string.Equals(kv.Key?.Trim(), keyColumn, StringComparison.OrdinalIgnoreCase)).Value;
+                if (!IsBlank(value)) continue;
+
+                var source = tableMapping.ColumnMappings
+                    .FirstOrDefault(c => string.Equals(c.TargetColumn?.Trim(), keyColumn, StringComparison.OrdinalIgnoreCase))
+                    ?.SourceColumn;
+                result.Skipped.Add(ProcessingResult.Failure(sourceRow.RowNumber, tableMapping.TargetTable,
+                    string.IsNullOrEmpty(source)
+                        ? $"Dedup key '{keyColumn}' is empty."
+                        : $"Dedup key '{keyColumn}' is empty (Source: '{source}').",
+                    ErrorCategory.ValidationError));
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsBlank(object value) =>
+            value == null || (value is string text && string.IsNullOrWhiteSpace(text));
 
         /// <summary>
         /// Raw (pre-coercion) value of a column mapping for one row: transform / source column, then the configured

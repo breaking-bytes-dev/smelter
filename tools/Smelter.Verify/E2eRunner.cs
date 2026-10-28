@@ -88,6 +88,7 @@ internal static partial class E2eRunner
             case "2": DataTypes(env); break;
             case "2g": GuidType(env); break;
             case "3": RequiredAndDefault(env); break;
+            case "3b": EmptyDedupKey(env); break;
             case "4a": Relationship(env, hmac: false); break;
             case "4b": Relationship(env, hmac: true); break;
             case "5a":
@@ -98,6 +99,7 @@ internal static partial class E2eRunner
             case "7b": CloudFlowFails(env); break;
             case "7c": CloudFlowDoubleQueue(env); break;
             case "7d": RequeueWhileProcessingRejected(env); break;
+            case "7e": RetryClearsPreviousLogs(env); break;
             case "8": DryRun(env); break;
             case "10": ExportImportRoundtrip(env); break;
             case "11": RunContactCase(env, E2eSpec.CaseInsensitive.Case(), id); break;

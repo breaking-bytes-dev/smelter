@@ -1,8 +1,9 @@
-// Pasos [E2E-7a], [E2E-7b], [E2E-7c] y [E2E-7d]: el Cloud Flow de punta a punta, igual que lo dispara el botón Ejecutar de la MDA
+// Pasos [E2E-7a], [E2E-7b], [E2E-7c], [E2E-7d] y [E2E-7e]: el Cloud Flow de punta a punta, igual que lo dispara el botón Ejecutar de la MDA
 // (job con status vacío -> se pone Queued -> el flow llama a PrepareImport y a ProcessChunk en loop).
 // Cubre también el camino POSITIVO de ValidateQueueAccess (quien pone Queued puede leer el template). Ver E2eRunner.cs.
 
 using System.Diagnostics;
+using System.Text;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using Smelter.Deploy;
@@ -124,7 +125,7 @@ internal static partial class E2eRunner
         var templateId = ImportTemplate(env, E2eSpec.Simple.Dto("requeue", ImportTemplateStatus.Active));
         var jobId = CreateJob(env, templateId, "requeue", E2eSpec.Simple.Csv("requeue", E2eSpec.Simple.Rows));
 
-        // Simula el job de un Reintentar: quedó con el motivo de una falla anterior. Prepare (reset) debe limpiarlo (1.0.15).
+        // Simula el job de un Reintentar: quedó con el motivo de una falla anterior. Prepare (reset) debe limpiarlo (1.0.16).
         env.Client.Update(new Entity(JobTable, jobId) { ["sanic_smlt_ij_failurereason"] = "stale reason from a previous failed run" });
 
         try
@@ -132,7 +133,7 @@ internal static partial class E2eRunner
             var prep = ExecuteRetryingBlob(env.Client, new OrganizationRequest(env.Apis.Prepare) { ["JobId"] = jobId });
             Ensure((bool)prep["Claimed"], "PrepareImport debía reclamar el job (Claimed=true) y no lo hizo");
             var staleReason = env.Client.Retrieve(JobTable, jobId, new ColumnSet("sanic_smlt_ij_failurereason")).GetAttributeValue<string>("sanic_smlt_ij_failurereason");
-            Ensure(string.IsNullOrEmpty(staleReason), $"Prepare debía limpiar el motivo de la falla anterior y quedó: {staleReason} (¿plugin 1.0.15 sin desplegar?)");
+            Ensure(string.IsNullOrEmpty(staleReason), $"Prepare debía limpiar el motivo de la falla anterior y quedó: {staleReason} (¿plugin 1.0.16 sin desplegar?)");
 
             var before = env.Client.Retrieve(JobTable, jobId, new ColumnSet(StatusAttr)).GetAttributeValue<OptionSetValue>(StatusAttr)?.Value;
             Ensure(before == (int)ImportJobStatus.Processing, $"tras Prepare el job debía estar Processing, está {StatusName(before)}");
@@ -140,7 +141,7 @@ internal static partial class E2eRunner
             string? rejection = null;
             try { Queue(env, jobId); }
             catch (Exception ex) { rejection = ex.Message; }
-            Ensure(rejection is not null, "poner Queued sobre un job Processing debía ser rechazado y fue aceptado (¿plugin 1.0.15 sin desplegar?)");
+            Ensure(rejection is not null, "poner Queued sobre un job Processing debía ser rechazado y fue aceptado (¿plugin 1.0.16 sin desplegar?)");
             Ensure(rejection!.Contains(RequeueBlockedMessage, StringComparison.Ordinal), $"el rechazo debía traer el mensaje del guard, trajo: {rejection}");
 
             var after = env.Client.Retrieve(JobTable, jobId, new ColumnSet(StatusAttr)).GetAttributeValue<OptionSetValue>(StatusAttr)?.Value;
@@ -164,6 +165,59 @@ internal static partial class E2eRunner
         Ensure(CountContactsWithPrefix(env, "requeue") == E2eSpec.Simple.Rows,
             $"el job debía crear exactamente {E2eSpec.Simple.Rows} contacts, hay {CountContactsWithPrefix(env, "requeue")}");
         Console.WriteLine("[E2E-7d]  re-encolado con el job Processing rechazado; el job terminó Completed con conteos exactos y 0 logs.");
+    }
+
+    /// <summary>
+    /// Paso 7e (Reintentar limpia los logs, 1.0.16): el job termina con UN log (fila 2). Se lo "reintenta" con otro archivo cuya fila mala
+    /// es otra (fila 4) y el status vacío (el procedimiento directo, sin flow). Prepare reclama el job y debe dejarlo SIN logs; al terminar
+    /// la corrida nueva queda solo su log. Si el borrado no corriera, el log de la fila 2 sobreviviría (el upsert por (job, fila, tabla)
+    /// no lo toca porque la fila ya no falla).
+    /// </summary>
+    private static void RetryClearsPreviousLogs(Env env)
+    {
+        const string key = "retrylogs";
+        var templateId = ImportTemplate(env, E2eSpec.EmptyDedupKey.Dto(key));
+        var jobId = CreateJob(env, templateId, key, E2eSpec.EmptyDedupKey.Csv("rl", E2eSpec.EmptyDedupKey.Rows, emptyDataRow: 1));
+        var expect = new JobExpect(ImportJobStatus.CompletedWithErrors, Total: E2eSpec.EmptyDedupKey.Rows, Success: E2eSpec.EmptyDedupKey.Rows - 1, Failed: 1);
+
+        try
+        {
+            RunAndAssert(env, jobId, expect);
+            var before = LogsOf(env, jobId);
+            Ensure(before.Count == 1 && before[0].GetAttributeValue<int?>("sanic_smlt_ijl_rownumber") == E2eSpec.EmptyDedupKey.RowNumberOf(1),
+                $"la primera corrida debía dejar 1 log en la fila {E2eSpec.EmptyDedupKey.RowNumberOf(1)}, dejó {before.Count}");
+
+            // «Reintentar» con otro archivo: la fila mala pasa a ser la 3 (RowNumber 4).
+            env.Client.Update(new Entity(JobTable, jobId) { [StatusAttr] = null });
+            UploadBlocks(env.Client, new EntityReference(JobTable, jobId), FileAttr, key + "-retry.csv",
+                new UTF8Encoding(false).GetBytes(E2eSpec.EmptyDedupKey.Csv("rl", E2eSpec.EmptyDedupKey.Rows, emptyDataRow: 3)));
+
+            var prep = ExecuteRetryingBlob(env.Client, new OrganizationRequest(env.Apis.Prepare) { ["JobId"] = jobId });
+            Ensure((bool)prep["Claimed"], "PrepareImport debía reclamar el job reintentado (Claimed=true)");
+            var afterPrepare = LogsOf(env, jobId);
+            Ensure(afterPrepare.Count == 0,
+                $"tras el Prepare del reintento no debía quedar ningún log de la corrida anterior y quedan {afterPrepare.Count} (¿plugin 1.0.16 sin desplegar?)");
+
+            for (var i = 0; i < 30; i++)
+            {
+                var resp = ExecuteRetryingBlob(env.Client, new OrganizationRequest(env.Apis.ProcessChunk) { ["JobId"] = jobId });
+                if (!(bool)resp["HasMore"]) break;
+                Ensure(i < 29, "ProcessChunk no terminó en 30 iteraciones (HasMore nunca fue false).");
+            }
+
+            AssertJob(env, jobId, expect);
+            var after = LogsOf(env, jobId);
+            Ensure(after.Count == 1, $"la corrida nueva debía dejar solo su log y hay {after.Count}");
+            Ensure(after[0].GetAttributeValue<int?>("sanic_smlt_ijl_rownumber") == E2eSpec.EmptyDedupKey.RowNumberOf(3),
+                $"el único log debía ser el de la fila {E2eSpec.EmptyDedupKey.RowNumberOf(3)}, es el de la {after[0].GetAttributeValue<int?>("sanic_smlt_ijl_rownumber")}");
+            Ensure(after.All(l => l.Id != before[0].Id), "el log de la corrida anterior sobrevivió");
+        }
+        catch
+        {
+            DumpLogs(env, jobId);
+            throw;
+        }
+        Console.WriteLine("[E2E-7e]  Reintentar: Prepare borró el log de la corrida anterior (fila 2); la corrida nueva dejó solo el suyo (fila 4).");
     }
 
     private static void AssertNoLogs(Env env, Guid jobId)

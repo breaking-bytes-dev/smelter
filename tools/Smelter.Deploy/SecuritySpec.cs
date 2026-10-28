@@ -27,10 +27,17 @@ internal sealed record PrivilegeSpec(string Table, PrivilegeType Type, Privilege
     internal string PrivilegeName => SecuritySpec.PrivilegeName(Type, Table);
 }
 
-internal sealed record RoleSpec(string Name, PrivilegeSpec[] Privileges, PrivilegeSpec[]? DeniedPrivileges = null)
+internal sealed record RoleSpec(string Name, PrivilegeSpec[] Privileges, PrivilegeSpec[]? DeniedPrivileges = null,
+    string[]? AllowedExtraPrivileges = null)
 {
     /// <summary>Privilegios que el rol NO debe tener: el deploy los quita si están (AddPrivilegesRole es aditivo) y Verify los exige ausentes.</summary>
     internal PrivilegeSpec[] Denied => DeniedPrivileges ?? [];
+
+    /// <summary>
+    /// Privilegios de plataforma (cualquier nombre que NO sea de una tabla de Smelter) que se toleran en el rol además de
+    /// <see cref="Privileges"/>. Vacío para los dos roles reales: ver <see cref="SecurityAudit"/>.
+    /// </summary>
+    internal string[] AllowedExtras => AllowedExtraPrivileges ?? [];
 }
 
 /// <summary>Vista pública (SavedQuery) de Import Job provisionada vía SDK.</summary>
@@ -85,7 +92,8 @@ internal static class SecuritySpec
 
     // Requirement "Rol Smelter Operador": Template Read User+AppendTo (visibilidad vía cascade del
     // team, no BU — decisión cerrada, ver header de tasks.md); Mappings Read Org sin Create/
-    // Write/Delete; ImportJob Create Org + Read/Write User; Log Read User.
+    // Write/Delete; ImportJob Create Org + Append/Read/Write User; Log Read User.
+    // NADA MÁS: ni privilegios de plataforma (plugin assemblies, SharePoint...) ni Append/Write sobre los logs. Ver SecurityAudit.
     internal static readonly RoleSpec Operador = new(
         OperadorRoleName,
         [
@@ -97,6 +105,10 @@ internal static class SecuritySpec
             new PrivilegeSpec(Tables.RelationshipMapping, PrivilegeType.Read, PrivilegeDepth.Global),
 
             new PrivilegeSpec(Tables.ImportJob, PrivilegeType.Create, PrivilegeDepth.Global),
+            // Append sobre el job: setear el lookup al template al crear el job exige Append en el registro que lleva el lookup (el job)
+            // y AppendTo en el referenciado (el template, arriba). Sin él, crear un job con template por API/app falla. AppendTo sobre
+            // el job NO hace falta: solo se usa para colgarle registros (los logs, que crea SYSTEM).
+            new PrivilegeSpec(Tables.ImportJob, PrivilegeType.Append, PrivilegeDepth.Basic),
             new PrivilegeSpec(Tables.ImportJob, PrivilegeType.Read, PrivilegeDepth.Basic),
             new PrivilegeSpec(Tables.ImportJob, PrivilegeType.Write, PrivilegeDepth.Basic),
 

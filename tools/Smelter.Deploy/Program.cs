@@ -115,7 +115,7 @@ if (DeployOptions.AllowDestructive)
 else
     Console.WriteLine("[4d] SchemaCleanup OMITIDO (destructivo; usar --allow-destructive o SMELTER_ALLOW_DESTRUCTIVE=true).");
 
-// ── 4e. Tabla DEV-only de keys HMAC (HmacKeyTableSpec.cs) — fuera de roles y de la solución ──
+// ── 4e. Tabla de keys HMAC (HmacKeyTableSpec.cs): componente de la solución, fuera de todos los roles; el valor se carga a mano por ambiente ──
 HmacKeyTableProvisioner.Run(client);
 
 // ── 4f. Columnas nuevas (SchemaAdditionsSpec.cs): byte cursor del Import Job + "Solo inserción" del Table Mapping ──

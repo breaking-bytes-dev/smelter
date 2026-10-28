@@ -11,7 +11,7 @@ using Xunit;
 namespace Smelter.Plugins.Tests.Services
 {
     /// <summary>
-    /// Tests <see cref="DataverseHmacKeyProvider"/> (DEV-only). Mismo patrón que
+    /// Tests <see cref="DataverseHmacKeyProvider"/> (la tabla de keys viaja en la solución). Mismo patrón que
     /// <c>ImportContextLoaderTests</c>: se mockea <see cref="IOrganizationService.RetrieveMultiple"/>
     /// y se asertea la forma de la query y el resultado — sin llamadas reales a Dataverse.
     /// </summary>

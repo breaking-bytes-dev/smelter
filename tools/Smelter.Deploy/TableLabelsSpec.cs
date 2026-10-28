@@ -115,7 +115,7 @@ internal static class TableLabelsCatalogo
         C(IJL, "sanic_smlt_ijl_errorcategory", "Categoría del error"),
         C(IJL, "sanic_smlt_ijl_errormessage", "Mensaje de error"),
 
-        // ── HMAC Key (tabla DEV-only de keys; HmacKeyTableSpec) ───────────────────────────────
+        // ── HMAC Key (tabla de keys, componente de la solución; HmacKeyTableSpec) ───────────────────────────────
         C(HK, HmacKeyTableSpec.NameColumn, "Nombre"),
         C(HK, HmacKeyTableSpec.ValueColumn, "Valor (hex)"),
     ];

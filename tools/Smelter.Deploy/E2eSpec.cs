@@ -31,6 +31,7 @@ internal static partial class E2eSpec
         "createifnotexists", "types", "types-guid", "required", "relationship", "relationship-hmac",
         "format-noheader", "format-semicolon", "format-tab", "caseinsensitive", "transforms",
         "dryrun", "flow", "flow-draft", "claim", "requeue", "archived", "manytomany", "roundtrip",
+        "dedupkey", "retrylogs",
     ];
 
     internal static IReadOnlyList<string> AllTemplateNames => TemplateKeys.Select(TemplateName).ToList();
@@ -151,6 +152,40 @@ internal static partial class E2eSpec
             Row(EmailOf(2), "", "Smith"),
             Row(EmailOf(3), "Bob", "Jones"),
         ]);
+    }
+
+    // ─── [E2E-3b / E2E-7e] clave de dedup vacía; logs de la corrida anterior ─────────────────────────────────────
+
+    /// <summary>
+    /// Template contact -> contact keyed por <c>emailaddress1</c> (NO insert-only) y un CSV con UNA fila de Email vacío: esa fila
+    /// debe fallar (ValidationError) en lugar de crear un contact sin clave. 7e reutiliza el template para el Reintentar: la
+    /// segunda corrida mueve la fila mala, así el log viejo y el nuevo no se pueden confundir.
+    /// </summary>
+    internal static class EmptyDedupKey
+    {
+        internal const string Key = "dedupkey";
+        internal const int Rows = 3;
+
+        /// <summary>Mensaje exacto del motor para la fila de clave vacía (columna destino + columna de origen, nunca el valor).</summary>
+        internal const string ExpectedMessage = "Dedup key 'emailaddress1' is empty (Source: 'Email').";
+
+        /// <summary>Nombre que ninguna otra fila lleva: el paso comprueba que NO existe un contact con él (la fila mala no escribe nada).</summary>
+        internal const string NoKeyFirstName = "NoKeyRow";
+
+        internal static TemplateExportDto Dto(string key) => Template(key, true, ",", 0, ImportTemplateStatus.Active,
+        [
+            ContactMapping("tm-dk", "Contact (dedup key may not be empty)", 1, "emailaddress1", true, true,
+                Col("emailaddress1", "Email"), Col("firstname", "First"), Col("lastname", "Last")),
+        ]);
+
+        /// <summary>RowNumber físico en el log de la fila de datos <paramref name="dataRow"/> (1-based; cabecera = fila 1).</summary>
+        internal static int RowNumberOf(int dataRow) => dataRow + 1;
+
+        internal static string EmailOf(string prefix, int dataRow) => Email($"{prefix}{dataRow}");
+
+        internal static string Csv(string prefix, int rows, int emptyDataRow) => E2eSpec.Csv(",",
+            new[] { Row("Email", "First", "Last") }.Concat(Enumerable.Range(1, rows).Select(i =>
+                i == emptyDataRow ? Row("", NoKeyFirstName, "Dedup") : Row(EmailOf(prefix, i), $"Key{i}", "Dedup"))));
     }
 
     // ─── [E2E-5] formatos de CSV ───────────────────────────────────────────────────────────────────────────

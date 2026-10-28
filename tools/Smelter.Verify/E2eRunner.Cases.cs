@@ -1,4 +1,4 @@
-// Pasos [E2E-1], [E2E-2], [E2E-2g], [E2E-3], [E2E-8], [E2E-12]: escritura de datos y su contenido. Ver E2eRunner.cs.
+// Pasos [E2E-1], [E2E-2], [E2E-2g], [E2E-3], [E2E-3b], [E2E-8], [E2E-12]: escritura de datos y su contenido. Ver E2eRunner.cs.
 
 using System.Globalization;
 using Microsoft.Xrm.Sdk;
@@ -178,6 +178,45 @@ internal static partial class E2eRunner
         Ensure(message.Contains("firstname"), $"el mensaje debía nombrar la columna 'firstname': '{message}'");
         Ensure(!message.Contains(E2eSpec.Domain) && !message.Contains("Smith"), $"el mensaje no debe llevar datos de la fila (PII): '{message}'");
         Console.WriteLine($"[E2E-3]   default aplicado, requerido vacío rechazado: [{ErrorCategory.ValidationError}] {message}");
+    }
+
+    // ─── [E2E-3b] clave de dedup vacía ───────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Una fila cuya clave de upsert (emailaddress1) llega vacía no puede matchear a nadie: el upsert crearía un contact nuevo en
+    /// cada corrida. Desde 1.0.16 la fila falla con ValidationError y NO se escribe; las demás siguen (el chunk no se corta).
+    /// </summary>
+    private static void EmptyDedupKey(Env env)
+    {
+        var jobId = CreateJob(env, ImportTemplate(env, E2eSpec.EmptyDedupKey.Dto(E2eSpec.EmptyDedupKey.Key)), E2eSpec.EmptyDedupKey.Key, E2eSpec.EmptyDedupKey.Csv("dk", E2eSpec.EmptyDedupKey.Rows, emptyDataRow: 2));
+        RunAndAssert(env, jobId, new JobExpect(ImportJobStatus.CompletedWithErrors, Total: E2eSpec.EmptyDedupKey.Rows, Success: E2eSpec.EmptyDedupKey.Rows - 1, Failed: 1));
+
+        foreach (var i in new[] { 1, 3 })
+            RequireContact(env, E2eSpec.EmptyDedupKey.EmailOf("dk", i), "firstname");
+        var keyless = env.Client.RetrieveMultiple(new QueryExpression("contact")
+        {
+            ColumnSet = new ColumnSet(false),
+            Criteria =
+            {
+                Conditions =
+                {
+                    new ConditionExpression("firstname", ConditionOperator.Equal, E2eSpec.EmptyDedupKey.NoKeyFirstName),
+                    new ConditionExpression("lastname", ConditionOperator.Equal, "Dedup"),
+                },
+            },
+        }).Entities;
+        Ensure(keyless.Count == 0, $"la fila con la clave vacía NO debía crear un contact y hay {keyless.Count} (quedan sin dominio E2E: limpiarlos a mano)");
+
+        var logs = LogsOf(env, jobId);
+        Ensure(logs.Count == 1, $"debía haber 1 Import Job Log (la fila sin clave), hay {logs.Count}");
+        var log = logs[0];
+        var message = log.GetAttributeValue<string>("sanic_smlt_ijl_errormessage") ?? "";
+        Ensure(log.GetAttributeValue<int?>("sanic_smlt_ijl_rownumber") == E2eSpec.EmptyDedupKey.RowNumberOf(2),
+            $"el log debía apuntar a la fila {E2eSpec.EmptyDedupKey.RowNumberOf(2)}, apunta a {log.GetAttributeValue<int?>("sanic_smlt_ijl_rownumber")}");
+        Ensure(log.GetAttributeValue<OptionSetValue>("sanic_smlt_ijl_errorcategory")?.Value == (int)ErrorCategory.ValidationError,
+            $"errorcategory debía ser ValidationError({(int)ErrorCategory.ValidationError}), es {log.GetAttributeValue<OptionSetValue>("sanic_smlt_ijl_errorcategory")?.Value}");
+        Ensure(message == E2eSpec.EmptyDedupKey.ExpectedMessage, $"el mensaje debía ser '{E2eSpec.EmptyDedupKey.ExpectedMessage}' y es '{message}' (¿plugin 1.0.16 sin desplegar?)");
+        Console.WriteLine($"[E2E-3b]  clave vacía rechazada sin crear contact: [{ErrorCategory.ValidationError}] {message}");
     }
 
     // ─── [E2E-8] dry run ─────────────────────────────────────────────────────────────────────────────────

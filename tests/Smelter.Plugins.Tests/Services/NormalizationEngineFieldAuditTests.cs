@@ -54,7 +54,7 @@ namespace Smelter.Plugins.Tests.Services
 
         private static ImportContext SingleTable(params ColumnMappingConfig[] cols)
         {
-            var tm = new TableMappingConfig { Id = Guid.NewGuid(), Name = "T", TargetTable = "t", DedupColumns = "x_key" };
+            var tm = new TableMappingConfig { Id = Guid.NewGuid(), Name = "T", TargetTable = "t", DedupColumns = "x_key", InsertOnly = true }; // el fixture no mapea la key: estos tests no son de dedup
             tm.ColumnMappings.AddRange(cols);
             var ctx = new ImportContext();
             ctx.TableMappings.Add(tm);

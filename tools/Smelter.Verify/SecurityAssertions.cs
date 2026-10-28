@@ -42,6 +42,7 @@ internal static class SecurityAssertions
     private static Dictionary<string, Guid> AssertRolesExistAndMatchPrivileges(ServiceClient client)
     {
         var roleIds = new Dictionary<string, Guid>();
+        var allViolations = new List<string>();
 
         foreach (var role in SecuritySpec.Roles)
         {
@@ -52,18 +53,20 @@ internal static class SecurityAssertions
                 new RetrieveRolePrivilegesRoleRequest { RoleId = roleId })).RolePrivileges;
             var actualByName = actual.ToDictionary(p => p.PrivilegeName, p => p.Depth);
 
-            foreach (var expected in role.Privileges)
-            {
-                Assert(actualByName.TryGetValue(expected.PrivilegeName, out var actualDepth),
-                    $"rol '{role.Name}': falta el privilegio '{expected.PrivilegeName}' (esperado por SecuritySpec)");
-                Assert(actualDepth == expected.Depth,
-                    $"rol '{role.Name}': '{expected.PrivilegeName}' tiene depth {actualDepth}, esperado {expected.Depth}");
-            }
-            foreach (var denied in role.Denied)
-                Assert(!actualByName.ContainsKey(denied.PrivilegeName),
-                    $"rol '{role.Name}': NO debe tener '{denied.PrivilegeName}' (los logs los escribe el motor; con Create la MDA muestra \"Nuevo Log de importación\")");
-            Console.WriteLine($"[SEC]   rol '{role.Name}': {role.Privileges.Length} privilegios de SecuritySpec, {role.Denied.Length} prohibido(s) ausente(s), OK.");
+            // Lista completa (nombres de privilegio, no son secretos): es el «antes/después» de lo que tiene cada rol en el ambiente.
+            Console.WriteLine($"[SEC]   rol '{role.Name}' tiene {actualByName.Count} privilegios en el ambiente:");
+            foreach (var p in actualByName.OrderBy(p => p.Key, StringComparer.Ordinal))
+                Console.WriteLine($"[SEC]     {p.Key} = {p.Value}");
+
+            // Regla estricta (SecurityAudit): exactamente la spec; cualquier otro privilegio, de Smelter o de plataforma, falla.
+            var violations = SecurityAudit.Violations(role, actualByName.Select(p => (p.Key, p.Value)));
+            allViolations.AddRange(violations.Select(v => $"rol '{role.Name}': {v}"));
+            if (violations.Count == 0)
+                Console.WriteLine($"[SEC]   rol '{role.Name}': exactamente los {role.Privileges.Length} privilegios de SecuritySpec, {role.Denied.Length} prohibido(s) ausente(s), ninguno de más, OK.");
         }
+
+        // Se imprimen los dos roles antes de fallar, así un solo run muestra el estado completo.
+        Assert(allViolations.Count == 0, $"los roles no coinciden con SecuritySpec ({allViolations.Count} diferencia/s):\n    " + string.Join("\n    ", allViolations));
 
         // Requirement "Operador bloqueado en write, habilitado en lectura y jobs" — proxy estático
         // (Smelter.Verify corre con 1 Service Principal, no loguea un 2º usuario real): Operador NO
