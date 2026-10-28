@@ -17,19 +17,8 @@ internal static class FormPolishAssertions
 
         foreach (var entity in FormPolishCatalogo.FormEntities)
         {
-            var mains = client.RetrieveMultiple(new QueryExpression("systemform")
-            {
-                ColumnSet = new ColumnSet("name", "formxml"),
-                Criteria =
-                {
-                    Conditions =
-                    {
-                        new ConditionExpression("objecttypecode", ConditionOperator.Equal, entity),
-                        new ConditionExpression("type", ConditionOperator.Equal, 2),
-                        new ConditionExpression("formactivationstate", ConditionOperator.Equal, 1),
-                    },
-                },
-            }).Entities;
+            // Dataverse devuelve el formxml solo en el idioma de quien lee: se fusionan 1033 + 3082 (FormLabelsReader).
+            var mains = FormLabelsReader.RetrieveMainForms(client, entity, onlyActive: true);
             Assert(mains.Count > 0, $"sin main form activo @ {entity}");
 
             foreach (var form in mains)

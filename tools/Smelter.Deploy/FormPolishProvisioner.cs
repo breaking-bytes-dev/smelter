@@ -12,7 +12,6 @@ namespace Smelter.Deploy;
 
 internal static class FormPolishProvisioner
 {
-    private const int MainFormType = 2;
 
     internal static void Run(ServiceClient client)
     {
@@ -38,18 +37,8 @@ internal static class FormPolishProvisioner
         if (!FormPolishCatalogo.FormEntities.Contains(entity))
             return 0;
 
-        var forms = client.RetrieveMultiple(new QueryExpression("systemform")
-        {
-            ColumnSet = new ColumnSet("formid", "formxml", "name"),
-            Criteria =
-            {
-                Conditions =
-                {
-                    new ConditionExpression("objecttypecode", ConditionOperator.Equal, entity),
-                    new ConditionExpression("type", ConditionOperator.Equal, MainFormType),
-                },
-            },
-        }).Entities;
+        // formxml con etiquetas 1033 + 3082 fusionadas: leído solo en 1033 no se ve el 3082 y se reescribiría siempre.
+        var forms = FormLabelsReader.RetrieveMainForms(client, entity);
 
         var touched = 0;
         foreach (var form in forms)
