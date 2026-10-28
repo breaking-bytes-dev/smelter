@@ -280,9 +280,7 @@ Es una tabla de la organización (no de usuario), con auditoría de tabla activa
 - **Borrar un job borra sus logs** (cascada total en Import Job → Import Job Log).
 - **Los valores por defecto cambian solo registros nuevos.** `Update If Exists = Sí` nació como default en 1.0.10; los mappings anteriores conservan lo que tenían.
 - **El espejo `solutions/unpacked/` va por detrás.** Aún muestra columnas ya eliminadas (por ejemplo `isjunctiontable`), la opción `ManyToMany`, un `chunksize` de 0 a 100000 y no trae la tabla `hmackey` ni las columnas `bytecursor`, `claimlock`, `failurereason` e `insertonly`. Lo actualiza el workflow `solution-sync` al publicar un Release. Ver [ALM](08-alm-y-despliegue.md#versionado-y-releases).
-- **La tabla de claves está marcada «DEV-only» en algunos comentarios de código.** Es un residuo: la tabla es componente de la solución y viaja a Test/Prod. Ver [Decisiones](12-decisiones.md#d-10-la-tabla-de-claves-hmac-viaja-en-la-solución-el-valor-no).
 
 ## Preguntas abiertas
 
 - **Tamaño máximo del archivo.** El espejo 1.3.0.0 declara 131.072 KB (128 MB) como máximo de la columna `sanic_smlt_ij_sourcefile`, mientras que el diseño del cursor de bytes parte de que «un File column llega a 10 GB». No hay en el repositorio una verificación del valor vigente en Dev ni una prueba con archivos de ese tamaño. Antes de prometer un tamaño máximo a un cliente, hay que leer la propiedad *Maximum file size* de la columna en el ambiente real.
-- **Dueño de los logs.** Los logs los crea el motor como SYSTEM y la relación Import Job → Import Job Log es de cascada total. El repositorio no verifica qué usuario o *team* figura como dueño de un log recién creado, y de eso depende que un Operador (lectura nivel *User* sobre logs) los vea. Ver [Seguridad](03-seguridad.md#preguntas-abiertas).

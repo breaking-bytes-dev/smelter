@@ -82,7 +82,7 @@ Por qué reintentar es seguro en general:
 - El reset de `PrepareImport` limpia `endtime` y `failurereason`, así que un reintento exitoso no muestra el fin ni el motivo de la corrida anterior.
 
 > [!WARNING]
-> **Reintentar no limpia los logs anteriores.** El reset no toca el Import Job Log, y los logs nuevos se escriben por upsert sobre `(job, fila, tabla)`. Si una fila falló en la primera corrida y en el reintento ya entra, su log viejo **sigue ahí**. Después de un reintento, el job muestra los contadores nuevos y la pestaña de logs puede mostrar entradas de la corrida anterior. Compara `failedcount` con la cantidad de logs antes de concluir.
+> **Reintentar borra los logs de la corrida anterior** (desde 1.0.16). Al reclamar el job, `PrepareImport` borra los Import Job Logs que no se modificaron desde el inicio de la nueva corrida (`modifiedon` anterior al `starttime` que va a escribir). Se usa `modifiedon` y no `createdon` porque los logs se escriben por upsert sobre `(job, fila, tabla)`: una fila que vuelve a fallar *actualiza* su log, que por eso ya es de la corrida actual y se conserva. El borrado corre como SYSTEM (los logs los crea SYSTEM y ningún rol puede crearlos) y está **acotado en tiempo** (ver [D-32](12-decisiones.md#d-32-reintentar-borra-los-logs-de-la-corrida-anterior-por-lotes-y-con-presupuesto-de-tiempo)): si había muchos miles, el resto lo sigue borrando cada `ProcessChunk` antes de escribir los suyos. Un job que falla una validación en `PrepareImport`, o que otra corrida ya posee, conserva sus logs.
 
 > [!WARNING]
 > **Con «Solo inserción», reintentar duplica.** Reprocesar vuelve a hacer `Create` de las mismas filas. Ver [Arquitectura](01-arquitectura.md#gate-de-idempotencia-y-solo-inserción).
@@ -112,7 +112,8 @@ Si el flow se apaga o se cancela una corrida a mitad de camino, el job queda en 
 
 - **El auto-refresco del formulario se activa al encolar.** El formulario consulta el estado cada 5 segundos después de pulsar **Ejecutar** o **Reintentar** en esa misma sesión. Si abres un job que ya está `Processing`, no se refresca solo.
 - **`Failed` no pone `endtime`.** Un job fallido muestra la hora de inicio de la corrida (si `PrepareImport` llegó a su reset) pero no la de fin.
-- **Una falla de validación en un reintento deja los datos de la corrida anterior.** El reset ocurre al final de `PrepareImport`; si una validación lanza antes, los contadores y la hora de fin anteriores quedan visibles junto al nuevo motivo.
+- **Una falla de validación en un reintento deja los datos de la corrida anterior.** El reset (y el borrado de logs) ocurre al final de `PrepareImport`; si una validación lanza antes, los contadores, la hora de fin y los logs anteriores quedan visibles junto al nuevo motivo.
+- **Con decenas de miles de logs, el borrado puede tardar más de una llamada.** Mientras tanto la pestaña de logs puede mostrar entradas viejas hasta que terminen los primeros `ProcessChunk`; si el job termina antes (un solo chunk), las que no se alcanzaron se borran en el siguiente reintento.
 - **Múltiples corridas del flow sobre el mismo job** son esperables (triggers *at-least-once*). El claim las neutraliza; en el historial del flow aparecen como corridas que terminan sin procesar.
 - **Un template `Draft` o `Archived` hace fallar el job**, no lo deja en cola.
 - **Dry run.** Un job en dry run recorre los mismos estados, pero no escribe en las tablas destino.

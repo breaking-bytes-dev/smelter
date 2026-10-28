@@ -132,7 +132,7 @@ El detalle de cada aserción y de los 20 pasos E2E está en [Pruebas](10-pruebas
 | Qué | Formato | Dónde |
 |---|---|---|
 | **Solución** | `X.Y.Z.B` (cuatro partes) | Tag `sol-vX.Y.Z.B`. Título del Release: «Solución Smelter vX.Y.Z.B». Assets: `smlt_core_smelter_managed.zip` y `smlt_core_smelter_unmanaged.zip` |
-| **Plugin package** | `X.Y.Z` | `<Version>` en `Smelter.Plugins.csproj` (hoy `1.0.15`). Es independiente de la versión de la solución |
+| **Plugin package** | `X.Y.Z` | `<Version>` en `Smelter.Plugins.csproj` (hoy `1.0.16`). Es independiente de la versión de la solución |
 | **Formato de export de templates** | `1.1` | `TemplateExporter.FormatVersion` |
 | **Changelog** | Keep a Changelog | [`CHANGELOG.md`](../../CHANGELOG.md) |
 

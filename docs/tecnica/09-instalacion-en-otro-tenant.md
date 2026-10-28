@@ -323,7 +323,7 @@ La importación no toca datos: teams, clave HMAC, templates y asignaciones queda
 - **Conexión con solo rol Operador.** El flow falla en `prepareimport` por falta de Read sobre el template.
 - **Auditoría apagada.** El audit de la tabla de claves no registra nada si el ambiente no tiene la auditoría encendida.
 - **Clave repetida o rotada.** Dos filas activas con el mismo nombre rompen la carga; cambiar el valor genera duplicados.
-- **Plugin package desactualizado en el sandbox.** Si ves `Unknown function: HMAC` en un ambiente con la clave bien cargada, el sandbox sigue con una versión vieja del package (`Smelter.Plugins` 1.0.5 o anterior). Dataverse recarga por versión del package; la solución instalada tiene que traer `1.0.6` o superior (el repositorio está en `1.0.15`).
+- **Plugin package desactualizado en el sandbox.** Si ves `Unknown function: HMAC` en un ambiente con la clave bien cargada, el sandbox sigue con una versión vieja del package (`Smelter.Plugins` 1.0.5 o anterior). Dataverse recarga por versión del package; la solución instalada tiene que traer `1.0.6` o superior (el repositorio está en `1.0.16`).
 - **Team sin rol.** Dataverse rechaza asignar un template a un team que no tiene ningún rol de seguridad.
 - **Operador sin la app.** Es el comportamiento diseñado (ver el paso 3).
 - **Etiquetas en inglés.** Si el idioma 3082 no está habilitado, o el usuario no lo eligió, ve la interfaz en inglés.

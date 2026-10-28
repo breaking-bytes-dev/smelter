@@ -67,7 +67,8 @@ Las Custom APIs se crean con `isprivate = false` (los flows leen sus parámetros
 7. Lee el status. Si no es `Queued` ni vacío, devuelve `Claimed = false`, `TotalRows = 0`.
 8. Descarga el CSV completo, valida los encabezados (si `HasHeaderRow`), cuenta las filas.
 9. Calcula el cursor de bytes (vacío si el archivo no se puede recorrer por bytes).
-10. **Reset del job** con un `Update` plano: `status = Processing`, `bytecursor`, `totalrows`, los contadores y `processingbatch` en 0, `starttime` = ahora, y `endtime` y `failurereason` en `null`.
+10. **Borrado de los logs de la corrida anterior** (`StaleLogPurger`, 1.0.16): como SYSTEM, en lotes de 500 con `ExecuteMultiple`, con un presupuesto de **40 s**, sobre los logs del job con `modifiedon` anterior al `starttime` de esta corrida. Ver [D-32](12-decisiones.md#d-32-reintentar-borra-los-logs-de-la-corrida-anterior-por-lotes-y-con-presupuesto-de-tiempo).
+11. **Reset del job** con un `Update` plano: `status = Processing`, `bytecursor`, `totalrows`, los contadores y `processingbatch` en 0, `starttime` = ahora, y `endtime` y `failurereason` en `null`.
 
 Los pasos 2 a 5 **lanzan** si fallan: el flow marca el job `Failed`. Todas las validaciones ocurren **antes** de tomar el lock.
 
@@ -102,10 +103,11 @@ Los pasos 2 a 5 **lanzan** si fallan: el flow marca el job `Failed`. Todas las v
 **Qué hace:**
 
 1. Vuelve a cargar el contexto y **repite los gates** de estado del template y de idempotencia. Además exige que el **job esté en `Processing`**: `Queued` significa que `Prepare` no corrió; `Completed`, `CompletedWithErrors` y `Failed` son terminales, y reprocesar duplicaría contadores y reescribiría datos.
+1b. Si el job tiene `starttime`, **continúa el borrado** de los logs de la corrida anterior que `PrepareImport` no alcanzó a borrar (presupuesto de 20 s por llamada; en el caso normal es una consulta que no devuelve nada).
 2. Resuelve el tamaño del chunk: parámetro `ChunkSize` si es mayor que 0, si no el del template, si no 1000; acotado a `[100, 10000]`.
 3. Lee las filas del tramo: con cursor de bytes, abre el File con un solo `InitializeFileBlocksDownload` y lee por `DownloadBlock`; sin cursor, descarga completa y saltea `offset` filas.
 4. Si no hay filas, completa el job (`Completed` o `CompletedWithErrors` según `failedcount`) y devuelve `HasMore = false`.
-5. Procesa el lote (`NormalizationEngine.ProcessBatch`): para cada Table Mapping en **orden de dependencias** construye los registros y los escribe (`UpsertWriter`).
+5. Procesa el lote (`NormalizationEngine.ProcessBatch`): para cada Table Mapping en **orden de dependencias** construye los registros y los escribe (`UpsertWriter`). Una fila con la clave de dedup vacía falla antes de escribirse (ver [Motor y DSL](05-motor-y-dsl.md#resolución-de-cada-celda)).
 6. Cuenta resultados, escribe los logs de las filas fallidas y avanza `processingbatch`, `bytecursor` y los contadores.
 7. `HasMore = filasLeídas >= chunkSize`. Un tramo parcial marca el job `Completed` (si `failedcount = 0`) o `CompletedWithErrors` y fija `endtime`.
 

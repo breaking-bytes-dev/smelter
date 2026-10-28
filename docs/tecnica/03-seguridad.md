@@ -39,12 +39,17 @@ Cada celda es el nivel de acceso de **todos los privilegios CRUD y de Append** s
 | Table Mapping | CRUD + Append/AppendTo: Organización | Read: Organización |
 | Column Mapping | CRUD + Append/AppendTo: Organización | Read: Organización |
 | Relationship Mapping | CRUD + Append/AppendTo: Organización | Read: Organización |
-| Import Job | CRUD + Append/AppendTo: Organización | Create: Organización. Read y Write: Usuario |
+| Import Job | CRUD + Append/AppendTo: Organización | Create: Organización. Append, Read y Write: Usuario |
 | Import Job Log | Read, Write, Delete, Append, AppendTo: Organización. **Sin Create** | Read: Usuario. **Sin Create** |
 | HMAC Key | **Ninguno** | **Ninguno** |
 
 > [!IMPORTANT]
 > **Ningún rol puede crear Import Job Logs.** Los logs los escribe únicamente el motor (`ProcessChunkPlugin`, con un `IOrganizationService` de SYSTEM, que ignora los privilegios del usuario). Quitar `prvCreatesanic_tbl_smlt_importjoblog` hace que la plataforma esconda por sí sola los botones «Nuevo Log de importación» (en el subgrid del job, en la lista y en el formulario) sin tocar la barra de comandos. Como `AddPrivilegesRole` solo suma, el provisioner declara el privilegio como **prohibido** (`RoleSpec.Denied`), lo quita con `RemovePrivilegeRole` si está presente, y `Smelter.Verify` exige que esté ausente en ambos roles.
+
+> [!IMPORTANT]
+> **Cada rol tiene exactamente lo de la matriz, ni un privilegio más** (desde 1.0.16). Eso incluye los privilegios de plataforma: ni lecturas de plugin assemblies o steps, ni datos de SharePoint, ni `Append`/`Write` sobre los logs. La regla es `SecurityAudit`: el deploy **quita** todo lo que la spec no declara (`RemovePrivilegeRole`) y `Smelter.Verify` `[SEC]` falla si un rol tiene cualquier privilegio de más, de una tabla de Smelter o de la plataforma. Los privilegios básicos que un usuario necesita para existir en el ambiente (ajustes de usuario, etc.) los aporta el rol que la organización le asigna junto al de Smelter, no los roles de Smelter. Si alguna vez hiciera falta uno, se declara en `RoleSpec.AllowedExtraPrivileges` con su motivo.
+
+**Por qué el Operador tiene `Append` sobre el job.** Al crear un job con el lookup al template hace falta `Append` en el registro que lleva el lookup (el job) y `AppendTo` en el referenciado (el template). `AppendTo` sobre el job **no** hace falta: solo se usa para colgarle registros, y los únicos que lo hacen son los logs, que crea el motor. `Smelter.Verify` lo prueba con un Operador real (paso `E2E-7f`, impersonado): crea el job con template, sube el CSV, lo encola, ve su job y sus logs, y no puede crear logs ni escribir el template.
 
 El Operador **no** tiene Write, Create ni Delete sobre templates ni mappings: no puede cambiar cómo se interpreta un archivo. Tampoco puede exportar ni importar templates (ver más abajo).
 
@@ -156,7 +161,7 @@ Un CSV puede traer documentos de identidad o números de tarjeta. El motor sigue
 
 ## Cómo se modifica
 
-**Cambiar los privilegios de un rol.** Se edita [`SecuritySpec.cs`](../../tools/Smelter.Deploy/SecuritySpec.cs) (matriz declarativa) y se vuelve a correr `Smelter.Deploy`; `Smelter.Verify` (`[SEC]`) comprueba que el rol del ambiente contiene cada privilegio de la spec con su profundidad y que los prohibidos están ausentes. Para **quitar** un privilegio hay que declararlo en `DeniedPrivileges`, porque el provisioner solo suma.
+**Cambiar los privilegios de un rol.** Se edita [`SecuritySpec.cs`](../../tools/Smelter.Deploy/SecuritySpec.cs) (matriz declarativa) y se vuelve a correr `Smelter.Deploy`. El provisioner suma lo declarado y **quita todo lo demás** del rol; `Smelter.Verify` (`[SEC]`) imprime la lista completa de privilegios de cada rol y falla si no es exactamente la spec (con su profundidad). Quitar un privilegio es, entonces, borrarlo de la spec; `DeniedPrivileges` queda para los que además se quiere dejar explícitos y probados (como `Create` sobre el log).
 
 **Agregar un rol o una Custom API.** Una Custom API nueva necesita su `ExecutePrivilegeName` en [`ApiSpec.cs`](../../tools/Smelter.Deploy/ApiSpec.cs), reutilizando un privilegio existente.
 
@@ -164,6 +169,7 @@ Un CSV puede traer documentos de identidad o números de tarjeta. El motor sigue
 
 ## Trampas y errores conocidos
 
+- **Los logs los crea SYSTEM y el Operador igual los ve.** `E2E-7f` lo comprobó en Dev: el log queda con un `systemuser` (la identidad del sistema) como dueño y el Operador, con Read nivel *Usuario*, lo lee; la visibilidad le llega por la relación Import Job → Import Job Log (cascada), no por ser el dueño.
 - **Roles con la cuenta equivocada.** Si el dueño de la conexión del flow solo tiene `Smelter Operador`, los jobs de otros equipos fallan en `PrepareImport` con `does not have Read access to the Import Template`.
 - **Team sin rol.** Dataverse rechaza asignar un template a un team que no tiene ningún rol de seguridad.
 - **Operador sin la app.** Es el comportamiento diseñado: la app es del Configurador.
@@ -173,6 +179,5 @@ Un CSV puede traer documentos de identidad o números de tarjeta. El motor sigue
 
 ## Preguntas abiertas
 
-- **Privilegios más allá de la spec.** El rol `Smelter Operador` exportado en el espejo 1.3.0.0 incluye `Append` y `AppendTo` sobre Import Job y sobre Import Job Log, además de lecturas de plugin assembly, plugin type, steps de mensaje y datos de SharePoint, que **no** figuran en `SecuritySpec`. `Smelter.Verify` comprueba que existan los privilegios de la spec, no que no haya otros. Si el rol se recreara solo desde la spec en un ambiente nuevo, quedaría sin esos extras; no hay en el repositorio una prueba de que un Operador pueda crear un job sin `Append` sobre Import Job.
-- **Dueño de los logs.** Los crea SYSTEM; el repositorio no verifica a quién quedan asignados, y de eso depende que un Operador (Read nivel *Usuario*) los vea. La relación Import Job → Import Job Log es de cascada total (asignación, compartido, reparent), lo que sugiere que siguen al job, pero no hay una prueba E2E que lo confirme.
 - **Escritura del valor por un System Administrator.** Los comentarios del código afirman que el System Administrator accede a la columna asegurada sin perfil. No hay una prueba en el repositorio de que pueda *guardar* el valor desde el formulario sin ser miembro de un perfil de seguridad de columna. Si no pudiera, hay que crear un perfil con permiso de lectura y actualización sobre `sanic_smlt_hk_value` y agregarlo a las personas autorizadas; ese perfil no viaja en la solución.
+- **Operador y la app del cliente.** `E2E-7f` prueba la ruta por API (crear job con template de su team, subir el archivo, encolar, leer job y logs). Lo que una canvas app concreta necesite además de Dataverse (conectores, otras tablas) no depende de los roles de Smelter.

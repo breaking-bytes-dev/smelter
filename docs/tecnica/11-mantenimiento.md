@@ -11,7 +11,7 @@ Para entender el flujo que se diagnostica, ver [Arquitectura](01-arquitectura.md
 | Frecuencia | Tarea | Cómo |
 |---|---|---|
 | Cada carga | Revisar el resultado del job | Vista **Active jobs** mientras corre; **Completed with errors** para los que tienen filas fallidas; el **panel** para el panorama |
-| Cada carga con errores | Leer el Import Job Log del job | Pestaña **Import logs** del job (más nuevo primero). Ver [Ciclo de vida](07-ciclo-de-vida.md#reintentos) para no confundir logs de una corrida anterior |
+| Cada carga con errores | Leer el Import Job Log del job | Pestaña **Import logs** del job (más nuevo primero). Tras un reintento solo quedan los logs de la corrida nueva ([Ciclo de vida](07-ciclo-de-vida.md#reintentos)) |
 | Periódica | Limpiar jobs viejos y sus archivos | Ver [Limpieza](#limpieza-de-jobs-archivos-y-logs) |
 | Después de cada actualización | Smoke test y lista de control | [Instalación en otro tenant](09-instalacion-en-otro-tenant.md#verificación-y-lista-de-control) |
 | Después de copiar o restaurar un ambiente | Reemplazar la clave HMAC y revisar el dueño del flow | [Seguridad](03-seguridad.md#clave-hmac) |
@@ -93,6 +93,7 @@ Los errores de configuración (`has configuration errors`) listan, separados, ca
 | Categoría | Mensaje típico | Causa y solución |
 |---|---|---|
 | `ValidationError` | `Required field '<destino>' (Source: '<origen>') is empty.` | Celda vacía en una columna obligatoria, sin valor por defecto. Corregir el archivo o definir `Default Value` |
+| `ValidationError` | `Dedup key '<destino>' (Source: '<origen>') is empty.` | La celda de una Dedup Column llegó vacía: sin clave no se puede hacer upsert (crearía un duplicado). Corregir el archivo, definir `Default Value`, o marcar «Solo inserción» si de verdad se permiten duplicados |
 | `TypeError` | `Column '<destino>' (source '<origen>'): Cannot convert value (<n> chars) to <tipo>.` | La celda no tiene el formato del tipo. Para `Boolean` agrega ` Expected: true/false, 1/0, yes/no.`; para `OptionSet`, ` Use MAP transform if mapping is required.` |
 | `LookupUnresolved` | `Lookup '<destino>' value is not a GUID and no LookupMatchColumn is configured.` | El valor no es GUID y falta la columna de coincidencia |
 | `TransformError` | `Unknown function: <NOMBRE>`, `Expected EOF`, `HMAC: ...` | Error de sintaxis del DSL o de clave HMAC. Ver [Motor y DSL](05-motor-y-dsl.md#errores-y-categorías) |
@@ -120,7 +121,7 @@ Códigos de Dataverse que aparecieron en la historia del proyecto: `0x80060892` 
 - **Borrar un job borra sus logs** (cascada total en la relación Import Job → Import Job Log).
 - **Para quitar solo el archivo**, elimina el archivo de la columna *Source File* del job (el job y sus contadores se conservan). Un job sin archivo no se puede volver a ejecutar ni reintentar con éxito, porque faltaría el CSV.
 - **Para una retención automática**, el camino de plataforma es un *Bulk Delete* de Dataverse (Admin center → **Bulk deletion**) sobre Import Job con criterio de fecha de creación y estados terminales, programado de forma recurrente. El repositorio **no** incluye ese trabajo; su único uso de borrado masivo es `BulkDeleteRequest` del lado servidor en `SchemaCleanupProvisioner`, que purgó logs obsoletos porque 1000 `Delete` en un `ExecuteMultiple` superaban el timeout del cliente.
-- **Los logs no se acumulan por reintento** salvo el caso de logs de una corrida anterior (ver [Ciclo de vida](07-ciclo-de-vida.md#reintentos)). Si hace falta limpiar logs de un job sin borrarlo, selecciónalos en la pestaña **Import logs** y elimínalos: los roles de Smelter incluyen Delete sobre el log para el Configurador.
+- **Los logs no se acumulan por reintento**: `PrepareImport` borra los de la corrida anterior al reclamar el job (ver [Ciclo de vida](07-ciclo-de-vida.md#reintentos)). Si hace falta limpiar logs de un job sin borrarlo, selecciónalos en la pestaña **Import logs** y elimínalos: los roles de Smelter incluyen Delete sobre el log para el Configurador.
 - **No borres un template con jobs.** La relación Template → Import Job usa `RemoveLink`: los jobs quedan sin template. Pasa el template a `Archived`.
 
 ### Job que se queda en `Processing`
@@ -146,7 +147,7 @@ Un job queda así si el flow se apaga o se cancela a mitad de camino. **Reintent
 ## Trampas y errores conocidos
 
 - **Un `failurereason` genérico en español** significa que el cuerpo del error no traía mensaje. El motivo real está en el historial del flow y en el Plug-in Trace Log.
-- **Comparar logs con `failedcount`.** Después de un reintento, la pestaña de logs puede traer entradas de la corrida anterior.
+- **Comparar logs con `failedcount`.** Tras un reintento deben coincidir; si el job tenía decenas de miles de logs viejos, el borrado puede terminar recién en los primeros chunks.
 - **Un dry run limpio no garantiza una ejecución limpia** (ver [Arquitectura](01-arquitectura.md#dry-run)).
 - **Un job `Failed` con contadores en cero y sin `starttime`** falló en la preparación, antes del reset.
 - **Los jobs de un equipo no aparecen en «My Import Jobs»**: usa las vistas de Smelter.

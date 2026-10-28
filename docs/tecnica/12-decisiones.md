@@ -93,7 +93,7 @@ Las decisiones están agrupadas por área:
 - **Riesgo aceptado:** cualquier System Administrator del ambiente puede leer la clave, y las copias y backups del ambiente la arrastran. Endurecimiento futuro posible: Key Vault con identidad administrada; la misma clave da los mismos hashes, así que migrar no rompe nada.
 - **Alternativa descartada:** mantener la tabla solo en Dev, fuera de la solución (el enfoque inicial, commit `621ee71`), y un proveedor basado en Key Vault.
 - **Qué se rompe si se cambia:** cambiar o rotar la clave cambia todos los hashes y duplica registros en la siguiente carga.
-- **Inconsistencias conocidas en el código:** algunos comentarios (`IHmacKeyProvider`, `TableLabelsSpec`, el commit `621ee71`) aún llaman a la tabla «DEV-only» o dicen que PROD debe usar Key Vault; son residuos de una decisión anterior. Origen: commits `b3dab07` y `4835fdd`.
+- **Historia:** el enfoque inicial (commit `621ee71`) tenía la tabla solo en Dev y pensaba en Key Vault para producción; los comentarios del código ya se alinearon con esta decisión (1.0.16). Origen: commits `b3dab07` y `4835fdd`.
 
 ### D-11. El nombre de la clave HMAC es un literal con forma de etiqueta
 
@@ -125,6 +125,27 @@ Las decisiones están agrupadas por área:
 - **Decisión:** el privilegio Create sobre el log se quita de **ambos** roles y `RoleSpec.Denied` lo declara prohibido.
 - **Por qué:** los logs los escribe solo el motor, con un servicio SYSTEM que ignora los privilegios del usuario. Sin Create, la plataforma esconde los botones «Nuevo Log de importación» sin tocar el ribbon.
 - **Qué se rompe si se cambia:** devolver el privilegio vuelve a mostrar botones «Nuevo» que no tienen sentido, porque los logs los escribe el motor. `AddPrivilegesRole` es aditivo, por eso quitar requiere `RemovePrivilegeRole`. Commit `5dc0aae`.
+
+### D-32. Reintentar borra los logs de la corrida anterior, por lotes y con presupuesto de tiempo
+
+- **Decisión:** `PrepareImport`, ya con el job reclamado y validado, borra como SYSTEM los Import Job Logs del job cuyo `modifiedon` es anterior al `starttime` de la corrida nueva (`StaleLogPurger`). Lotes de 500 con `ExecuteMultiple`, 40 s de presupuesto; `ProcessChunk` continúa con 20 s por llamada antes de escribir sus propios logs.
+- **Por qué `modifiedon` y no `createdon`:** los logs se escriben por upsert sobre `(job, fila, tabla)`; una fila que vuelve a fallar actualiza el log viejo (conserva `createdon`, cambia `modifiedon`). Con `createdon` se borraría un log vigente.
+- **Por qué acotado:** hay jobs con más de 5000 logs y el sandbox corta a los 2 minutos; un borrado sincrónico de un solo golpe podría matar el `PrepareImport` (y con él el reclamo). Se descartaron: borrar todo sincrónicamente en `Prepare` (riesgo de timeout), un `BulkDeleteRequest` asíncrono (no determinista: el verify no podría afirmar «no quedan logs» sin esperar un job de sistema) y una columna marcadora nueva (cambio de esquema para un caso raro).
+- **Detalles:** el borrado va después de todas las validaciones y justo antes del reset, dentro de la transacción de la Custom API; los faults por registro no se lanzan (`ContinueOnError`; atraparlos doomearía la transacción) y un lote entero fallido corta el bucle. Un job que no se reclama o que falla una validación conserva sus logs.
+- **Qué se rompe si se cambia:** si se vuelve a `createdon`, se pierden logs vigentes de filas que fallan otra vez. Límite conocido: con decenas de miles de logs y un job de un solo chunk, lo que no alcance el presupuesto queda hasta el próximo reintento.
+
+### D-33. Una fila con la clave de dedup vacía falla en lugar de escribirse
+
+- **Decisión:** en un Table Mapping que no es «Solo inserción», una fila cuya Dedup Column queda vacía (tras valor por defecto y transformaciones) falla con `ValidationError` y `Dedup key '<destino>' (Source: '<origen>') is empty.`
+- **Por qué:** el upsert por alternate key con la clave vacía no puede coincidir con nadie y crea un registro nuevo en cada corrida: un duplicado silencioso que el gate de dedup (que solo mira la configuración) no ve.
+- **Qué se rompe si se cambia:** quien dependía de cargar filas sin clave (que se duplicaban al reprocesar) debe pasar el mapping a «Solo inserción», con su advertencia de duplicados.
+
+### D-34. Los roles de Smelter tienen exactamente lo de la spec
+
+- **Decisión:** cada rol tiene los privilegios de `SecuritySpec`, con su profundidad, y **ninguno más**: ni sobre tablas de Smelter ni de la plataforma. El deploy quita lo que sobra y `Verify [SEC]` falla si algo sobra.
+- **Antes / después en Dev:** el Operador traía `AppendTo` sobre el job y el log, `Append` y `Write` sobre el log, y nueve privilegios de plataforma (plugin assembly/type, steps de mensaje, SharePoint); el Configurador, los nueve de plataforma. Se quitaron todos. El Operador conserva `Append` sobre el job (necesario para el lookup al template) y `E2E-7f` prueba con un Operador real que no se necesita nada más.
+- **Por qué sin «baseline» tolerado:** los privilegios básicos de plataforma los aporta el rol que la organización asigna junto al de Smelter. Un privilegio de más es acceso que nadie decidió. Excepción explícita posible: `RoleSpec.AllowedExtraPrivileges`.
+- **Qué se rompe si se cambia:** tolerar extras vuelve a dejar que un rol creado a mano acumule accesos sin que el verify lo note.
 
 ### D-16. Los mensajes del motor no llevan valores de filas
 
@@ -216,7 +237,7 @@ Las decisiones están agrupadas por área:
 
 ### D-30. El código del plugin se recarga por versión del package
 
-- **Decisión:** cada cambio de código sube `<Version>` en el csproj (hoy 1.0.15).
+- **Decisión:** cada cambio de código sube `<Version>` en el csproj (hoy 1.0.16).
 - **Por qué:** Dataverse cachea el package por versión; sin el bump, algunos workers del sandbox siguen con el código viejo (síntoma: `Unknown function: HMAC` intermitente con la versión 1.0.5). Commits `cf5eca2` y `34da782`.
 
 ### D-31. Export de templates con refs estables
@@ -230,9 +251,9 @@ Las decisiones están agrupadas por área:
 |---|---|
 | Formato de archivo y lectura | [D-02](#d-02-solo-csv), [D-04](#d-04-cursor-de-bytes-con-descarga-parcial) |
 | `PrepareImport` | [D-03](#d-03-idempotencia-por-alternate-key-y-gate-de-dedup-columns), [D-06](#d-06-claim-con-lock-de-fila-no-rowversion-más-catch), [D-12](#d-12-doble-validación-de-acceso-al-encolar-y-al-preparar) |
-| `ProcessChunk` y logs | [D-01](#d-01-sin-tabla-de-staging-chunks-orquestados-por-power-automate), [D-04](#d-04-cursor-de-bytes-con-descarga-parcial), [D-05](#d-05-el-offset-avanza-después-de-procesar-el-log-solo-registra-fallos-y-es-idempotente), [D-16](#d-16-los-mensajes-del-motor-no-llevan-valores-de-filas), [D-17](#d-17-chunk-size-entre-100-y-10000-se-rechaza-lo-que-quede-fuera) |
+| `ProcessChunk` y logs | [D-32](#d-32-reintentar-borra-los-logs-de-la-corrida-anterior-por-lotes-y-con-presupuesto-de-tiempo), [D-33](#d-33-una-fila-con-la-clave-de-dedup-vacía-falla-en-lugar-de-escribirse), [D-01](#d-01-sin-tabla-de-staging-chunks-orquestados-por-power-automate), [D-04](#d-04-cursor-de-bytes-con-descarga-parcial), [D-05](#d-05-el-offset-avanza-después-de-procesar-el-log-solo-registra-fallos-y-es-idempotente), [D-16](#d-16-los-mensajes-del-motor-no-llevan-valores-de-filas), [D-17](#d-17-chunk-size-entre-100-y-10000-se-rechaza-lo-que-quede-fuera) |
 | Cloud Flow | [D-07](#d-07-un-solo-camino-de-ejecución-el-cloud-flow), [D-08](#d-08-los-jobs-corren-en-paralelo-los-duplicados-del-mismo-job-los-neutraliza-el-claim), [D-28](#d-28-el-cloud-flow-se-ajusta-con-transformers-puros) |
-| Roles y acceso | [D-12](#d-12-doble-validación-de-acceso-al-encolar-y-al-preparar), [D-13](#d-13-seguridad-por-teams-el-job-hereda-el-dueño-del-template), [D-14](#d-14-la-app-es-del-configurador-los-operadores-usan-su-propia-aplicación), [D-15](#d-15-ningún-rol-puede-crear-import-job-logs) |
+| Roles y acceso | [D-34](#d-34-los-roles-de-smelter-tienen-exactamente-lo-de-la-spec), [D-12](#d-12-doble-validación-de-acceso-al-encolar-y-al-preparar), [D-13](#d-13-seguridad-por-teams-el-job-hereda-el-dueño-del-template), [D-14](#d-14-la-app-es-del-configurador-los-operadores-usan-su-propia-aplicación), [D-15](#d-15-ningún-rol-puede-crear-import-job-logs) |
 | `HMAC()` y la tabla de claves | [D-10](#d-10-la-tabla-de-claves-hmac-viaja-en-la-solución-el-valor-no), [D-11](#d-11-el-nombre-de-la-clave-hmac-es-un-literal-con-forma-de-etiqueta) |
 | Esquema | [D-18](#d-18-el-estado-del-template-gatea-la-ejecución-los-indicadores-createupdate-if-se-respetan), [D-19](#d-19-se-eliminó-lo-que-no-hacía-nada), [D-20](#d-20-update-if-exists-nace-en-sí) |
 | App de configuración | [D-21](#d-21-inglés-en-1033-español-en-3082-los-nombres-técnicos-del-1033-no-se-tocan), [D-22](#d-22-dashboard-clásico-en-lugar-de-interaction-centric), [D-23](#d-23-el-lookup-de-template-del-job-solo-ofrece-templates-active), [D-24](#d-24-hay-que-declararlo-todo-en-una-spec-y-las-specs-son-puras) |

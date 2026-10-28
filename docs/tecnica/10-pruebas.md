@@ -16,7 +16,7 @@ flowchart TB
         PLG["Smelter.Plugins.Tests<br/>handlers con NSubstitute"]
     end
     subgraph DEV["Contra Dev (manual)"]
-        VER["Smelter.Verify<br/>metadata + smoke + [CHUNK] + 20 pasos E2E"]
+        VER["Smelter.Verify<br/>metadata + smoke + [CHUNK] + 23 pasos E2E"]
         BEN["--bench<br/>100.000 filas en dry run"]
     end
     CORE --> CI["ci.yml"]
@@ -151,6 +151,7 @@ Es el único componente que prueba el **runtime desplegado**. Se dispara a mano 
 | 2 | Tipos de dato en `contact`: String, Integer, Decimal, Money, DateTime, Boolean (6 tokens), OptionSet (directo y con mapeo) y Lookup (GUID y clave de negocio) |
 | 2g | Tipo GUID (aislado: escribe la clave primaria) |
 | 3 | `IsRequired` y `DefaultValue` |
+| 3b | Clave de dedup vacía: la fila falla con `ValidationError` (`Dedup key 'emailaddress1' is empty (Source: 'Email').`) y no crea un contact; las demás siguen |
 | 4a | Relación `OneToMany` con `ProcessingOrder` invertido: gana el DAG; FK resuelta con padre e hijo en chunks distintos |
 | 4b | Relación `OneToMany` con el padre con clave HMAC (regresión del bug #8) |
 | 5a | `HasHeaderRow = No` (`Column0..N`) |
@@ -161,6 +162,8 @@ Es el único componente que prueba el **runtime desplegado**. Se dispara a mano 
 | 7b | Cloud Flow, camino `Failed`: template en Draft → job `Failed` con motivo sin datos |
 | 7c | Cloud Flow anti-duplicados: el mismo job encolado dos veces termina `Completed`, con conteos exactos y sin logs de clave duplicada |
 | 7d | Guarda de re-encolado: con el job `Processing`, poner `Queued` es rechazado; el job igual termina `Completed` |
+| 7e | Reintentar borra los logs de la corrida anterior: tras el `Prepare` del reintento (con otro archivo cuya fila mala es otra) no queda ningún log, y al terminar solo está el de la corrida nueva |
+| 7f | **Operador real impersonado** (`CallerId`, usuario de test de `Smelter.DevAccess` con solo el rol Operador): crea el job con template de su team, sube el CSV, lo encola, el flow lo completa, ve su job y su log; crear logs y escribir el template son denegados |
 | 8 | Dry run: no crea nada y termina `Completed` |
 | 10 | Round-trip Export → Import con todos los campos del DTO |
 | 11 | `SourceColumn` sin distinguir mayúsculas (`email` contra `Email`) |
@@ -168,7 +171,7 @@ Es el único componente que prueba el **runtime desplegado**. Se dispara a mano 
 | 13 | `ValidateQueueAccess`, camino negativo: **no se prueba** (necesita una identidad sin privilegios); el camino positivo lo cubren 7a y 7b |
 | 14 | `ManyToMany` rechazado por la Custom API de import |
 
-El catálogo tiene 20 pasos; el 13 solo emite una nota. El «caso 9» (contadores) no es un paso: se aserta dentro de los demás.
+El catálogo tiene 23 pasos; el 13 solo emite una nota. `7f` necesita los usuarios y teams de `Smelter.DevAccess` (`backend-verify` con `dev_access = provision`, una vez; persisten). El «caso 9» (contadores) no es un paso: se aserta dentro de los demás.
 
 **5. Benchmark (`--bench`, no forma parte del verify por defecto).** Un CSV de **100.000 filas** en **dry run** con chunks de 1000, llamando directo a `PrepareImport` y `ProcessChunk`, cronometrando cada llamada del lado cliente. Imprime total, primer, medio y último chunk, p50, p95 y máximo, y **falla si algún chunk tarda 60 s o más** (el límite de un plugin síncrono es de 2 minutos). Como el dry run no escribe, **no mide el costo de la escritura real**.
 
@@ -197,6 +200,7 @@ En [`tests/data/`](../../tests/data/) hay tres CSV de muestra (`Smelter_Test_500
 - **Las pruebas de plugins no corren en Linux sin Mono.** El CI las ejecuta en `windows-latest`.
 - **`Smelter.Verify` escribe en `contact` y en las tablas de Smelter de Dev**, con dominios de prueba (`@smelter-smoke.test`, `@smelter-chunk-smoke.test`, `@smelter-bench.test`). No lo apuntes a un ambiente con datos reales de `contact` sin revisar los filtros de limpieza.
 - **`Verify` no cubre Test ni Prod.** El smoke posterior a `solution-import` está pendiente de cablear.
-- **El camino negativo de `ValidateQueueAccess` no tiene prueba E2E**: necesita una identidad sin privilegios, y CI tiene un solo service principal. Está cubierto con pruebas unitarias del handler.
+- **El camino negativo de `ValidateQueueAccess` no tiene prueba E2E**: necesita una identidad sin acceso al template. `E2E-7f` ya impersona a un Operador con `CallerId`, así que sería un paso nuevo (un Operador de otro team), pero hoy no existe. Está cubierto con pruebas unitarias del handler.
+- **`[SEC]` falla si un rol tiene un privilegio de más**, no solo si falta uno. Si alguien agrega a mano un privilegio a `Smelter Operador` en Dev, el verify falla hasta que corra `Smelter.Deploy` (que lo quita) o se declare en la spec.
 - **El tamaño de archivo máximo y el rendimiento de escritura real no están medidos** en el repositorio (el benchmark es en dry run).
 - **Un fallo de `[E2E-n]` deja datos de prueba** si el proceso muere; el siguiente `Verify` los limpia al empezar.

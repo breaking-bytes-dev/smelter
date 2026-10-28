@@ -6,6 +6,17 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+### Changed / Fixed (Plugins 1.0.16; `Smelter.Deploy` [6] y `Smelter.Verify` [SEC], E2E 3b, 7e y 7f)
+- **Clave de dedup vacía**: una fila cuya Dedup Column queda vacía falla con `ValidationError` (`Dedup key '<destino>' (Source: '<origen>') is empty.`)
+  en lugar de upsertear sin clave y crear un duplicado en cada corrida. «Solo inserción» no cambia. E2E-3b.
+- **Reintentar borra los logs de la corrida anterior**: `PrepareImport` borra (SYSTEM, lotes de 500, 40 s de presupuesto) los logs con
+  `modifiedon` anterior al `starttime` de la corrida nueva; `ProcessChunk` continúa con 20 s por llamada. E2E-7e.
+- **Roles con exactamente lo de la spec**: nuevo `SecurityAudit`; el provisioner quita todo privilegio que la spec no declara y `Verify [SEC]`
+  imprime la lista completa y falla si un rol tiene algo de más. En Dev se quitaron del Operador `AppendTo` sobre job y log, `Append`/`Write`
+  sobre el log y nueve privilegios de plataforma (plugin assembly/type, steps, SharePoint), y del Configurador los nueve de plataforma. El
+  Operador suma a la spec `Append` sobre el Import Job (ya lo tenía en Dev). E2E-7f prueba al Operador real (impersonado).
+- Comentarios que decían que la tabla de claves HMAC es «DEV-only» o que PROD debe usar Key Vault: alineados con la decisión vigente.
+
 ### Fixed (hallazgos del recorrido de la MDA en español como Configurador; Plugins 1.0.15, `Smelter.Deploy` 4f2, 4g, 4h-4j y 6b)
 - **Panel de Smelter (6b `DashboardSpec` + `DashboardProvisioner`)**: el dashboard interaction-centric (type 10, `590df35c-...`)
   se renderizaba en la MDA como el overview genérico "Dynamics 365 Social" y no aparecía en el selector de dashboards. Ahora es un

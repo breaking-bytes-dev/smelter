@@ -52,6 +52,7 @@ No hay deduplicación en memoria ni estado entre chunks: cada fila vuelve a hace
 1. **Valor crudo.** Si hay `TransformExpression`, se evalúa (tiene prioridad). Si no, se toma la celda de `SourceColumn` (recortada, sin distinguir mayúsculas). Sin ninguno de los dos, no hay valor.
 2. **Valor por defecto.** Si el valor está vacío y hay `DefaultValue`, se usa.
 3. **Obligatoria.** Si `IsRequired` y sigue vacío: la fila falla con `ValidationError` y el mensaje `Required field '<destino>' (Source: '<origen>') is empty.` El valor por defecto se aplica **antes** de esta comprobación, así que satisface una columna obligatoria.
+3b. **Clave de dedup vacía** (1.0.16). Una vez armada la fila, si el Table Mapping **no** es «Solo inserción» y alguna de sus Dedup Columns quedó vacía (sin valor, o solo espacios), la fila falla con `ValidationError` y no se escribe: `Dedup key '<destino>' (Source: '<origen>') is empty.` (sin la parte del origen si la columna es una expresión sin `SourceColumn`). Antes, un upsert con la clave vacía no podía coincidir con nadie y creaba un registro nuevo en cada corrida. El valor por defecto y las transformaciones se aplican antes, así que pueden satisfacer la clave. Con «Solo inserción» no hay búsqueda por clave y la fila se escribe como siempre.
 4. **Vacío no obligatorio.** Se omite la columna (no se envía a Dataverse; no se pisa con vacío).
 5. **Mapeo de opciones y conversión de tipo** (ver abajo).
 6. **Lookup.** Si el tipo es `Lookup`, se envuelve en una `EntityReference`.
@@ -196,7 +197,7 @@ Cada fila que falla produce un registro en el Import Job Log con una categoría.
 | `FormatException` | `TypeError` | `TypeCoercer`. El mensaje agrega la columna: `Column '<destino>' (source '<origen>'): Cannot convert value (<n> chars) to <tipo>.` |
 | `InvalidOperationException` | `TransformError` | `TransformEngine` (función desconocida, sintaxis, `HMAC`) y claves HMAC |
 | Cualquier otra | `SourceError` | Fila mal formada o condición inesperada |
-| (comprobación explícita) | `ValidationError` | Campo obligatorio vacío |
+| (comprobación explícita) | `ValidationError` | Campo obligatorio vacío, o clave de dedup vacía |
 | (comprobación explícita) | `LookupUnresolved` | Lookup que no es GUID y sin `LookupMatchColumn` |
 | Fault de Dataverse | `TargetData` | `Dataverse rejected the write (ErrorCode 0x<código>).` |
 
