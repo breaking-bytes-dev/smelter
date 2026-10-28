@@ -67,9 +67,11 @@ public class SecuritySpecContractTests
     }
 
     [Fact]
-    public void Configurador_HasFullCrudAppendAppendToAtOrgDepthOnAllSixTables()
+    public void Configurador_HasFullCrudAppendAppendToAtOrgDepthOnAllSixTables_ExceptCreateOnTheSystemWrittenLog()
     {
-        SecuritySpec.Configurador.Privileges.Should().HaveCount(SecuritySpec.Tables.All.Length * 6);
+        // El Import Job Log lo escribe el motor (ProcessChunk, como SYSTEM): sin Create la plataforma esconde los botones
+        // "Nuevo Log de importación" (subgrid del job, lista, form). Los otros 5 privilegios del log se conservan.
+        SecuritySpec.Configurador.Privileges.Should().HaveCount(SecuritySpec.Tables.All.Length * 6 - 1);
         SecuritySpec.Configurador.Privileges.Should().OnlyContain(p => p.Depth == PrivilegeDepth.Global);
 
         foreach (var table in SecuritySpec.Tables.All)
@@ -80,8 +82,21 @@ public class SecuritySpecContractTests
                          PrivilegeType.Delete, PrivilegeType.Append, PrivilegeType.AppendTo,
                      })
             {
+                if (table == SecuritySpec.Tables.ImportJobLog && type == PrivilegeType.Create) continue;
                 SecuritySpec.Configurador.Privileges.Should().Contain(p => p.Table == table && p.Type == type);
             }
+        }
+    }
+
+    [Fact]
+    public void NoRoleCanCreateImportJobLogs_TheEngineWritesThemAsSystem_SoThePlatformHidesTheNewButtons()
+    {
+        foreach (var role in SecuritySpec.Roles)
+        {
+            role.Privileges.Should().NotContain(p => p.Table == SecuritySpec.Tables.ImportJobLog && p.Type == PrivilegeType.Create, role.Name);
+            role.Denied.Should().Contain(p => p.Table == SecuritySpec.Tables.ImportJobLog && p.Type == PrivilegeType.Create,
+                $"{role.Name}: el deploy debe QUITAR el Create que pudiera tener (AddPrivilegesRole es solo aditivo)");
+            role.Denied.Should().OnlyContain(d => !role.Privileges.Any(p => p.PrivilegeName == d.PrivilegeName));
         }
     }
 
@@ -125,7 +140,7 @@ public class SecuritySpecContractTests
     public void Views_ThreeViewsDefined_WithDistinctFetchXmlAndImportJobEntity()
     {
         SecuritySpec.Views.Should().HaveCount(3);
-        SecuritySpec.Views.Select(v => v.Name).Should().BeEquivalentTo("Jobs Activos", "Completados con Errores", "Todos los Jobs");
+        SecuritySpec.Views.Select(v => v.Name).Should().BeEquivalentTo("Active jobs", "Completed with errors", "All jobs");
         SecuritySpec.Views.Select(v => v.FetchXml).Distinct().Should().HaveCount(3);
         SecuritySpec.Views.Should().OnlyContain(v => v.FetchXml.Contains($"<entity name=\"{SecuritySpec.Tables.ImportJob}\">"));
     }

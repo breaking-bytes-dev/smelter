@@ -1,6 +1,9 @@
 # Despliegue del backend a Dev — un botón, por SDK (tools/Smelter.Deploy, sin PRT).
 # Runner limpio = build fresco = nunca DLLs stale en el nupkg (lección de Sigil, verificada acá).
-# Secrets (repo): DATAVERSE_URL, PP_CLIENT_ID, PP_CLIENT_SECRET.
+# Secrets: DATAVERSE_URL, PP_CLIENT_ID, PP_CLIENT_SECRET (del environment `dev`).
+# Branch policy: workflow_dispatch se puede lanzar desde cualquier rama, pero la restricción
+# (solo main) se configura como "deployment branch policy" en el environment `dev` — no acá.
+# Smelter.Deploy se niega a correr sin SMELTER_ENV=dev; Test/Prod usan solution-import (managed).
 name: backend-deploy
 
 on:
@@ -24,6 +27,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -35,7 +39,8 @@ jobs:
 
       - name: Desplegar (package + Custom APIs)
         env:
+          SMELTER_ENV: dev
           DATAVERSE_URL: ${{ secrets.DATAVERSE_URL }}
           PP_CLIENT_ID: ${{ secrets.PP_CLIENT_ID }}
           PP_CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
-        run: dotnet run --project tools/Smelter.Deploy -c Release -- ${{ inputs.package_only && '--package-only' || '' }}
+        run: dotnet run --project tools/Smelter.Deploy -c Release -- --allow-destructive ${{ inputs.package_only && '--package-only' || '' }}

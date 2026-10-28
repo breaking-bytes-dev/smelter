@@ -16,6 +16,41 @@
     <AppModuleComponent type="1" schemaName="sanic_tbl_smlt_importtemplate" />
     <AppModuleComponent type="1" schemaName="sanic_tbl_smlt_relationshipmapping" />
     <AppModuleComponent type="1" schemaName="sanic_tbl_smlt_tablemapping" />
+    <AppModuleComponent type="60" id="{7a4c1222-d324-459c-9860-5a650d4bece3}" />
+    <AppModuleComponent type="26" id="{165c2073-91c6-40c0-93cd-3c96ec221d5f}" />
+    <AppModuleComponent type="26" id="{e5678925-bb6b-493b-91d4-ad49dc9c51ed}" />
+    <AppModuleComponent type="26" id="{85389342-f7b7-42be-92cc-ea1c5de45b70}" />
+    <AppModuleComponent type="26" id="{beec1575-a6c6-408b-aca2-02105f40a803}" />
+    <AppModuleComponent type="60" id="{c256332e-bcda-4295-9605-a7566ff69a79}" />
+    <AppModuleComponent type="26" id="{27b8d129-9055-4ca5-a051-961ff5d054ca}" />
+    <AppModuleComponent type="26" id="{ca51cf90-818a-f111-8076-70a8a59c703e}" />
+    <AppModuleComponent type="26" id="{c751cf90-818a-f111-8076-70a8a59c703e}" />
+    <AppModuleComponent type="26" id="{cd51cf90-818a-f111-8076-70a8a59c703e}" />
+    <AppModuleComponent type="26" id="{0225a5fb-2dc2-4fe6-bd0c-649e441a353a}" />
+    <AppModuleComponent type="26" id="{60e4bf31-65b9-4cbf-ad0c-b3250896f910}" />
+    <AppModuleComponent type="26" id="{6b546dd4-5bbb-433e-9724-16e3bed81c66}" />
+    <AppModuleComponent type="60" id="{0aaf3a0c-c3a8-4f67-a7b8-a1cfd5a5dfbd}" />
+    <AppModuleComponent type="60" id="{c9d0d4c0-b060-49e5-bba7-2d141955ef11}" />
+    <AppModuleComponent type="26" id="{6752f00a-34e0-43fd-ba73-9a9cbec00991}" />
+    <AppModuleComponent type="26" id="{7fc4b3cc-40bd-4ee4-8ab2-03d8ba58c319}" />
+    <AppModuleComponent type="26" id="{383a7a42-ed26-473a-8394-b7c7441fe58b}" />
+    <AppModuleComponent type="26" id="{f35f567a-fd58-4f3e-856d-efd8b975c097}" />
+    <AppModuleComponent type="60" id="{fe11c991-7d4f-4613-b003-f5bc133ef932}" />
+    <AppModuleComponent type="26" id="{6372b15d-f053-4b18-967a-3a28309ffb08}" />
+    <AppModuleComponent type="26" id="{661531bd-0e53-48d8-8d44-c3f9fecc423a}" />
+    <AppModuleComponent type="26" id="{d84ffa28-70d6-4e28-b784-02fea7ad2de9}" />
+    <AppModuleComponent type="26" id="{5ef056f3-b445-403a-bc26-8caf23ab5a22}" />
+    <AppModuleComponent type="26" id="{5d83844b-e7a7-4f2a-9ac9-fb4257ab21d2}" />
+    <AppModuleComponent type="60" id="{9208ce19-3095-42b4-9a87-82d493591acc}" />
+    <AppModuleComponent type="26" id="{374a1ac9-d89b-4e99-9235-c73743eedc81}" />
+    <AppModuleComponent type="26" id="{8f0fbb73-fc6c-42f9-a294-85803927cc50}" />
+    <AppModuleComponent type="26" id="{bab6af12-344e-4892-ba68-cd8dd43b2b60}" />
+    <AppModuleComponent type="26" id="{735ab0aa-0be6-4584-bb34-74aa35a21456}" />
+    <AppModuleComponent type="60" id="{cf0424cc-bbc7-4d44-b59c-ee76ba5f36a7}" />
+    <AppModuleComponent type="26" id="{a1e5e35d-6d1a-4b75-89ee-d1eb468c796b}" />
+    <AppModuleComponent type="26" id="{05d80160-2197-4721-a5ef-27e66484a5ae}" />
+    <AppModuleComponent type="26" id="{01a1cfb6-c503-42f5-a3c9-70c6233fb6a6}" />
+    <AppModuleComponent type="26" id="{23bfccb8-fcc6-4a1c-81b6-e3e2bbccccb2}" />
     <AppModuleComponent type="62" schemaName="sanic_MDASMLTImportConfigurationdandMoni" />
   </AppModuleComponents>
   <AppModuleRoleMaps>

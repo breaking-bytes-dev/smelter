@@ -38,6 +38,13 @@ internal static class KeyProvisioner
                 continue;
             }
 
+            if (existente is not null && !DeployOptions.AllowDestructive)
+            {
+                Console.WriteLine($"[4c]   key '{spec.SchemaName}' tiene composición INCORRECTA — recrearla es destructivo: " +
+                    "OMITIDO (usar --allow-destructive o SMELTER_ALLOW_DESTRUCTIVE=true).");
+                continue;
+            }
+
             if (existente is not null)
             {
                 Console.WriteLine($"[4c]   key '{spec.SchemaName}' tiene composición INCORRECTA " +
@@ -99,6 +106,11 @@ internal static class KeyProvisioner
     {
         if (EsperarIndice(client, spec, failedGrace: TimeSpan.Zero) == EntityKeyIndexStatus.Active)
             return;
+
+        if (!DeployOptions.AllowDestructive)
+            throw new InvalidOperationException(
+                $"key '{spec.SchemaName}': índice Failed y deduplicar borra filas de {spec.EntityLogicalName} " +
+                "(destructivo). Re-correr con --allow-destructive o SMELTER_ALLOW_DESTRUCTIVE=true solo en DEV.");
 
         for (var intento = 1; intento <= 2; intento++)
         {

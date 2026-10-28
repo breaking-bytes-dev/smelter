@@ -53,6 +53,8 @@ public class SolutionZipBuilderTests
         solutionXml.Should().Contain("<Version>1.0.0.7</Version>");
         solutionXml.Should().Contain("<RootComponent type=\"1\" schemaName=\"sanic_tbl_smlt_importjob\" behavior=\"0\" />");
         solutionXml.Should().Contain("<RootComponent type=\"1\" schemaName=\"sanic_tbl_smlt_importtemplate\" behavior=\"0\" />");
+        // Importar el zip con el unique name como LocalizedName pisaba el friendly name de SolutionNameProvisioner.
+        solutionXml.Should().Contain("<LocalizedName description=\"SMLT | Core | Smelter\" languagecode=\"1033\" />");
     }
 
     [Fact]

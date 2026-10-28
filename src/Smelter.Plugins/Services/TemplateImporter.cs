@@ -76,18 +76,29 @@ namespace Smelter.Plugins.Services
             var template = new Entity(ImportContextLoader.ImportTemplateTable)
             {
                 ["sanic_smlt_it_name"] = dto.Template.Name,
-                ["sanic_smlt_it_sourcetype"] = new OptionSetValue(dto.Template.SourceType),
+                // El choice solo tiene CSV (0): un SourceType viejo (p.ej. 1 = Excel) crearía un valor inexistente.
+                ["sanic_smlt_it_sourcetype"] = new OptionSetValue(0),
                 ["sanic_smlt_it_hasheaderrow"] = dto.Template.HasHeaderRow,
                 ["sanic_smlt_it_delimiter"] = dto.Template.Delimiter,
-                ["sanic_smlt_it_chunksize"] = dto.Template.ChunkSize
+                // 0 = "default del sistema" en el JSON; la columna tiene MinValue=100 y rechazaría el 0, así que se guarda vacío
+                // (el Loader lo lee como 0 y el motor usa 1000). En un update el null limpia el valor anterior.
+                ["sanic_smlt_it_chunksize"] = dto.Template.ChunkSize > 0 ? (int?)dto.Template.ChunkSize : null
             };
 
-            if (templateId == Guid.Empty)
+            var isCreate = templateId == Guid.Empty;
+
+            // Description solo viaja en exports 1.1+: null (export 1.0) no pisa la descripción existente.
+            if (dto.Template.Description != null)
+                template["sanic_smlt_it_description"] = dto.Template.Description;
+
+            // Status (ver TemplateImportPolicy): create => el del JSON o Active (el gate de PrepareImport exige Active);
+            // update => el del JSON si viene; sin él se respeta el status actual (Draft/Archived puesto por el admin).
+            var status = TemplateImportPolicy.ResolveStatus(dto.Template.Status, isCreate);
+            if (status.HasValue)
+                template["sanic_smlt_it_status"] = new OptionSetValue(status.Value);
+
+            if (isCreate)
             {
-                // Los templates importados nacen Active: el JSON exportado es un template completo
-                // y el gate de PrepareImport (1.3.0.0) bloquea todo lo que no sea Active. En el
-                // update NO se toca el status — si el admin lo puso en Draft/Archived, se respeta.
-                template["sanic_smlt_it_status"] = new OptionSetValue((int)ImportTemplateStatus.Active);
                 templateId = _service.Create(template);
             }
             else
@@ -120,7 +131,8 @@ namespace Smelter.Plugins.Services
                     ["sanic_smlt_tm_processingorder"] = tm.ProcessingOrder,
                     ["sanic_smlt_tm_dedupcolumns"] = tm.DedupColumns,
                     ["sanic_smlt_tm_createifnotexists"] = tm.CreateIfNotExists,
-                    ["sanic_smlt_tm_updateifexists"] = tm.UpdateIfExists
+                    ["sanic_smlt_tm_updateifexists"] = tm.UpdateIfExists,
+                    ["sanic_smlt_tm_insertonly"] = tm.InsertOnly
                 };
                 var tmId = _service.Create(tmEntity);
                 if (!string.IsNullOrEmpty(tm.Ref)) refToGuid[tm.Ref] = tmId;

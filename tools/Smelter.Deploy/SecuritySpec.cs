@@ -27,7 +27,18 @@ internal sealed record PrivilegeSpec(string Table, PrivilegeType Type, Privilege
     internal string PrivilegeName => SecuritySpec.PrivilegeName(Type, Table);
 }
 
-internal sealed record RoleSpec(string Name, PrivilegeSpec[] Privileges);
+internal sealed record RoleSpec(string Name, PrivilegeSpec[] Privileges, PrivilegeSpec[]? DeniedPrivileges = null,
+    string[]? AllowedExtraPrivileges = null)
+{
+    /// <summary>Privilegios que el rol NO debe tener: el deploy los quita si están (AddPrivilegesRole es aditivo) y Verify los exige ausentes.</summary>
+    internal PrivilegeSpec[] Denied => DeniedPrivileges ?? [];
+
+    /// <summary>
+    /// Privilegios de plataforma (cualquier nombre que NO sea de una tabla de Smelter) que se toleran en el rol además de
+    /// <see cref="Privileges"/>. Vacío para los dos roles reales: ver <see cref="SecurityAudit"/>.
+    /// </summary>
+    internal string[] AllowedExtras => AllowedExtraPrivileges ?? [];
+}
 
 /// <summary>Vista pública (SavedQuery) de Import Job provisionada vía SDK.</summary>
 internal sealed record ViewSpec(string Name, string Description, string FetchXml, string LayoutXml);
@@ -65,15 +76,24 @@ internal static class SecuritySpec
 
     // Requirement "Rol Smelter Configurador": CRUD Org (Create/Read/Write/Delete/Append/AppendTo)
     // en las 6 tablas, sin importar el owner (PrivilegeDepth.Global).
+    // EXCEPTO Create sobre el Import Job Log: los logs los escribe SOLO el motor (ProcessChunkPlugin crea con un
+    // IOrganizationService de SYSTEM, que ignora los privilegios del usuario), así que ningún rol necesita crearlos. Sin el
+    // privilegio Create la plataforma esconde los botones "Nuevo Log de importación" (subgrid del job, lista, form) sin
+    // tocar el ribbon. Read/Write/Delete/Append/AppendTo siguen (consultar y limpiar logs).
+    private static readonly PrivilegeSpec LogCreateDenied = new(Tables.ImportJobLog, PrivilegeType.Create, PrivilegeDepth.Global);
+
     internal static readonly RoleSpec Configurador = new(
         ConfiguradorRoleName,
         Tables.All
             .SelectMany(table => CrudCompleto.Select(type => new PrivilegeSpec(table, type, PrivilegeDepth.Global)))
-            .ToArray());
+            .Where(p => !(p.Table == Tables.ImportJobLog && p.Type == PrivilegeType.Create))
+            .ToArray(),
+        [LogCreateDenied]);
 
     // Requirement "Rol Smelter Operador": Template Read User+AppendTo (visibilidad vía cascade del
     // team, no BU — decisión cerrada, ver header de tasks.md); Mappings Read Org sin Create/
-    // Write/Delete; ImportJob Create Org + Read/Write User; Log Read User.
+    // Write/Delete; ImportJob Create Org + Append/Read/Write User; Log Read User.
+    // NADA MÁS: ni privilegios de plataforma (plugin assemblies, SharePoint...) ni Append/Write sobre los logs. Ver SecurityAudit.
     internal static readonly RoleSpec Operador = new(
         OperadorRoleName,
         [
@@ -85,11 +105,16 @@ internal static class SecuritySpec
             new PrivilegeSpec(Tables.RelationshipMapping, PrivilegeType.Read, PrivilegeDepth.Global),
 
             new PrivilegeSpec(Tables.ImportJob, PrivilegeType.Create, PrivilegeDepth.Global),
+            // Append sobre el job: setear el lookup al template al crear el job exige Append en el registro que lleva el lookup (el job)
+            // y AppendTo en el referenciado (el template, arriba). Sin él, crear un job con template por API/app falla. AppendTo sobre
+            // el job NO hace falta: solo se usa para colgarle registros (los logs, que crea SYSTEM).
+            new PrivilegeSpec(Tables.ImportJob, PrivilegeType.Append, PrivilegeDepth.Basic),
             new PrivilegeSpec(Tables.ImportJob, PrivilegeType.Read, PrivilegeDepth.Basic),
             new PrivilegeSpec(Tables.ImportJob, PrivilegeType.Write, PrivilegeDepth.Basic),
 
             new PrivilegeSpec(Tables.ImportJobLog, PrivilegeType.Read, PrivilegeDepth.Basic),
-        ]);
+        ],
+        [LogCreateDenied]);
 
     internal static readonly RoleSpec[] Roles = [Configurador, Operador];
 
@@ -103,6 +128,8 @@ internal static class SecuritySpec
     internal const string AppModuleUniqueName = "sanic_MDASMLTImportConfigurationdandMoni";
 
     // ── Vistas custom de Import Job (Requirement "Vistas custom de Import Job", smelter-mda-ux) ─
+    // Name/Description son el valor BASE (1033, inglés); la traducción 3082 (y el nombre legacy en español con el que nacieron
+    // en Dev, que UpsertViews renombra) viven en ViewLabelsSpec.cs.
     // Status: Queued=0 ("Pendiente"/"Preparando"), Processing=1 ("En Progreso") — ver
     // src/Smelter.Core/Models/ImportJobStatus.cs (contrato con el optionset real vía ChoicesContractTests).
     private const string ImportJobGridColumns =
@@ -145,8 +172,8 @@ internal static class SecuritySpec
         """;
 
     internal static readonly ViewSpec ActiveJobsView = new(
-        Name: "Jobs Activos",
-        Description: "Import Jobs en estado Queued (Pendiente) o Processing (En Progreso).",
+        Name: "Active jobs",
+        Description: "Import Jobs in Queued or Processing status.",
         FetchXml: ImportJobFetchXml(
             """
             <filter type="or">
@@ -157,8 +184,8 @@ internal static class SecuritySpec
         LayoutXml: ImportJobLayoutXml());
 
     internal static readonly ViewSpec CompletedWithErrorsView = new(
-        Name: "Completados con Errores",
-        Description: "Import Jobs con al menos una fila fallida (failedcount > 0).",
+        Name: "Completed with errors",
+        Description: "Import Jobs with at least one failed row (failedcount > 0).",
         FetchXml: ImportJobFetchXml(
             """
             <filter type="and">
@@ -168,8 +195,8 @@ internal static class SecuritySpec
         LayoutXml: ImportJobLayoutXml());
 
     internal static readonly ViewSpec AllJobsView = new(
-        Name: "Todos los Jobs",
-        Description: "Todos los Import Jobs, sin filtro, orden descendente por fecha de creación.",
+        Name: "All jobs",
+        Description: "All Import Jobs, unfiltered, newest first.",
         FetchXml: ImportJobFetchXml(filterXml: ""),
         LayoutXml: ImportJobLayoutXml());
 

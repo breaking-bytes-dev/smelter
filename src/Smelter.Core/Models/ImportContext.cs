@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Smelter.Plugins.Models
 {
@@ -20,6 +21,13 @@ namespace Smelter.Plugins.Models
         /// </summary>
         public bool IsDryRun { get; set; }
 
+        /// <summary>
+        /// Estado del job (<see cref="ImportJobStatus"/>) al cargar el contexto. ProcessChunk solo corre
+        /// sobre <see cref="ImportJobStatus.Processing"/> (lo deja PrepareImport). Default <c>Processing</c>
+        /// para contextos armados a mano; el loader lo completa con el valor real (null → Queued, fail-closed).
+        /// </summary>
+        public int JobStatus { get; set; } = (int)ImportJobStatus.Processing;
+
         /// <summary>Cumulative processed-row count loaded from the job record at the start of this invocation.</summary>
         public int InitialProcessedRows { get; set; }
 
@@ -37,6 +45,19 @@ namespace Smelter.Plugins.Models
         /// This is the <c>skip</c> value passed to <see cref="ICsvReader.ReadRange"/> for this chunk.
         /// </summary>
         public int InitialProcessingBatch { get; set; }
+
+        /// <summary>
+        /// Byte (absoluto en el archivo) del próximo registro sin leer, guardado en el job
+        /// (<c>sanic_smlt_ij_bytecursor</c>). <c>null</c> = job preparado por una versión anterior o archivo no
+        /// recorrible por bytes: ProcessChunk cae al camino legacy (descarga completa + skip de filas).
+        /// </summary>
+        public long? InitialByteCursor { get; set; }
+
+        /// <summary>
+        /// <c>starttime</c> del job (UTC): lo escribe PrepareImport al arrancar la corrida. ProcessChunk lo usa para saber qué
+        /// Import Job Logs son de una corrida anterior (modificados antes de este instante). <c>null</c> = job que nunca se preparó.
+        /// </summary>
+        public DateTime? JobStartTime { get; set; }
 
         /// <summary>
         /// The Import Template configuration.
@@ -63,7 +84,7 @@ namespace Smelter.Plugins.Models
         public string Name { get; set; }
 
         /// <summary>
-        /// 0 = CSV, 1 = Excel
+        /// 0 = CSV (única opción; la columna está oculta y sin requerir desde 1.0.10)
         /// </summary>
         public int SourceType { get; set; }
 
@@ -123,6 +144,12 @@ namespace Smelter.Plugins.Models
         public bool UpdateIfExists { get; set; } = true;
 
         /// <summary>
+        /// Opt-in "Solo inserción (permite duplicados)". Un mapping sin <see cref="DedupColumns"/> solo es válido con
+        /// este flag (gate de idempotencia de PrepareImport/ProcessChunk); el writer lo escribe siempre con Create.
+        /// </summary>
+        public bool InsertOnly { get; set; }
+
+        /// <summary>
         /// Column mappings belonging to this table mapping.
         /// </summary>
         public List<ColumnMappingConfig> ColumnMappings { get; set; } = new List<ColumnMappingConfig>();
@@ -135,7 +162,7 @@ namespace Smelter.Plugins.Models
             if (string.IsNullOrWhiteSpace(DedupColumns))
                 return Array.Empty<string>();
 
-            return DedupColumns.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            return DedupColumns.Split(',').Select(c => c.Trim()).Where(c => c.Length > 0).ToArray();
         }
     }
 
@@ -210,7 +237,8 @@ namespace Smelter.Plugins.Models
         public Guid ChildTableMappingId { get; set; }
 
         /// <summary>
-        /// 0 = OneToMany, 1 = ManyToMany
+        /// <see cref="Models.RelationshipType"/> (0 = OneToMany). ManyToMany ya no existe en el choice; un valor
+        /// legacy distinto de 0 lo rechaza PrepareImport.
         /// </summary>
         public int RelationshipType { get; set; }
 
@@ -226,9 +254,9 @@ namespace Smelter.Plugins.Models
         public string ParentDedupColumns { get; set; }
 
         /// <summary>
-        /// <c>true</c> when <see cref="RelationshipType"/> is 0 (one-to-many). Los mappings N:M
-        /// (valor 1) no están soportados: el engine los filtra por esta propiedad.
+        /// <c>true</c> when <see cref="RelationshipType"/> is 0 (one-to-many). Cualquier otro valor (N:M, ya no
+        /// ofrecido en el choice) no está soportado: PrepareImport lo rechaza y el engine lo filtra por esta propiedad.
         /// </summary>
-        public bool IsOneToMany => RelationshipType == 0;
+        public bool IsOneToMany => RelationshipType == (int)Models.RelationshipType.OneToMany;
     }
 }

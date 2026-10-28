@@ -21,6 +21,14 @@
          embebidos en el assembly: SecurityProvisioner los lee vía GetManifestResourceStream, sin
          depender del working directory del proceso que corre el deploy (CI vs local). -->
     <EmbeddedResource Include="Assets\*" />
+    <!-- Íconos SVG de la MDA/tablas (IconsSpec.cs): se leen con AssetLoader.ReadText("icons.<archivo>"). -->
+    <EmbeddedResource Include="Assets\icons\*.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core (netstandard2.0, puro): E2eSpec arma los TemplateExportDto de los pasos [E2E-n] de Smelter.Verify con el MISMO
+         DTO del producto, y los tests de contrato los validan con TemplateSerializer/TemplateValidator/TransformEngine. -->
+    <ProjectReference Include="..\..\src\Smelter.Core\Smelter.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

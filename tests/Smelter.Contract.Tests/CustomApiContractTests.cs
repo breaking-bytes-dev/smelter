@@ -59,4 +59,13 @@ public class CustomApiContractTests
             o => o.WithStrictOrdering(),
             $"las response properties de '{uniqueName}' (nombre exacto, tipo) deben coincidir con la ApiSpec");
     }
+
+    [Fact]
+    public void PrepareImport_ReturnsClaimedBoolean_SoTheFlowCanGateOnIt()
+    {
+        var api = Catalogo.Apis.Single(a => a.UniqueName == "sanic_capi_smelter_prepareimport");
+
+        api.ResponseProps.Select(p => (p.Name, p.Type)).Should().BeEquivalentTo(
+            new[] { ("TotalRows", ParamType.Integer), ("Claimed", ParamType.Boolean) });
+    }
 }

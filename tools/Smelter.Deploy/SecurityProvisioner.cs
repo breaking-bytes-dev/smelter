@@ -47,7 +47,6 @@ internal static class SecurityProvisioner
         SetExecutePrivileges(client);
         UpsertViews(client);
         UpsertRibbon(client);
-        UpsertDashboardSubArea(client);
 
         Console.WriteLine("[6] Publicando customizations (roles/vistas/ribbon/dashboard) ...");
         client.Execute(new PublishAllXmlRequest());
@@ -81,9 +80,31 @@ internal static class SecurityProvisioner
             // privilegio+profundidad no duplica — no hace falta diff previo.
             client.Execute(new AddPrivilegesRoleRequest { RoleId = roleId, Privileges = rolePrivileges });
             Console.WriteLine($"[6]   role '{role.Name}': {rolePrivileges.Length} privilegios aplicados.");
+            RemoveUnexpectedPrivileges(client, roleId, role);
         }
 
         return roleIds;
+    }
+
+    // AddPrivilegesRole solo suma: lo que el rol tiene de más (los prohibidos de RoleSpec.Denied, un Append/Write que la spec no declara, los
+    // privilegios de plataforma que arrastró un rol creado a mano) hay que quitarlo explícitamente. La regla es SecurityAudit.Unexpected.
+    // RemovePrivilegeRole falla si el rol no lo tiene, por eso se lee primero lo que tiene (después del Add, ya con las profundidades de la spec).
+    private static void RemoveUnexpectedPrivileges(ServiceClient client, Guid roleId, RoleSpec role)
+    {
+        var actual = ((RetrieveRolePrivilegesRoleResponse)client.Execute(new RetrieveRolePrivilegesRoleRequest { RoleId = roleId }))
+            .RolePrivileges.ToDictionary(p => p.PrivilegeName, p => p.PrivilegeId);
+        var unexpected = SecurityAudit.Unexpected(role, actual.Keys.Select(name => (name, PrivilegeDepth.Basic)));
+        if (unexpected.Count == 0)
+        {
+            Console.WriteLine($"[6]   role '{role.Name}': sin privilegios fuera de la spec — nada que quitar.");
+            return;
+        }
+
+        foreach (var name in unexpected)
+        {
+            client.Execute(new RemovePrivilegeRoleRequest { RoleId = roleId, PrivilegeId = actual[name] });
+            Console.WriteLine($"[6]   role '{role.Name}': privilegio fuera de la spec '{name}' QUITADO.");
+        }
     }
 
     private static Guid UpsertRole(ServiceClient client, string name, Guid businessUnitId)
@@ -327,7 +348,8 @@ internal static class SecurityProvisioner
                 {
                     Conditions =
                     {
-                        new ConditionExpression("name", ConditionOperator.Equal, view.Name),
+                        // Nombre actual (inglés) o legacy (español, ViewLabelsSpec.cs): así se renombra en vez de duplicar.
+                        new ConditionExpression("name", ConditionOperator.In, ViewLabelsCatalogo.KnownNames(view).Cast<object>().ToArray()),
                         new ConditionExpression("returnedtypecode", ConditionOperator.Equal, SecuritySpec.Tables.ImportJob),
                     },
                 },
@@ -337,6 +359,7 @@ internal static class SecurityProvisioner
             {
                 client.Update(new Entity("savedquery", existentes[0].Id)
                 {
+                    ["name"] = view.Name,
                     ["description"] = view.Description,
                     ["fetchxml"] = view.FetchXml,
                     ["layoutxml"] = layoutXml,
@@ -410,39 +433,10 @@ internal static class SecurityProvisioner
         Console.WriteLine($"[6]   webresource '{name}' creado: {creado}.");
     }
 
-    // ── 4.5 Dashboard + entrada de sitemap ─────────────────────────────────────────────────────
-    // El "Smelter Dashboard" YA viaja con la solución (InteractionCentricDashboards/ en la
-    // exportada) — acá NO se crea ningún dashboard: se busca el existente por nombre entre los
-    // tipos dashboard (0=clásico, 10=interaction-centric) y solo se lo enlaza en el sitemap.
-    // Crear un formxml de dashboard por código fue descartado: Dev rechazó el schema best-effort
-    // (run 30360739680, "The element 'form' has invalid child element 'dashboard'").
-    private static void UpsertDashboardSubArea(ServiceClient client)
-    {
-        var dashboards = client.RetrieveMultiple(new QueryExpression("systemform")
-        {
-            ColumnSet = new ColumnSet("formid", "type"),
-            Criteria =
-            {
-                Conditions =
-                {
-                    new ConditionExpression("name", ConditionOperator.Equal, SecuritySpec.DashboardName),
-                    new ConditionExpression("type", ConditionOperator.In, 0, 10),
-                },
-            },
-        }).Entities;
-
-        if (dashboards.Count == 0)
-        {
-            Console.Error.WriteLine(
-                $"[6]   WARN: dashboard '{SecuritySpec.DashboardName}' no existe en el ambiente — se omite la entrada del sitemap.");
-            return;
-        }
-
-        Console.WriteLine($"[6]   dashboard '{SecuritySpec.DashboardName}' encontrado: {dashboards[0].Id}.");
-        UpsertSiteMapEntry(client, dashboards[0].Id);
-    }
-
-    private static void UpsertSiteMapEntry(ServiceClient client, Guid dashboardId)
+    // ── 4.5 Entrada de sitemap del dashboard ───────────────────────────────────────────────────
+    // El dashboard (clásico, type 0) lo crea DashboardProvisioner ([6b], DashboardSpec.cs); acá solo queda el helper que
+    // crea/apunta el SubArea del sitemap. El interaction-centric original (590df35c-..., type 10) no se renderiza en la MDA.
+    internal static void UpsertSiteMapEntry(ServiceClient client, Guid dashboardId)
     {
         var sitemap = client.RetrieveMultiple(new QueryExpression("sitemap")
         {
@@ -460,7 +454,12 @@ internal static class SecurityProvisioner
         var subAreaId = "subarea_smlt_dashboard";
         if (sitemapXml.Contains(subAreaId))
         {
-            Console.WriteLine($"[6]   sitemap: entrada del '{SecuritySpec.DashboardName}' ya existe.");
+            // Ya existe: solo se re-apunta el Url (p.ej. del interaction-centric viejo al clásico).
+            var (pointed, changed) = DashboardCatalogo.PointSiteMapAtDashboard(sitemapXml);
+            if (changed) client.Update(new Entity("sitemap", sitemap.Id) { ["sitemapxml"] = pointed });
+            Console.WriteLine(changed
+                ? $"[6]   sitemap: entrada del '{SecuritySpec.DashboardName}' re-apuntada al dashboard {dashboardId}."
+                : $"[6]   sitemap: entrada del '{SecuritySpec.DashboardName}' ya existe y apunta al dashboard.");
             return;
         }
 
@@ -478,19 +477,19 @@ internal static class SecurityProvisioner
             return;
         }
 
+        // Sin <Titles> ni VectorIcon: los completa SiteMapCatalogo.Apply (títulos 1033 + 3082 e ícono) justo abajo.
         var subArea = new System.Xml.Linq.XElement("SubArea",
             new System.Xml.Linq.XAttribute("Id", subAreaId),
-            new System.Xml.Linq.XAttribute("Url", $"/main.aspx?pagetype=dashboard&id=%7b{dashboardId:D}%7d"),
-            new System.Xml.Linq.XAttribute("AvailableOffline", "false"),
-            new System.Xml.Linq.XElement("Titles",
-                new System.Xml.Linq.XElement("Title",
-                    new System.Xml.Linq.XAttribute("LCID", "1033"),
-                    new System.Xml.Linq.XAttribute("Title", SecuritySpec.DashboardName))));
+            new System.Xml.Linq.XAttribute("Url", DashboardCatalogo.Url),
+            new System.Xml.Linq.XAttribute("AvailableOffline", "false"));
 
         // Append al FINAL del Group: el XSD del sitemap exige <Titles> del grupo primero y
         // después los <SubArea> — AddFirst lo rompía ("Group has invalid child element Titles",
         // run 30361175930).
         targetGroup.Add(subArea);
+
+        var (labeledXml, _) = SiteMapCatalogo.Apply(doc.ToString());
+        doc = System.Xml.Linq.XDocument.Parse(labeledXml);
 
         client.Update(new Entity("sitemap", sitemap.Id) { ["sitemapxml"] = doc.ToString() });
         Console.WriteLine($"[6]   sitemap: entrada '{SecuritySpec.DashboardName}' agregada.");

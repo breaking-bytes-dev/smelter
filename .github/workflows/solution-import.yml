@@ -1,0 +1,132 @@
+# Despliegue de la solución a Test/Prod — importa el MANAGED de un Release (sol-v<version>).
+#
+# Manual: Actions → Run workflow → version + target. El job usa `environment: <target>`, así que
+# aplican los required reviewers y los secrets del GitHub Environment (mismos nombres que en Dev:
+# DATAVERSE_URL, PP_CLIENT_ID, PP_CLIENT_SECRET, PP_TENANT_ID).
+# Variable del environment: DATAVERSE_CONNECTION_ID (id de la conexión Dataverse del SP en ese entorno).
+# Ver deploy/README.md.
+name: solution-import
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión del Release a importar (ej. 1.3.0.1) — tag sol-v<version>"
+        required: true
+      target:
+        description: "Entorno destino"
+        type: choice
+        options: [test, prod]
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: solution-import-${{ inputs.target }}
+  cancel-in-progress: false
+
+env:
+  SOLUTION_NAME: smlt_core_smelter
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    env:
+      VERSION: ${{ inputs.version }}
+      TARGET: ${{ inputs.target }}
+      DATAVERSE_URL: ${{ secrets.DATAVERSE_URL }}
+      PP_CLIENT_ID: ${{ secrets.PP_CLIENT_ID }}
+      PP_CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+      PP_TENANT_ID: ${{ secrets.PP_TENANT_ID }}
+      DATAVERSE_CONNECTION_ID: ${{ vars.DATAVERSE_CONNECTION_ID }}
+    steps:
+      - name: Validar inputs (falla temprano)
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Versión inválida '$VERSION' (esperado X.Y.Z.B)"; exit 1
+          fi
+          if [[ "$TARGET" != "test" && "$TARGET" != "prod" ]]; then
+            echo "::error::target inválido '$TARGET'"; exit 1
+          fi
+          for v in DATAVERSE_URL PP_CLIENT_ID PP_CLIENT_SECRET PP_TENANT_ID DATAVERSE_CONNECTION_ID; do
+            if [[ -z "${!v}" ]]; then echo "::error::Falta $v en el environment '$TARGET'"; exit 1; fi
+          done
+
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8 (runtime del pac CLI)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Instalar Power Platform CLI (pac)
+        run: |
+          dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Bajar el managed del Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out
+          gh release download "sol-v${VERSION}" --repo "$GITHUB_REPOSITORY" \
+            --pattern "${SOLUTION_NAME}_managed.zip" --dir out
+          ls -la out/
+
+      - name: Generar deployment settings (${{ inputs.target }})
+        run: |
+          jq --arg id "$DATAVERSE_CONNECTION_ID" \
+            '.ConnectionReferences |= map(.ConnectionId = $id)' \
+            "deploy/settings/${TARGET}.json" > out/settings.json
+          if grep -q "__" out/settings.json; then echo "::error::Quedaron placeholders sin reemplazar"; exit 1; fi
+
+      - name: Autenticar el Service Principal
+        run: |
+          pac auth create --url "$DATAVERSE_URL" --applicationId "$PP_CLIENT_ID" \
+            --clientSecret "$PP_CLIENT_SECRET" --tenant "$PP_TENANT_ID"
+
+      # --stage-and-upgrade: upgrade en un paso (borra componentes removidos).
+      # Sin --publish-changes: en managed no hace falta y publica TODO lo pendiente del ambiente
+      # (MS Learn, alm/performance-recommendations).
+      - name: Importar managed (upgrade + activar plugins/flows)
+        run: |
+          pac solution import --path "out/${SOLUTION_NAME}_managed.zip" \
+            --settings-file out/settings.json \
+            --stage-and-upgrade --activate-plugins \
+            --async --max-async-wait-time 60
+
+      - name: Post-import — asegurar Cloud Flows encendidos e imprimir versión
+        run: |
+          set -euo pipefail
+          ORG="${DATAVERSE_URL%/}"
+          TOKEN=$(curl -fsS -X POST "https://login.microsoftonline.com/${PP_TENANT_ID}/oauth2/v2.0/token" \
+            --data-urlencode "client_id=$PP_CLIENT_ID" --data-urlencode "client_secret=$PP_CLIENT_SECRET" \
+            --data-urlencode "scope=${ORG}/.default" --data-urlencode "grant_type=client_credentials" | jq -r .access_token)
+          echo "::add-mask::$TOKEN"
+          api() { curl -fsS -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" "$@"; }
+
+          SOL=$(api "$ORG/api/data/v9.2/solutions?\$select=solutionid,version&\$filter=uniquename%20eq%20'${SOLUTION_NAME}'")
+          SOLID=$(jq -r '.value[0].solutionid' <<<"$SOL")
+          INSTALLED=$(jq -r '.value[0].version' <<<"$SOL")
+          echo "Versión instalada en $TARGET: $INSTALLED (esperada: $VERSION)"
+          [[ "$INSTALLED" == "$VERSION" ]] || { echo "::error::La versión instalada no coincide"; exit 1; }
+
+          # componenttype 29 = Workflow (incluye Cloud Flows)
+          IDS=$(api "$ORG/api/data/v9.2/solutioncomponents?\$select=objectid&\$filter=_solutionid_value%20eq%20${SOLID}%20and%20componenttype%20eq%2029" | jq -r '.value[].objectid')
+          for ID in $IDS; do
+            F=$(api "$ORG/api/data/v9.2/workflows($ID)?\$select=name,statecode,category")
+            [[ "$(jq -r .category <<<"$F")" == "5" ]] || continue   # 5 = Modern Flow
+            NAME=$(jq -r .name <<<"$F")
+            if [[ "$(jq -r .statecode <<<"$F")" != "1" ]]; then
+              echo "Encendiendo flow: $NAME"
+              api -X PATCH "$ORG/api/data/v9.2/workflows($ID)" -d '{"statecode":1,"statuscode":2}' >/dev/null
+            else
+              echo "Flow ya activo: $NAME"
+            fi
+          done
+
+      # Smoke: los plugins/flows se validan con backend-verify.yml (read-only contra el entorno).
+      # NO se usa Smelter.Deploy acá: es DEV-only y rechaza entornos no-dev.
+      # TODO: wirear backend-verify con el target cuando acepte entorno como input.

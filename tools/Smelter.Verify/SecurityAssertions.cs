@@ -33,14 +33,16 @@ internal static class SecurityAssertions
         AssertExecutePrivileges(client);
         AssertAppModuleRolesOnlyConfigurador(client, roleIds[SecuritySpec.ConfiguradorRoleName]);
         AssertProcessChunkCloudFlowReferencesNewApi(client);
+        AssertImportJobButtonsQueueOnly(client);
 
-        Console.WriteLine("[SEC] OK: roles, cascade, executeprivilegename, AppModuleRoles, Cloud Flow — todo alineado.");
+        Console.WriteLine("[SEC] OK: roles, cascade, executeprivilegename, AppModuleRoles, Cloud Flow, botones Import Job — todo alineado.");
     }
 
     // ── 7.1 / 7.2: roles + privilegios (Configurador CRUD Org, Operador == SecuritySpec) ────────
     private static Dictionary<string, Guid> AssertRolesExistAndMatchPrivileges(ServiceClient client)
     {
         var roleIds = new Dictionary<string, Guid>();
+        var allViolations = new List<string>();
 
         foreach (var role in SecuritySpec.Roles)
         {
@@ -51,15 +53,20 @@ internal static class SecurityAssertions
                 new RetrieveRolePrivilegesRoleRequest { RoleId = roleId })).RolePrivileges;
             var actualByName = actual.ToDictionary(p => p.PrivilegeName, p => p.Depth);
 
-            foreach (var expected in role.Privileges)
-            {
-                Assert(actualByName.TryGetValue(expected.PrivilegeName, out var actualDepth),
-                    $"rol '{role.Name}': falta el privilegio '{expected.PrivilegeName}' (esperado por SecuritySpec)");
-                Assert(actualDepth == expected.Depth,
-                    $"rol '{role.Name}': '{expected.PrivilegeName}' tiene depth {actualDepth}, esperado {expected.Depth}");
-            }
-            Console.WriteLine($"[SEC]   rol '{role.Name}': {role.Privileges.Length} privilegios de SecuritySpec, OK.");
+            // Lista completa (nombres de privilegio, no son secretos): es el «antes/después» de lo que tiene cada rol en el ambiente.
+            Console.WriteLine($"[SEC]   rol '{role.Name}' tiene {actualByName.Count} privilegios en el ambiente:");
+            foreach (var p in actualByName.OrderBy(p => p.Key, StringComparer.Ordinal))
+                Console.WriteLine($"[SEC]     {p.Key} = {p.Value}");
+
+            // Regla estricta (SecurityAudit): exactamente la spec; cualquier otro privilegio, de Smelter o de plataforma, falla.
+            var violations = SecurityAudit.Violations(role, actualByName.Select(p => (p.Key, p.Value)));
+            allViolations.AddRange(violations.Select(v => $"rol '{role.Name}': {v}"));
+            if (violations.Count == 0)
+                Console.WriteLine($"[SEC]   rol '{role.Name}': exactamente los {role.Privileges.Length} privilegios de SecuritySpec, {role.Denied.Length} prohibido(s) ausente(s), ninguno de más, OK.");
         }
+
+        // Se imprimen los dos roles antes de fallar, así un solo run muestra el estado completo.
+        Assert(allViolations.Count == 0, $"los roles no coinciden con SecuritySpec ({allViolations.Count} diferencia/s):\n    " + string.Join("\n    ", allViolations));
 
         // Requirement "Operador bloqueado en write, habilitado en lectura y jobs" — proxy estático
         // (Smelter.Verify corre con 1 Service Principal, no loguea un 2º usuario real): Operador NO
@@ -232,6 +239,37 @@ internal static class SecurityAssertions
         }
         Console.WriteLine($"[SEC]   Cloud Flow(s) processchunk: {flows.Count} referencian " +
             $"'{ClientDataProcessChunkRenamer.NewActionUniqueName}' como token exacto, sin restos de la API vieja ni corrupción. OK.");
+    }
+
+    // ── 7.7: botones Ejecutar/Reintentar solo encolan (único camino = Cloud Flow) ──────────────
+    private static void AssertImportJobButtonsQueueOnly(ServiceClient client)
+    {
+        const string webResourceName = "sanic_smlt_importjob_actions.js";
+        var wr = client.RetrieveMultiple(new QueryExpression("webresource")
+        {
+            ColumnSet = new ColumnSet("content"),
+            Criteria = { Conditions = { new ConditionExpression("name", ConditionOperator.Equal, webResourceName) } },
+        }).Entities.FirstOrDefault();
+        Assert(wr is not null, $"Falta el web resource '{webResourceName}'.");
+        var js = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(wr!.GetAttributeValue<string>("content") ?? ""));
+        Assert(!js.Contains("processchunk", StringComparison.OrdinalIgnoreCase),
+            $"'{webResourceName}' desplegado TODAVÍA referencia processchunk: el loop del navegador debe estar removido (único camino = Cloud Flow).");
+        Assert(!js.Contains("prepareimport", StringComparison.OrdinalIgnoreCase),
+            $"'{webResourceName}' desplegado TODAVÍA referencia prepareimport: los botones solo deben encolar el job.");
+
+        var ribbon = (RetrieveEntityRibbonResponse)client.Execute(new RetrieveEntityRibbonRequest
+        {
+            EntityName = SecuritySpec.Tables.ImportJob,
+            RibbonLocationFilter = RibbonLocationFilters.All,
+        });
+        using var zip = new System.IO.Compression.ZipArchive(new MemoryStream(ribbon.CompressedEntityXml));
+        var entry = zip.GetEntry("RibbonXml.xml");
+        Assert(entry is not null, "El ribbon de Import Job no trae RibbonXml.xml.");
+        using var reader = new StreamReader(entry!.Open());
+        var ribbonXml = reader.ReadToEnd();
+        foreach (var rule in new[] { "sanic.smlt.EjecutarImportJob.EnableRule", "sanic.smlt.ReintentarImportJob.EnableRule" })
+            Assert(ribbonXml.Contains(rule, StringComparison.Ordinal), $"Falta la enable rule '{rule}' en el ribbon de Import Job.");
+        Console.WriteLine("[SEC]   Botones Import Job: web resource sin processchunk/prepareimport y enable rules presentes. OK.");
     }
 
     private static void Assert(bool condition, string message)

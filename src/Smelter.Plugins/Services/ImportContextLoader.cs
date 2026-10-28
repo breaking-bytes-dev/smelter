@@ -62,7 +62,8 @@ namespace Smelter.Plugins.Services
                 "sanic_smlt_ij_importtemplateid", "sanic_smlt_ij_isdryrun",
                 "sanic_smlt_ij_processedrows", "sanic_smlt_ij_successcount",
                 "sanic_smlt_ij_failedcount", "sanic_smlt_ij_skippedcount",
-                "sanic_smlt_ij_processingbatch"));
+                "sanic_smlt_ij_processingbatch", "sanic_smlt_ij_status", "sanic_smlt_ij_bytecursor",
+                "sanic_smlt_ij_starttime"));
 
             var templateRef = job.GetAttributeValue<EntityReference>("sanic_smlt_ij_importtemplateid");
             if (templateRef == null)
@@ -77,6 +78,10 @@ namespace Smelter.Plugins.Services
                 InitialFailedCount = job.GetAttributeValue<int?>("sanic_smlt_ij_failedcount") ?? 0,
                 InitialSkippedCount = job.GetAttributeValue<int?>("sanic_smlt_ij_skippedcount") ?? 0,
                 InitialProcessingBatch = job.GetAttributeValue<int?>("sanic_smlt_ij_processingbatch") ?? 0,
+                InitialByteCursor = ToLong(job.GetAttributeValue<decimal?>("sanic_smlt_ij_bytecursor")),
+                JobStartTime = job.GetAttributeValue<DateTime?>("sanic_smlt_ij_starttime"),
+                JobStatus = job.GetAttributeValue<OptionSetValue>("sanic_smlt_ij_status")?.Value
+                    ?? (int)ImportJobStatus.Queued,
                 Template = LoadTemplateConfig(templateRef.Id)
             };
 
@@ -84,6 +89,9 @@ namespace Smelter.Plugins.Services
             context.RelationshipMappings.AddRange(LoadRelationshipMappings(templateRef.Id));
             return context;
         }
+
+        // La columna es Decimal(0): un entero de hasta 10^11 (los whole number de Dataverse topan en 2^31).
+        private static long? ToLong(decimal? value) => value.HasValue ? (long?)decimal.ToInt64(value.Value) : null;
 
         /// <inheritdoc/>
         public ImportTemplateConfig LoadTemplateConfig(Guid templateId)
@@ -149,9 +157,11 @@ namespace Smelter.Plugins.Services
                     ProcessingOrder = tm.GetAttributeValue<int?>("sanic_smlt_tm_processingorder") ?? 0,
                     DedupColumns = tm.GetAttributeValue<string>("sanic_smlt_tm_dedupcolumns"),
                     CreateIfNotExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_createifnotexists") ?? true,
-                    // Fallback true = comportamiento histórico (el motor siempre actualizaba) para
-                    // registros legacy sin el atributo poblado — el flag recién se honra desde 1.3.0.0.
-                    UpdateIfExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_updateifexists") ?? true
+                    // Fallback true = default del schema desde 1.0.10 (antes No) y comportamiento histórico (el
+                    // motor siempre actualizaba) para registros legacy sin el atributo poblado.
+                    UpdateIfExists = tm.GetAttributeValue<bool?>("sanic_smlt_tm_updateifexists") ?? true,
+                    // Sin valor (registros previos al flag) = false: el gate de idempotencia aplica.
+                    InsertOnly = tm.GetAttributeValue<bool?>("sanic_smlt_tm_insertonly") ?? false
                 };
                 config.ColumnMappings.AddRange(LoadColumnMappings(tm.Id));
                 mappings.Add(config);

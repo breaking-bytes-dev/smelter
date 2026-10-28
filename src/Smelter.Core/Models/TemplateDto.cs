@@ -35,6 +35,15 @@ namespace Smelter.Plugins.Models
 
         /// <summary>Number of source rows to process per <c>sanic_ProcessChunk</c> invocation. 0 = use system default.</summary>
         [DataMember(Order = 5)] public int ChunkSize { get; set; }
+
+        /// <summary>Free-text description of the template (format 1.1+). <c>null</c> = absent in the JSON (older export).</summary>
+        [DataMember(Order = 6, EmitDefaultValue = false)] public string Description { get; set; }
+
+        /// <summary>
+        /// Template status (<see cref="ImportTemplateStatus"/>; format 1.1+). <c>null</c> = absent in the JSON (older export):
+        /// import creates the template Active and leaves an existing template's status untouched.
+        /// </summary>
+        [DataMember(Order = 7, EmitDefaultValue = false)] public int? Status { get; set; }
     }
 
     /// <summary>Portable representation of a Table Mapping and its child column mappings.</summary>
@@ -64,6 +73,12 @@ namespace Smelter.Plugins.Models
 
         /// <summary>When <c>true</c>, an existing record matched by alternate key is updated.</summary>
         [DataMember(Order = 8)] public bool UpdateIfExists { get; set; }
+
+        /// <summary>
+        /// Opt-in "Solo inserción (permite duplicados)": el mapping se escribe con Create, sin alternate key, y no
+        /// requiere <see cref="DedupColumns"/>. Los JSON exportados antes de este campo se importan como <c>false</c>.
+        /// </summary>
+        [DataMember(Order = 10)] public bool InsertOnly { get; set; }
 
         /// <summary>Column mappings belonging to this table mapping.</summary>
         [DataMember(Order = 9)] public List<ColumnMappingDto> ColumnMappings { get; set; } = new List<ColumnMappingDto>();
@@ -117,7 +132,7 @@ namespace Smelter.Plugins.Models
         /// <summary>Ref of the child table mapping (matches a <see cref="TableMappingDto.Ref"/>).</summary>
         [DataMember(Order = 3)] public string ChildRef { get; set; }
 
-        /// <summary>Relationship type: 0 = OneToMany, 1 = ManyToMany.</summary>
+        /// <summary>Relationship type: 0 = OneToMany (único soportado; ManyToMany se rechaza al deserializar).</summary>
         [DataMember(Order = 4)] public int RelationshipType { get; set; }
 
         /// <summary>For 1:N relationships: logical name of the lookup column on the child entity.</summary>

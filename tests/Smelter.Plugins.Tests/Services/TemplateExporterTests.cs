@@ -25,6 +25,8 @@ namespace Smelter.Plugins.Tests.Services
             e["sanic_smlt_it_hasheaderrow"] = true;
             e["sanic_smlt_it_delimiter"] = ",";
             e["sanic_smlt_it_chunksize"] = 1000;
+            e["sanic_smlt_it_description"] = "Carga mensual";
+            e["sanic_smlt_it_status"] = new OptionSetValue(2);
             return e;
         }
 
@@ -95,8 +97,10 @@ namespace Smelter.Plugins.Tests.Services
 
             var dto = new TemplateExporter(service).Export(templateId);
 
-            dto.FormatVersion.Should().Be("1.0");
+            dto.FormatVersion.Should().Be("1.1");
             dto.Template.Name.Should().Be("Cobranza");
+            dto.Template.Description.Should().Be("Carga mensual");
+            dto.Template.Status.Should().Be(2);
             dto.TableMappings.Should().HaveCount(2);
             dto.TableMappings.First(t => t.TargetTable == "sanic_cliente")
                 .ColumnMappings.Single().TargetColumn.Should().Be("sanic_nombre");
@@ -136,6 +140,23 @@ namespace Smelter.Plugins.Tests.Services
             var childRef = dto.TableMappings.First(t => t.TargetTable == "sanic_cuentamora").Ref;
             rel.ParentRef.Should().Be(parentRef);
             rel.ChildRef.Should().Be(childRef);
+        }
+
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        [InlineData(null, false)]
+        public void Export_CarriesInsertOnly_AndTreatsMissingAsFalse(bool? raw, bool expected)
+        {
+            var templateId = Guid.NewGuid();
+            var tm = Tm(Guid.NewGuid(), "Facturas", "invoice", 1);
+            if (raw.HasValue) tm["sanic_smlt_tm_insertonly"] = raw.Value;
+            var service = Service(templateId, new List<Entity> { tm },
+                new Dictionary<Guid, List<Entity>>(), new List<Entity>());
+
+            var dto = new TemplateExporter(service).Export(templateId);
+
+            dto.TableMappings.Single().InsertOnly.Should().Be(expected);
         }
     }
 }

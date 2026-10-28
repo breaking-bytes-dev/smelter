@@ -6,6 +6,7 @@
 //
 // Sale 0 si todo pasa; 1 con el detalle del assert que falló.
 // Env: DATAVERSE_URL, PP_CLIENT_ID, PP_CLIENT_SECRET (o --interactive).
+// Args: --interactive | --bench (solo el benchmark 100k) | --only <pasos E2E> (solo esos pasos [E2E-n], p. ej. --only 4a,5c; ver E2eSteps.cs).
 
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
@@ -29,6 +30,20 @@ string ApiName(string pluginType) => Catalogo.Apis.Single(a => a.PluginTypeName.
 string apiImportTemplate = ApiName("ImportTemplatePlugin");
 string apiPrepare = ApiName("PrepareImportPlugin");
 string apiProcessChunk = Catalogo.Apis.Single(a => a.UniqueName == "sanic_capi_smelter_processchunk").UniqueName;
+var e2eApis = new E2eApis(apiImportTemplate, ApiName("ExportTemplatePlugin"), apiPrepare, apiProcessChunk);
+
+// --only <pasos>: se valida ANTES de conectar (un paso mal escrito no debería costar un login).
+string? onlySteps;
+try
+{
+    onlySteps = E2eSteps.OnlyArgument(args);
+    if (onlySteps is not null) E2eSteps.Select(onlySteps);
+}
+catch (ArgumentException ex)
+{
+    Console.Error.WriteLine($"[FATAL] {ex.Message}");
+    return 2;
+}
 
 bool interactive = args.Contains("--interactive") || args.Contains("--user");
 var url = Environment.GetEnvironmentVariable("DATAVERSE_URL")
@@ -49,6 +64,41 @@ if (!client.IsReady)
 }
 Console.WriteLine($"[1] Conectado. Org: {client.ConnectedOrgFriendlyName}");
 
+// ── --bench: SOLO el benchmark de 100k filas en dry run (no forma parte del verify por defecto) ──
+if (args.Contains("--bench"))
+{
+    try
+    {
+        BenchRunner.Run(client, apiImportTemplate, apiPrepare, apiProcessChunk);
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[FAIL] {ex.Message}");
+        return 1;
+    }
+}
+
+// ── --only: SOLO los pasos E2E pedidos (depuración); no corre los asserts de metadata ni el smoke principal ──
+if (onlySteps is not null)
+{
+    try
+    {
+        E2eRunner.Run(client, e2eApis, onlySteps);
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[FAIL] {ex.Message}");
+        return 1;
+    }
+    finally
+    {
+        try { Cleanup(client); Console.WriteLine("[E2E] Cleanup OK."); }
+        catch (Exception ex) { Console.Error.WriteLine($"[WARN] Cleanup incompleto: {ex.Message}"); }
+    }
+}
+
 try
 {
     // ── [SEC] Seguridad + UX provisionadas (Fases 3/4/6) — corre antes del smoke funcional: si
@@ -63,6 +113,39 @@ try
 
     // ── [CLEAN] Atributos muertos eliminados según SchemaCleanupSpec (1.3.0.0) ──
     CleanupAssertions.RunAll(client);
+
+    // ── [ADD] Columnas nuevas según SchemaAdditionsSpec (byte cursor del job + "Solo inserción" del mapping) ──
+    AdditionsAssertions.RunAll(client);
+
+    // ── [TUNE] Ajustes de columnas/forms existentes según SchemaTuningSpec (1.0.10) ──
+    TuningAssertions.RunAll(client);
+
+    // ── [DESC] Toda columna custom de las 6 tablas tiene Description (ColumnDescriptionsSpec.cs) ──
+    DescriptionsAssertions.RunAll(client);
+
+    // ── [POLISH] Forms y vistas según FormPolishSpec (job read-only + logs, log form, filtro del RM) ──
+    FormPolishAssertions.RunAll(client);
+
+    // ── [SITEMAP] Etiquetas de la MDA bilingües (1033 inglés + 3082 español), sin prefijos técnicos, con VectorIcon (SiteMapSpec.cs) ──
+    SiteMapAssertions.RunAll(client);
+
+    // ── [SOLNAME] Friendly name de la solución (SolutionNameSpec.cs) ──
+    SolutionNameAssertions.RunAll(client);
+
+    // ── [ICONS] Web resources SVG en la solución, IconVectorName de las tablas e ícono de la app (IconsSpec.cs) ──
+    IconsAssertions.RunAll(client);
+
+    // ── [LABELS] Nombres 3082 de tablas, columnas y opciones locales (TableLabelsSpec.cs) ──
+    TableLabelsAssertions.RunAll(client);
+
+    // ── [VIEWS] Nombres 1033 + 3082 de las vistas custom del Import Job y del dashboard (ViewLabelsSpec.cs) ──
+    ViewLabelsAssertions.RunAll(client);
+
+    // ── [HMAC] Tabla de keys HMAC según HmacKeyTableSpec (incluye column security) ──
+    HmacKeyAssertions.RunAll(client);
+
+    // ── [MDA] Salud de la model-driven app a nivel metadata (solo lectura) ──
+    MdaAssertions.RunAll(client);
 
     // ── 2. Pre-cleanup (por si una corrida anterior murió a medias) ────────
     Cleanup(client);
@@ -169,6 +252,14 @@ try
     Assert(CountSmokeContacts(client) == 5, "deben existir exactamente 5 contacts de smoke tras la 1ª corrida");
     Console.WriteLine("[5] 1ª corrida OK: job Completed, 5/5 contacts creados.");
 
+    // ── 5b. Cursor de bytes: Prepare lo dejó en el primer dato y ProcessChunk lo avanzó (por rango, sin
+    // re-descargar el archivo entero) hasta el final del CSV. El CSV no termina en newline: fin == su largo en bytes. ──
+    var finalCursor = client.Retrieve(JobTable, jobId, new ColumnSet("sanic_smlt_ij_bytecursor"))
+        .GetAttributeValue<decimal?>("sanic_smlt_ij_bytecursor");
+    var expectedCursor = System.Text.Encoding.UTF8.GetByteCount(csv);
+    Assert(finalCursor == expectedCursor, $"el cursor de bytes debía terminar en {expectedCursor} (fin del CSV), es {finalCursor?.ToString() ?? "null"}");
+    Console.WriteLine($"[5b] Cursor de bytes OK: terminó en {expectedCursor} (fin del archivo).");
+
     // ── 6. IDEMPOTENCIA: re-correr todo NO debe duplicar ───────────────────
     RunImport(client, apiPrepare, apiProcessChunk, jobId, expectTotal: 5);
     AssertJob(client, jobId, expectedSuccess: 5);
@@ -225,6 +316,87 @@ try
     client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_updateifexists"] = true });
     Console.WriteLine("[6c] UpdateIfExists=false OK: 5 filas Skipped, nada escrito, flag restaurado.");
 
+    // ── 6e. Gate de idempotencia (1.0.8): un mapping sin dedup columns es rechazado por PrepareImport salvo que
+    // tenga "Solo inserción". Se reusa el mapping del smoke y se restaura al final (el import del paso 3 lo recrea igual). ──
+    client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_dedupcolumns"] = null, ["sanic_smlt_tm_insertonly"] = false });
+    try
+    {
+        client.Execute(new OrganizationRequest(apiPrepare) { ["JobId"] = jobId3 });
+        Assert(false, "PrepareImport debía rechazar un mapping sin dedup columns y sin 'Solo inserción'");
+    }
+    catch (System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault> fx)
+    {
+        Assert(FaultChainContains(fx.Detail, "has no dedup columns"),
+            $"el fault del gate debía mencionar 'has no dedup columns', fue: {fx.Detail.Message}");
+    }
+
+    client.Update(new Entity(TableMappingTable, tableMapping.Id) { ["sanic_smlt_tm_insertonly"] = true });
+    ResetStatusForDirectRun(client, jobId3); // ya corrió completo arriba: Prepare solo reclama jobs Queued/sin status
+    ResetStatusForDirectRun(client, jobId3); // jobId3 ya terminó en [6c]: sin esto Prepare no lo reclama
+    var gateTotal = (int)ExecuteWithTransientBlobRetry(client, new OrganizationRequest(apiPrepare) { ["JobId"] = jobId3 })["TotalRows"];
+    Assert(gateTotal == 5, $"con 'Solo inserción' PrepareImport debía aceptar el template y contar 5 filas, contó {gateTotal}");
+
+    client.Update(new Entity(TableMappingTable, tableMapping.Id)
+    {
+        ["sanic_smlt_tm_dedupcolumns"] = "emailaddress1", ["sanic_smlt_tm_insertonly"] = false
+    });
+    Console.WriteLine("[6e] Gate de idempotencia OK: sin dedup + sin flag rechazado; con 'Solo inserción' aceptado; mapping restaurado.");
+
+    // ── 6d. HMAC E2E: prueba que SYSTEM (el plugin) lee la columna ASEGURADA de la key. Key temporal
+    // "smoke-verify" generada en proceso (nunca se imprime); el hash esperado se calcula local. ──────
+    var hmacKeyHex = HmacSmoke.CreateFreshKey(client);
+    var hmacDto = new TemplateExportDto
+    {
+        FormatVersion = "1.0",
+        Template = new TemplateInfoDto
+        {
+            Name = HmacSmoke.TemplateName, SourceType = 0, HasHeaderRow = true, Delimiter = ",", ChunkSize = 0
+        },
+        TableMappings =
+        [
+            new TableMappingDto
+            {
+                Ref = "tm-contact-hmac", Name = "Contact (smoke HMAC)", TargetTable = "contact",
+                ProcessingOrder = 1, DedupColumns = "emailaddress1",
+                CreateIfNotExists = true, UpdateIfExists = true,
+                ColumnMappings =
+                [
+                    new ColumnMappingDto { Name = "Email", SourceColumn = "Email", TargetColumn = "emailaddress1", DataType = (int)ColumnDataType.String },
+                    new ColumnMappingDto { Name = "LastName", SourceColumn = "LastName", TargetColumn = "lastname", DataType = (int)ColumnDataType.String },
+                    new ColumnMappingDto
+                    {
+                        Name = "Hash", SourceColumn = null, TargetColumn = HmacSmoke.TargetColumn, DataType = (int)ColumnDataType.String,
+                        TransformExpression = HmacSmokeSpec.TransformExpression("Email"),
+                    },
+                ]
+            }
+        ]
+    };
+    var hmacTemplateId = (Guid)client.Execute(new OrganizationRequest(apiImportTemplate) { ["Json"] = new TemplateSerializer().Serialize(hmacDto) })["TemplateId"];
+    client.Update(new Entity(TemplateTable, hmacTemplateId)
+    {
+        ["sanic_smlt_it_status"] = new OptionSetValue((int)ImportTemplateStatus.Active),
+    });
+    var hmacJobId = client.Create(new Entity(JobTable)
+    {
+        ["sanic_smlt_ij_name"] = HmacSmoke.JobName,
+        ["sanic_smlt_ij_importtemplateid"] = new EntityReference(TemplateTable, hmacTemplateId),
+    });
+    var hmacCsv = "Email,LastName\n" + string.Join("\n",
+        Enumerable.Range(1, 3).Select(i => $"hmac{i}{HmacSmoke.Domain},Verify{i}"));
+    UploadFile(client, new EntityReference(JobTable, hmacJobId), "sanic_smlt_ij_sourcefile", "smoke-hmac.csv", hmacCsv);
+    RunImport(client, apiPrepare, apiProcessChunk, hmacJobId, expectTotal: 3);
+    AssertJob(client, hmacJobId, expectedSuccess: 3);
+    HmacSmoke.AssertHashes(client, hmacKeyHex, expectedCount: 3);
+    Console.WriteLine("[6d] HMAC E2E OK: SYSTEM leyó la columna asegurada y los 3 hashes coinciden con el cálculo local (key temporal, no logueada).");
+
+    // ── [CHUNK] Multi-chunk: 250 filas por el cursor de bytes en 3 chunks (el último parcial), newline embebido + multibyte ──
+    ChunkSmoke.Run(client, apiImportTemplate, apiPrepare, apiProcessChunk);
+
+    // ── [E2E-n] Cobertura E2E de cada campo ✅ de la MDA (E2eRunner*.cs): opciones del template, tipos de dato, required/default,
+    // relaciones, formatos de CSV, Archived, Cloud Flow, dry run, roundtrip export/import, transforms, ManyToMany ──
+    E2eRunner.Run(client, e2eApis, null);
+
     Console.WriteLine();
     Console.WriteLine("[OK] SMOKE TEST VERDE: el backend desplegado procesa, completa e idempotente contra Dev.");
     return 0;
@@ -249,15 +421,26 @@ catch (Exception ex)
 }
 finally
 {
-    try { Cleanup(client); Console.WriteLine("[7] Cleanup OK (contacts + jobs de smoke eliminados; el template queda para reuso)."); }
+    try { Cleanup(client); Console.WriteLine("[7] Cleanup OK (contacts + jobs de smoke y key temporal HMAC eliminados; el template queda para reuso)."); }
     catch (Exception ex) { Console.Error.WriteLine($"[WARN] Cleanup incompleto: {ex.Message}"); }
 }
 
 // ───────────────────────────────────────────────────────────────────────────
 
+// Desde 1.0.12 PrepareImport RECLAMA el job: solo lo toma si está Queued o sin status. Estas corridas directas re-corren
+// el MISMO job (idempotencia, reproceso) → se lo devuelve a "sin status" (NO a Queued: eso dispararía el Cloud Flow).
+static void ResetStatusForDirectRun(ServiceClient client, Guid jobId)
+{
+    var current = client.Retrieve(JobTable, jobId, new ColumnSet("sanic_smlt_ij_status")).GetAttributeValue<OptionSetValue>("sanic_smlt_ij_status");
+    if (current is not null)
+        client.Update(new Entity(JobTable, jobId) { ["sanic_smlt_ij_status"] = null });
+}
+
 static void RunImport(ServiceClient client, string apiPrepare, string apiProcessChunk, Guid jobId, int expectTotal)
 {
+    ResetStatusForDirectRun(client, jobId);
     var prep = ExecuteWithTransientBlobRetry(client, new OrganizationRequest(apiPrepare) { ["JobId"] = jobId });
+    Assert((bool)prep["Claimed"], "PrepareImport debía reclamar el job (Claimed=true): estaba sin status/Queued");
     var total = (int)prep["TotalRows"];
     Assert(total == expectTotal, $"PrepareImport debía contar {expectTotal} filas, contó {total}");
 
@@ -360,6 +543,10 @@ static List<Entity> SmokeContacts(ServiceClient client)
 
 static void Cleanup(ServiceClient client)
 {
+    // Lo sensible primero: la key temporal "smoke-verify" se borra aunque falle lo demás (y también si
+    // una corrida previa murió a medias).
+    HmacSmoke.DeleteKeys(client);
+
     foreach (var c in SmokeContacts(client))
         client.Delete("contact", c.Id);
 
@@ -370,6 +557,15 @@ static void Cleanup(ServiceClient client)
     }).Entities;
     foreach (var j in jobs)
         client.Delete("sanic_tbl_smlt_importjob", j.Id);
+
+    // Smoke multi-chunk: contacts + jobs (el bench se limpia solo, en BenchRunner).
+    ChunkSmoke.DeleteData(client);
+
+    // Smoke HMAC: contacts + jobs de la corrida (la key temporal ya se borró al principio de Cleanup).
+    HmacSmoke.DeleteData(client);
+
+    // Pasos [E2E-n]: contacts (hijos primero), jobs y templates con el prefijo/dominio E2E. Nunca lanza.
+    E2eRunner.DeleteData(client);
 }
 
 static void UploadFile(ServiceClient client, EntityReference target, string fileAttribute, string fileName, string content)
@@ -381,7 +577,9 @@ static void UploadFile(ServiceClient client, EntityReference target, string file
         ["FileName"] = fileName,
     });
     var token = (string)init["FileContinuationToken"];
-    var blockId = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+    // BlockId fijo y URL-safe ("MDAwMDAx"): un base64 de Guid aleatorio a veces trae '+' o '/', y el blob
+    // storage lo rechaza con 400 InvalidQueryParameterValue (fallo intermitente). Un solo bloque por archivo.
+    var blockId = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("000001"));
 
     client.Execute(new OrganizationRequest("UploadBlock")
     {

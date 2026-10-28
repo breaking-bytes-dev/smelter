@@ -56,7 +56,110 @@ internal static class SchemaCleanupProvisioner
             }
         }
 
-        Console.WriteLine($"[4d] SchemaCleanup OK ({SchemaCleanupCatalogo.Attributes.Length} specs procesadas).");
+        RemoveOptions(client);
+
+        Console.WriteLine($"[4d] SchemaCleanup OK ({SchemaCleanupCatalogo.Attributes.Length} atributos + " +
+            $"{OptionCleanupCatalogo.Options.Length} opciones procesadas).");
+    }
+
+    // ── Opciones muertas de choices locales (OptionCleanupCatalogo) ──────────────────────────────
+    // Se niega a borrar una opción que alguna fila usa: dejaría datos con un valor inexistente. Sin filas, es
+    // DeleteOptionValueRequest + publish. Idempotente: una opción que ya no está se saltea.
+    internal static void RemoveOptions(ServiceClient client)
+    {
+        foreach (var spec in OptionCleanupCatalogo.Options)
+        {
+            var label = $"{spec.EntityLogicalName}.{spec.AttributeLogicalName} = {spec.Value} ({spec.Label})";
+            if (!OptionExists(client, spec))
+            {
+                Console.WriteLine($"[4d]   opción {label} ya no existe — nada que borrar.");
+                continue;
+            }
+
+            var inUse = client.RetrieveMultiple(new QueryExpression(spec.EntityLogicalName)
+            {
+                ColumnSet = new ColumnSet(false),
+                TopCount = 1,
+                Criteria = { Conditions = { new ConditionExpression(spec.AttributeLogicalName, ConditionOperator.Equal, spec.Value) } },
+            }).Entities.Count > 0;
+            if (inUse && spec.PurgeRowsInUse)
+            {
+                var purged = PurgeRows(client, spec);
+                Console.WriteLine($"[4d]   opción {label}: {purged} fila(s) de diagnóstico que la usaban BORRADAS.");
+                inUse = false;
+            }
+            if (inUse)
+                throw new InvalidOperationException(
+                    $"No se elimina la opción {label}: existen filas que la usan (se consulta sin filtrar por estado). " +
+                    "Migrar o borrar esas filas y volver a correr el deploy.");
+
+            client.Execute(new DeleteOptionValueRequest
+            {
+                EntityLogicalName = spec.EntityLogicalName,
+                AttributeLogicalName = spec.AttributeLogicalName,
+                Value = spec.Value,
+            });
+            PublishEntity(client, spec.EntityLogicalName);
+            Console.WriteLine($"[4d]   opción {label} ELIMINADA ({spec.Reason}).");
+        }
+    }
+
+    // Borra TODAS las filas que usan la opción con un BulkDeleteRequest (trabajo asíncrono del servidor) y espera a
+    // que termine. Un ExecuteMultiple de 1000 deletes superaba el timeout de 4 min del cliente con miles de logs.
+    private static int PurgeRows(ServiceClient client, OptionCleanupSpec spec)
+    {
+        var query = new QueryExpression(spec.EntityLogicalName)
+        {
+            ColumnSet = new ColumnSet(false),
+            Criteria = { Conditions = { new ConditionExpression(spec.AttributeLogicalName, ConditionOperator.Equal, spec.Value) } },
+        };
+        var jobId = ((BulkDeleteResponse)client.Execute(new BulkDeleteRequest
+        {
+            JobName = $"Smelter deploy 4d: purga {spec.EntityLogicalName}.{spec.AttributeLogicalName} = {spec.Value} ({spec.Label})",
+            QuerySet = [query],
+            StartDateTime = DateTime.UtcNow,
+            RecurrencePattern = string.Empty,
+            SendEmailNotification = false,
+            ToRecipients = [],
+            CCRecipients = [],
+        })).JobId;
+
+        var deadline = DateTime.UtcNow.AddMinutes(30);
+        while (true)
+        {
+            var job = client.Retrieve("asyncoperation", jobId, new ColumnSet("statecode", "statuscode"));
+            var state = job.GetAttributeValue<OptionSetValue>("statecode")?.Value;
+            if (state == 3) // Completed
+            {
+                var status = job.GetAttributeValue<OptionSetValue>("statuscode")?.Value;
+                if (status != 30) // 30 = Succeeded
+                    throw new InvalidOperationException($"BulkDelete {jobId} terminó con statuscode {status} (no Succeeded).");
+                var bulk = client.RetrieveMultiple(new QueryExpression("bulkdeleteoperation")
+                {
+                    ColumnSet = new ColumnSet("successcount", "failurecount"),
+                    Criteria = { Conditions = { new ConditionExpression("asyncoperationid", ConditionOperator.Equal, jobId) } },
+                }).Entities.FirstOrDefault();
+                if ((bulk?.GetAttributeValue<int?>("failurecount") ?? 0) > 0)
+                    throw new InvalidOperationException($"BulkDelete {jobId}: {bulk!.GetAttributeValue<int?>("failurecount")} fila(s) no se pudieron borrar.");
+                return bulk?.GetAttributeValue<int?>("successcount") ?? 0;
+            }
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException($"BulkDelete {jobId} no terminó en 30 min; revisar el system job y re-correr el deploy.");
+            Thread.Sleep(TimeSpan.FromSeconds(10));
+        }
+    }
+
+    internal static bool OptionExists(ServiceClient client, OptionCleanupSpec spec)
+    {
+        var attribute = ((RetrieveAttributeResponse)client.Execute(new RetrieveAttributeRequest
+        {
+            EntityLogicalName = spec.EntityLogicalName,
+            LogicalName = spec.AttributeLogicalName,
+            RetrieveAsIfPublished = true,
+        })).AttributeMetadata;
+
+        var options = (attribute as EnumAttributeMetadata)?.OptionSet?.Options;
+        return options?.Any(o => o.Value == spec.Value) == true;
     }
 
     private static bool AttributeExists(ServiceClient client, AttributeCleanupSpec spec)
@@ -89,21 +192,12 @@ internal static class SchemaCleanupProvisioner
                 continue;
 
             var doc = XDocument.Parse(formXml);
-            var celdas = doc.Descendants("control")
-                .Where(c => string.Equals((string?)c.Attribute("datafieldname"), spec.AttributeLogicalName,
-                    StringComparison.OrdinalIgnoreCase))
-                .Select(c => c.Ancestors("cell").FirstOrDefault() ?? (XElement)c)
-                .Distinct()
-                .ToList();
-            if (celdas.Count == 0)
+            if (!FormXmlEditor.TryRemoveField(doc, spec.AttributeLogicalName))
                 continue;
-
-            foreach (var celda in celdas)
-                celda.Remove();
 
             client.Update(new Entity("systemform", form.Id) { ["formxml"] = doc.ToString(SaveOptions.DisableFormatting) });
             Console.WriteLine($"[4d]     form '{form.GetAttributeValue<string>("name")}': " +
-                $"{celdas.Count} celda(s) de {spec.AttributeLogicalName} removida(s).");
+                $"{spec.AttributeLogicalName} removido.");
         }
     }
 

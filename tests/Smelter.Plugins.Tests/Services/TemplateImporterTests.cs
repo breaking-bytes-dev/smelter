@@ -69,6 +69,46 @@ namespace Smelter.Plugins.Tests.Services
             created.First(e => e.LogicalName == table && (pred == null || pred(e)));
 
         [Fact]
+        public void Import_ChunkSizeZero_IsStoredAsEmpty_BecauseTheColumnRejectsValuesBelow100()
+        {
+            // 0 significa "default del sistema" en el JSON; la columna tiene MinValue=100, así que se guarda vacío (null).
+            var service = Service(out var created);
+            var dto = Dto();
+            dto.Template.ChunkSize = 0;
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            var template = Created(created, TemplateTable);
+            template.Contains("sanic_smlt_it_chunksize").Should().BeTrue("en un update tiene que limpiar el valor anterior");
+            template["sanic_smlt_it_chunksize"].Should().BeNull();
+        }
+
+        [Fact]
+        public void Import_ChunkSizeInRange_IsStoredAsIs()
+        {
+            var service = Service(out var created);
+            var dto = Dto();
+            dto.Template.ChunkSize = 250;
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            Created(created, TemplateTable)["sanic_smlt_it_chunksize"].Should().Be(250);
+        }
+
+        [Fact]
+        public void Import_LegacySourceType_IsAlwaysWrittenAsCsv_BecauseTheChoiceOnlyHasCsv()
+        {
+            // JSON viejo con SourceType=1 (Excel, que nunca existió en el choice): crearía un OptionSetValue inválido.
+            var service = Service(out var created);
+            var dto = Dto();
+            dto.Template.SourceType = 1;
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            ((OptionSetValue)Created(created, TemplateTable)["sanic_smlt_it_sourcetype"]).Value.Should().Be(0);
+        }
+
+        [Fact]
         public void Import_CleanEnvironment_CreatesTemplateTableColumnAndRelationship()
         {
             var service = Service(out var created);
@@ -138,6 +178,65 @@ namespace Smelter.Plugins.Tests.Services
 
             result.Warnings.Should().ContainSingle(w => w.Contains("sanic_cuentamora"));
             created.Count(e => e.LogicalName == TmTable).Should().Be(2); // still imported the whole template
+        }
+
+        [Fact]
+        public void Import_WritesInsertOnlyFlagToEachTableMapping_DefaultingToFalse()
+        {
+            var service = Service(out var created);
+            var dto = Dto();
+            dto.TableMappings[1].InsertOnly = true;
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            var tms = created.Where(e => e.LogicalName == TmTable).ToList();
+            tms.Single(e => e.GetAttributeValue<string>("sanic_smlt_tm_targettable") == "sanic_cliente")
+                .GetAttributeValue<bool>("sanic_smlt_tm_insertonly").Should().BeFalse();
+            tms.Single(e => e.GetAttributeValue<string>("sanic_smlt_tm_targettable") == "sanic_cuentamora")
+                .GetAttributeValue<bool>("sanic_smlt_tm_insertonly").Should().BeTrue();
+        }
+
+        [Fact]
+        public void Import_NewTemplate_WithStatusAndDescriptionInJson_WritesThem()
+        {
+            var service = Service(out var created);
+            var dto = Dto();
+            dto.Template.Status = (int)ImportTemplateStatus.Draft;
+            dto.Template.Description = "Carga mensual";
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            var t = Created(created, TemplateTable);
+            t.GetAttributeValue<OptionSetValue>("sanic_smlt_it_status").Value.Should().Be((int)ImportTemplateStatus.Draft);
+            t.GetAttributeValue<string>("sanic_smlt_it_description").Should().Be("Carga mensual");
+        }
+
+        [Fact]
+        public void Import_ExistingTemplate_WithoutStatusNorDescription_DoesNotTouchThem()
+        {
+            var existingId = Guid.NewGuid();
+            var existing = new EntityCollection(new List<Entity> { new Entity(TemplateTable, existingId) });
+            var service = Service(out _, templateByName: existing);
+
+            new TemplateImporter(service, _ => true).Import(Dto());
+
+            service.Received().Update(Arg.Is<Entity>(e => e.LogicalName == TemplateTable
+                && !e.Contains("sanic_smlt_it_status") && !e.Contains("sanic_smlt_it_description")));
+        }
+
+        [Fact]
+        public void Import_ExistingTemplate_WithStatusInJson_AppliesIt()
+        {
+            var existingId = Guid.NewGuid();
+            var existing = new EntityCollection(new List<Entity> { new Entity(TemplateTable, existingId) });
+            var service = Service(out _, templateByName: existing);
+            var dto = Dto();
+            dto.Template.Status = (int)ImportTemplateStatus.Archived;
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            service.Received().Update(Arg.Is<Entity>(e => e.LogicalName == TemplateTable
+                && e.GetAttributeValue<OptionSetValue>("sanic_smlt_it_status").Value == (int)ImportTemplateStatus.Archived));
         }
     }
 }

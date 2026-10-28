@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using FluentAssertions;
 using Smelter.Plugins.Models;
@@ -97,5 +98,134 @@ namespace Smelter.Plugins.Tests.Services
             System.Action act = () => _sut.Deserialize(json);
             act.Should().Throw<TemplateFormatException>().WithMessage("*tm-no-existe*");
         }
-    }
+
+        [Fact]
+        public void Roundtrip_PreservesInsertOnly()
+        {
+            var dto = SampleDto();
+            dto.TableMappings[1].InsertOnly = true;
+
+            var result = _sut.Deserialize(_sut.Serialize(dto));
+
+            result.TableMappings[0].InsertOnly.Should().BeFalse();
+            result.TableMappings[1].InsertOnly.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Deserialize_JsonWithoutInsertOnly_ImportsAsFalse()
+        {
+            // JSON exportado por una versión anterior: no trae el campo.
+            const string oldJson = "{\"FormatVersion\":\"1.0\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0}," +
+                "\"TableMappings\":[{\"Ref\":\"a\",\"Name\":\"A\",\"TargetTable\":\"x\",\"ProcessingOrder\":1,\"DedupColumns\":\"k\",\"CreateIfNotExists\":true,\"UpdateIfExists\":true,\"ColumnMappings\":[]}]," +
+                "\"RelationshipMappings\":[]}";
+
+            var result = _sut.Deserialize(oldJson);
+
+            result.TableMappings.Should().ContainSingle().Which.InsertOnly.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Deserialize_JsonWithRemovedIsJunctionTableMember_StillImports()
+        {
+            // JSON exportado antes de 1.3.0.0: trae IsJunctionTable (campo eliminado). Se ignora.
+            const string oldJson = "{\"FormatVersion\":\"1.0\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0}," +
+                "\"TableMappings\":[{\"Ref\":\"a\",\"Name\":\"A\",\"TargetTable\":\"x\",\"ProcessingOrder\":1,\"DedupColumns\":\"k\",\"CreateIfNotExists\":true,\"UpdateIfExists\":true,\"IsJunctionTable\":true,\"ColumnMappings\":[]}]," +
+                "\"RelationshipMappings\":[]}";
+
+            var result = _sut.Deserialize(oldJson);
+
+            result.TableMappings.Should().ContainSingle().Which.Name.Should().Be("A");
+        }
+
+        [Fact]
+        public void Deserialize_ManyToManyRelationship_IsRejectedWithAClearError()
+        {
+            const string json = "{\"FormatVersion\":\"1.0\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0}," +
+                "\"TableMappings\":[{\"Ref\":\"a\",\"Name\":\"A\",\"TargetTable\":\"x\",\"ColumnMappings\":[]},{\"Ref\":\"b\",\"Name\":\"B\",\"TargetTable\":\"y\",\"ColumnMappings\":[]}]," +
+                "\"RelationshipMappings\":[{\"Name\":\"NM\",\"ParentRef\":\"a\",\"ChildRef\":\"b\",\"RelationshipType\":1}]}";
+
+            Action act = () => _sut.Deserialize(json);
+
+            act.Should().Throw<TemplateFormatException>().WithMessage("*NM*ManyToMany*not supported*");
+        }
+
+        [Fact]
+        public void Roundtrip_PreservesDescriptionAndStatus()
+        {
+            var dto = SampleDto();
+            dto.Template.Description = "Carga mensual de cobranza";
+            dto.Template.Status = (int)ImportTemplateStatus.Draft;
+
+            var result = _sut.Deserialize(_sut.Serialize(dto));
+
+            result.Template.Description.Should().Be("Carga mensual de cobranza");
+            result.Template.Status.Should().Be((int)ImportTemplateStatus.Draft);
+        }
+
+        [Fact]
+        public void Deserialize_JsonWithoutDescriptionNorStatus_LeavesThemNull()
+        {
+            // JSON 1.0 (anterior al bump 1.1): sin el campo => null, distinto de "Draft" (0) o "" ; el importer usa el null
+            // para decidir el default (Active en create, sin tocar en update).
+            const string oldJson = "{\"FormatVersion\":\"1.0\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0}," +
+                "\"TableMappings\":[],\"RelationshipMappings\":[]}";
+
+            var result = _sut.Deserialize(oldJson);
+
+            result.Template.Description.Should().BeNull();
+            result.Template.Status.Should().BeNull();
+        }
+
+        [Fact]
+        public void Deserialize_StatusOutsideTheChoice_IsRejected()
+        {
+            const string json = "{\"FormatVersion\":\"1.1\",\"Template\":{\"Name\":\"T\",\"SourceType\":0,\"HasHeaderRow\":true,\"Delimiter\":\",\",\"ChunkSize\":0,\"Status\":9}," +
+                "\"TableMappings\":[],\"RelationshipMappings\":[]}";
+
+            Action act = () => _sut.Deserialize(json);
+
+            act.Should().Throw<TemplateFormatException>().WithMessage("*status*9*");
+        }
+
+        [Fact]
+        public void Deserialize_MinorVersion1_1_IsAccepted()
+        {
+            var dto = SampleDto();
+            dto.FormatVersion = "1.1";
+
+            Action act = () => _sut.Deserialize(_sut.Serialize(dto));
+
+            act.Should().NotThrow();
+        }
+    
+        [Theory]
+        [InlineData(50)]
+        [InlineData(1)]
+        [InlineData(99)]
+        [InlineData(10001)]
+        [InlineData(-5)]
+        public void Deserialize_ChunkSizeOutsideTheValidRange_IsRejected(int chunkSize)
+        {
+            // Rango válido de la columna: 100..10000 (o 0 = "usar el default del sistema"). Valores fuera de rango se RECHAZAN (no se acotan).
+            var dto = SampleDto();
+            dto.Template.ChunkSize = chunkSize;
+
+            Action act = () => _sut.Deserialize(_sut.Serialize(dto));
+
+            act.Should().Throw<TemplateFormatException>().WithMessage("*chunk*100*10000*");
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(100)]
+        [InlineData(1000)]
+        [InlineData(10000)]
+        public void Deserialize_ChunkSizeInRangeOrZeroDefault_IsAccepted(int chunkSize)
+        {
+            var dto = SampleDto();
+            dto.Template.ChunkSize = chunkSize;
+
+            _sut.Deserialize(_sut.Serialize(dto)).Template.ChunkSize.Should().Be(chunkSize);
+        }
+}
 }

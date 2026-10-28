@@ -45,12 +45,27 @@ namespace Smelter.Plugins.Services
         /// </param>
         /// <param name="tracingService">Optional tracing service; pass <c>null</c> in unit tests.</param>
         public NormalizationEngine(IOrganizationService service, ITracingService tracingService)
+            : this(service, tracingService, null)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="NormalizationEngine"/> with a key source for the
+        /// <c>HMAC</c> transform function.
+        /// </summary>
+        /// <param name="service">See the two-argument constructor.</param>
+        /// <param name="tracingService">Optional tracing service; pass <c>null</c> in unit tests.</param>
+        /// <param name="hmacKeyProvider">
+        /// Resolves HMAC key bytes by name; <c>null</c> leaves <c>HMAC</c> unavailable (any template
+        /// that uses it fails per row with a clear message).
+        /// </param>
+        public NormalizationEngine(IOrganizationService service, ITracingService tracingService, IHmacKeyProvider hmacKeyProvider)
         {
             // 'service' is accepted for signature stability; ProcessBatch writes via IUpsertWriter.
             if (service == null) throw new ArgumentNullException(nameof(service));
             _tracingService = tracingService;
             _typeCoercer = new TypeCoercer();
-            _transformEngine = new TransformEngine();
+            _transformEngine = new TransformEngine(hmacKeyProvider);
         }
 
         public IList<ProcessingResult> ProcessBatch(ImportContext context, IList<SourceRow> rows, IUpsertWriter writer)
@@ -59,6 +74,7 @@ namespace Smelter.Plugins.Services
 
             var results = new List<ProcessingResult>();
             var ordered = DependencyResolver.Resolve(context.TableMappings, context.RelationshipMappings);
+            rows = EnsureCaseInsensitiveKeys(rows);
 
             foreach (var tableMapping in ordered)
             {
@@ -70,6 +86,24 @@ namespace Smelter.Plugins.Services
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Header matching is case-insensitive end to end (PrepareImport validates with OrdinalIgnoreCase). Rows
+        /// produced by the CSV parser already are; a row built by hand with a case-sensitive dictionary is copied
+        /// once here so every lookup below (source column, transform column reference, parent key) agrees.
+        /// </summary>
+        private static IList<SourceRow> EnsureCaseInsensitiveKeys(IList<SourceRow> rows)
+        {
+            if (rows.All(r => Equals(r.Values.Comparer, StringComparer.OrdinalIgnoreCase))) return rows;
+
+            return rows.Select(r =>
+            {
+                if (Equals(r.Values.Comparer, StringComparer.OrdinalIgnoreCase)) return r;
+                var copy = new SourceRow { RowNumber = r.RowNumber };
+                foreach (var kv in r.Values) copy.Values[kv.Key] = kv.Value;
+                return copy;
+            }).ToList();
         }
 
         private class BatchBuildResult
@@ -98,6 +132,9 @@ namespace Smelter.Plugins.Services
                     if (!ApplyColumnMappings(tableMapping, sourceRow, record, result))
                         continue; // required field missing — already logged as failure
 
+                    if (!HasDedupKey(tableMapping, record, sourceRow, result))
+                        continue; // empty dedup key — already logged as failure
+
                     ApplyParentLookups(context, parentRelations, sourceRow, record);
                     result.Records.Add(record);
                 }
@@ -124,12 +161,7 @@ namespace Smelter.Plugins.Services
         {
             foreach (var colMapping in tableMapping.ColumnMappings)
             {
-                var rawValue = GetRawValue(sourceRow, colMapping);
-
-                // Fix #6: apply the configured default BEFORE the required-field check so that a
-                // default value satisfies a required mapping when the source cell is blank.
-                if (string.IsNullOrEmpty(rawValue) && !string.IsNullOrEmpty(colMapping.DefaultValue))
-                    rawValue = colMapping.DefaultValue;
+                var rawValue = ResolveRawValue(sourceRow, colMapping);
 
                 if (colMapping.IsRequired && string.IsNullOrEmpty(rawValue))
                 {
@@ -141,28 +173,7 @@ namespace Smelter.Plugins.Services
 
                 if (string.IsNullOrEmpty(rawValue)) continue;
 
-                if (colMapping.DataType == ColumnDataType.OptionSet && !string.IsNullOrWhiteSpace(colMapping.OptionSetMapping))
-                {
-                    var match = System.Text.RegularExpressions.Regex.Match(
-                        colMapping.OptionSetMapping,
-                        $"\"{System.Text.RegularExpressions.Regex.Escape(rawValue)}\"\\s*:\\s*([0-9]+)");
-                    if (match.Success) rawValue = match.Groups[1].Value;
-                }
-
-                object coerced;
-                try
-                {
-                    coerced = _typeCoercer.Coerce(rawValue, colMapping.DataType);
-                }
-                catch (FormatException ex)
-                {
-                    // Mismo tipo de excepción (la clasificación TypeError de ClassifyBuildException
-                    // depende de FormatException), pero con la COLUMNA en el mensaje: el TypeCoercer
-                    // solo conoce el valor, y "Cannot convert 'X'" sin decir dónde no le sirve de
-                    // nada al operador que tiene 40 columnas mapeadas (1.2.1.0).
-                    throw new FormatException(
-                        $"Column '{colMapping.TargetColumn}' (source '{colMapping.SourceColumn}'): {ex.Message}", ex);
-                }
+                var coerced = CoerceValue(colMapping, rawValue);
                 if (coerced == null) continue;
 
                 if (colMapping.DataType == ColumnDataType.Lookup && !string.IsNullOrEmpty(colMapping.LookupTable))
@@ -178,7 +189,7 @@ namespace Smelter.Plugins.Services
                     else
                     {
                         result.Skipped.Add(ProcessingResult.Failure(sourceRow.RowNumber, tableMapping.TargetTable,
-                            $"Lookup '{colMapping.TargetColumn}' value '{coerced}' is not a GUID and no " +
+                            $"Lookup '{colMapping.TargetColumn}' value is not a GUID and no " +
                             "LookupMatchColumn is configured.", ErrorCategory.LookupUnresolved));
                         return false;
                     }
@@ -190,6 +201,81 @@ namespace Smelter.Plugins.Services
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Guard de la clave de dedup (1.0.16): un upsert con la clave vacía no puede matchear a nadie, así que cada corrida
+        /// crearía un registro nuevo (duplicado silencioso). La fila falla (<see cref="ErrorCategory.ValidationError"/>, como
+        /// un campo requerido vacío) en lugar de escribirse. Los mappings «Solo inserción» no buscan por clave: no aplican.
+        /// El mensaje nombra la columna destino y la de origen, nunca el valor.
+        /// </summary>
+        /// <returns><c>false</c> (con la falla ya registrada en <paramref name="result"/>) si alguna columna de la clave quedó vacía.</returns>
+        private static bool HasDedupKey(TableMappingConfig tableMapping, TargetRecord record, SourceRow sourceRow, BatchBuildResult result)
+        {
+            if (tableMapping.InsertOnly) return true;
+
+            foreach (var keyColumn in tableMapping.GetDedupColumnNames())
+            {
+                var value = record.Attributes.FirstOrDefault(kv => string.Equals(kv.Key?.Trim(), keyColumn, StringComparison.OrdinalIgnoreCase)).Value;
+                if (!IsBlank(value)) continue;
+
+                var source = tableMapping.ColumnMappings
+                    .FirstOrDefault(c => string.Equals(c.TargetColumn?.Trim(), keyColumn, StringComparison.OrdinalIgnoreCase))
+                    ?.SourceColumn;
+                result.Skipped.Add(ProcessingResult.Failure(sourceRow.RowNumber, tableMapping.TargetTable,
+                    string.IsNullOrEmpty(source)
+                        ? $"Dedup key '{keyColumn}' is empty."
+                        : $"Dedup key '{keyColumn}' is empty (Source: '{source}').",
+                    ErrorCategory.ValidationError));
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsBlank(object value) =>
+            value == null || (value is string text && string.IsNullOrWhiteSpace(text));
+
+        /// <summary>
+        /// Raw (pre-coercion) value of a column mapping for one row: transform / source column, then the configured
+        /// default when the cell is blank. Fix #6: the default is applied BEFORE the required-field check so that
+        /// it satisfies a required mapping when the source cell is blank.
+        /// </summary>
+        private string ResolveRawValue(SourceRow sourceRow, ColumnMappingConfig colMapping)
+        {
+            var rawValue = GetRawValue(sourceRow, colMapping);
+            if (string.IsNullOrEmpty(rawValue) && !string.IsNullOrEmpty(colMapping.DefaultValue))
+                rawValue = colMapping.DefaultValue;
+            return rawValue;
+        }
+
+        /// <summary>
+        /// Option-set mapping + type coercion of a non-empty raw value. Shared by the column mappings and by the
+        /// parent-key resolution so both apply exactly the same pipeline.
+        /// </summary>
+        private object CoerceValue(ColumnMappingConfig colMapping, string rawValue)
+        {
+            if (colMapping.DataType == ColumnDataType.OptionSet && !string.IsNullOrWhiteSpace(colMapping.OptionSetMapping))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    colMapping.OptionSetMapping,
+                    $"\"{System.Text.RegularExpressions.Regex.Escape(rawValue)}\"\\s*:\\s*([0-9]+)");
+                if (match.Success) rawValue = match.Groups[1].Value;
+            }
+
+            try
+            {
+                return _typeCoercer.Coerce(rawValue, colMapping.DataType);
+            }
+            catch (FormatException ex)
+            {
+                // Mismo tipo de excepción (la clasificación TypeError de ClassifyBuildException
+                // depende de FormatException), pero con la COLUMNA en el mensaje: el TypeCoercer
+                // solo conoce el valor (que NO va en el mensaje: puede ser PII) y sin decir dónde no le sirve de
+                // nada al operador que tiene 40 columnas mapeadas (1.2.1.0).
+                throw new FormatException(
+                    $"Column '{colMapping.TargetColumn}' (source '{colMapping.SourceColumn}'): {ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -228,7 +314,7 @@ namespace Smelter.Plugins.Services
                 var parentKeyColumns = parent.GetDedupColumnNames();          // target alternate-key columns
                 var sourceColumns = string.IsNullOrEmpty(rel.ParentDedupColumns)
                     ? Array.Empty<string>()
-                    : rel.ParentDedupColumns.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    : TemplateValidator.SplitList(rel.ParentDedupColumns);
 
                 if (parentKeyColumns.Length == 0 || sourceColumns.Length == 0)
                 {
@@ -239,13 +325,49 @@ namespace Smelter.Plugins.Services
 
                 var keyAttributes = new KeyAttributeCollection();
                 for (var i = 0; i < parentKeyColumns.Length && i < sourceColumns.Length; i++)
-                {
-                    sourceRow.Values.TryGetValue(sourceColumns[i].Trim(), out var value);
-                    keyAttributes[parentKeyColumns[i]] = value;
-                }
+                    keyAttributes[parentKeyColumns[i]] = ResolveParentKeyValue(parent, parentKeyColumns[i], sourceColumns[i], sourceRow);
 
                 record.Attributes[rel.LookupColumnOnChild] = new EntityReference(parent.TargetTable, keyAttributes);
             }
+        }
+
+        /// <summary>
+        /// Value of one parent alternate-key column for the CHILD row, computed with the same pipeline the parent
+        /// Table Mapping applies to that target column (transform, default, option-set mapping, coercion). Without
+        /// this, a parent keyed by <c>HMAC(Pan, "k")</c> or by a coerced type never matched: the child sent the raw
+        /// CSV text while the parent had been written with the derived value.
+        /// <para>
+        /// When the parent column mapping has no transform, <paramref name="parentDedupSource"/> (the CSV column the
+        /// Relationship Mapping names) is the source, so templates whose names differ keep working. When the parent has
+        /// no Column Mapping for the key column (PrepareImport rejects that), the raw CSV value is used as before.
+        /// </para>
+        /// </summary>
+        private object ResolveParentKeyValue(TableMappingConfig parent, string parentKeyColumn, string parentDedupSource,
+            SourceRow sourceRow)
+        {
+            var source = parentDedupSource.Trim();
+            var parentMapping = parent.ColumnMappings.FirstOrDefault(c =>
+                string.Equals(c.TargetColumn?.Trim(), parentKeyColumn, StringComparison.OrdinalIgnoreCase));
+
+            if (parentMapping == null)
+            {
+                sourceRow.Values.TryGetValue(source, out var rawOnly);
+                return rawOnly;
+            }
+
+            var effective = !string.IsNullOrWhiteSpace(parentMapping.TransformExpression)
+                ? parentMapping
+                : new ColumnMappingConfig
+                {
+                    SourceColumn = source,
+                    TargetColumn = parentMapping.TargetColumn,
+                    DataType = parentMapping.DataType,
+                    DefaultValue = parentMapping.DefaultValue,
+                    OptionSetMapping = parentMapping.OptionSetMapping
+                };
+
+            var raw = ResolveRawValue(sourceRow, effective);
+            return string.IsNullOrEmpty(raw) ? null : CoerceValue(effective, raw);
         }
 
         /// <summary>
@@ -261,7 +383,7 @@ namespace Smelter.Plugins.Services
             if (string.IsNullOrEmpty(colMapping.SourceColumn))
                 return null;
 
-            sourceRow.Values.TryGetValue(colMapping.SourceColumn, out var value);
+            sourceRow.Values.TryGetValue(colMapping.SourceColumn.Trim(), out var value);
             return value;
         }
     }

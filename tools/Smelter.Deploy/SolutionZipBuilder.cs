@@ -64,6 +64,11 @@ internal static class SolutionZipBuilder
         writer.Write(content);
     }
 
+    // El friendly name viaja en el manifest: importar este zip con el unique name como nombre pisaba el que deja
+    // SolutionNameProvisioner [4l] ("SMLT | Core | Smelter").
+    internal static string FriendlyNameOf(string solutionUniqueName) =>
+        solutionUniqueName == SolutionNameCatalogo.UniqueName ? SolutionNameCatalogo.FriendlyName : solutionUniqueName;
+
     private static string BuildSolutionXml(
         string solutionUniqueName, string publisherUniqueName, string publisherPrefix, string version,
         IEnumerable<string> entities, int optionValuePrefix)
@@ -77,7 +82,7 @@ internal static class SolutionZipBuilder
                "  <SolutionManifest>\n" +
                $"    <UniqueName>{solutionUniqueName}</UniqueName>\n" +
                "    <LocalizedNames>\n" +
-               $"      <LocalizedName description=\"{solutionUniqueName}\" languagecode=\"1033\" />\n" +
+               $"      <LocalizedName description=\"{FriendlyNameOf(solutionUniqueName)}\" languagecode=\"1033\" />\n" +
                "    </LocalizedNames>\n" +
                $"    <Version>{version}</Version>\n" +
                "    <Managed>0</Managed>\n" +

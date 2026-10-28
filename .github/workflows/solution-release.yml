@@ -29,7 +29,15 @@ env:
 jobs:
   export-and-release:
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
     steps:
+      - name: Validar formato de versión (falla temprano)
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Versión inválida '$VERSION' (esperado X.Y.Z.B, ej. 1.0.0.1)"; exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - name: Setup .NET 8 (runtime del pac CLI)
@@ -54,7 +62,7 @@ jobs:
       # Si el SP no tiene permiso de escritura sobre la solución, seguimos igual (solo exportamos).
       - name: Fijar la versión de la solución en Dev (best effort)
         continue-on-error: true
-        run: pac solution online-version --solution-name "$SOLUTION_NAME" --solution-version "${{ inputs.version }}"
+        run: pac solution online-version --solution-name "$SOLUTION_NAME" --solution-version "$VERSION"
 
       - name: Exportar managed + unmanaged
         run: |
@@ -67,11 +75,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "sol-v${{ inputs.version }}" \
+          gh release create "sol-v${VERSION}" \
             "out/${SOLUTION_NAME}_managed.zip" \
             "out/${SOLUTION_NAME}_unmanaged.zip" \
-            --title "Solución Smelter v${{ inputs.version }}" \
-            --notes "Export de \`$SOLUTION_NAME\` v${{ inputs.version }} desde Dev (managed + unmanaged). Detalle en CHANGELOG.md."
+            --title "Solución Smelter v${VERSION}" \
+            --notes "Export de \`$SOLUTION_NAME\` v${VERSION} desde Dev (managed + unmanaged). Detalle en CHANGELOG.md."
 
   # Nivel 1 por workflow_call: los releases creados con GITHUB_TOKEN NO disparan el evento
   # 'release published' (anti-recursión de GitHub), así que lo llamamos explícitamente.

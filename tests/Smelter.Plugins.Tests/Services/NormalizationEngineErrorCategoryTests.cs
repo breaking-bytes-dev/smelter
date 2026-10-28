@@ -70,8 +70,8 @@ namespace Smelter.Plugins.Tests.Services
         [Fact]
         public void ProcessBatch_TypeCoercionFailure_MessageNamesTheColumn()
         {
-            // 1.2.1.0: el mensaje del TypeCoercer trae el valor pero no la columna — el engine debe
-            // agregar target y source column, que es lo que el operador necesita para corregir el CSV.
+            // 1.2.1.0: el TypeCoercer no conoce la columna — el engine debe agregar target y source column,
+            // que es lo que el operador necesita para corregir el CSV. El VALOR no va en el mensaje.
             var context = ContextWith(new ColumnMappingConfig
             {
                 Id = Guid.NewGuid(), SourceColumn = "n", TargetColumn = "sanic_n", DataType = ColumnDataType.Integer
@@ -83,7 +83,23 @@ namespace Smelter.Plugins.Tests.Services
             var failure = OnlyFailure(results);
             failure.ErrorMessage.Should().Contain("'sanic_n'", "debe nombrar la columna destino");
             failure.ErrorMessage.Should().Contain("'n'", "debe nombrar la columna fuente del CSV");
-            failure.ErrorMessage.Should().Contain("'abc'", "debe conservar el valor original del TypeCoercer");
+            failure.ErrorMessage.Should().NotContain("abc", "el valor de la celda no puede filtrarse al log");
+        }
+
+        [Fact]
+        public void ProcessBatch_NonGuidLookupWithoutMatchColumn_MessageDoesNotLeakTheValue()
+        {
+            var context = ContextWith(new ColumnMappingConfig
+            {
+                Id = Guid.NewGuid(), SourceColumn = "c", TargetColumn = "sanic_l",
+                DataType = ColumnDataType.Lookup, LookupTable = "account", LookupMatchColumn = null
+            });
+
+            var results = Engine().ProcessBatch(context,
+                new List<SourceRow> { Row(2, ("key", "K1"), ("c", "SECRET-4111")) }, PassthroughWriter());
+
+            var failure = OnlyFailure(results);
+            failure.ErrorMessage.Should().Contain("sanic_l").And.NotContain("SECRET-4111");
         }
 
         [Fact]

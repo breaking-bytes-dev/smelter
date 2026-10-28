@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Smelter.Core\Smelter.Core.csproj" />
     <ProjectReference Include="..\..\tools\Smelter.Deploy\Smelter.Deploy.csproj" />
+    <ProjectReference Include="..\..\tools\Smelter.DevAccess\Smelter.DevAccess.csproj" />
   </ItemGroup>
 
 </Project>

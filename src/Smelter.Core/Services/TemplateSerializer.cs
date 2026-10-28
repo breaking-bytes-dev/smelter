@@ -28,7 +28,7 @@ namespace Smelter.Plugins.Services
         /// version exceeds this value is rejected to prevent silent data loss when new required
         /// fields are added in future versions.
         /// </summary>
-        public const string SupportedFormatVersion = "1.0";
+        public const string SupportedFormatVersion = "1.1";
 
         /// <summary>
         /// Serializes a <see cref="TemplateExportDto"/> to a UTF-8 JSON string using
@@ -75,6 +75,9 @@ namespace Smelter.Plugins.Services
         /// references a known table mapping Ref. Throws <see cref="TemplateFormatException"/>
         /// on any violation so the error surfaces cleanly in the Power Automate run history.
         /// </summary>
+        /// <summary>Rango válido del Chunk Size del template (mismos límites que el motor y que MinValue/MaxValue de la columna).</summary>
+        private const int MinChunkSize = 100, MaxChunkSize = 10000;
+
         private static void Validate(TemplateExportDto dto)
         {
             if (dto == null || dto.Template == null)
@@ -84,6 +87,17 @@ namespace Smelter.Plugins.Services
                 throw new TemplateFormatException(
                     $"Unsupported formatVersion '{dto.FormatVersion}'. Expected {SupportedFormatVersion} or lower.");
 
+            // Chunk Size: 0 = default del sistema; si no, el rango de la columna (100..10000). Se RECHAZA, no se acota en silencio.
+            var chunk = dto.Template.ChunkSize;
+            if (chunk != 0 && (chunk < MinChunkSize || chunk > MaxChunkSize))
+                throw new TemplateFormatException(
+                    $"Template JSON is invalid: chunkSize {chunk} is out of range; it must be between {MinChunkSize} and {MaxChunkSize} (or 0 for the system default).");
+
+            var status = dto.Template.Status;
+            if (status.HasValue && !Enum.IsDefined(typeof(ImportTemplateStatus), status.Value))
+                throw new TemplateFormatException(
+                    $"Template JSON is invalid: status {status.Value} is not a valid template status (0=Draft, 1=Active, 2=Archived).");
+
             var refs = new HashSet<string>(
                 (dto.TableMappings ?? new List<TableMappingDto>())
                     .Select(t => t.Ref).Where(r => !string.IsNullOrEmpty(r)),
@@ -91,6 +105,10 @@ namespace Smelter.Plugins.Services
 
             foreach (var rel in dto.RelationshipMappings ?? new List<RelationshipMappingDto>())
             {
+                // ManyToMany se quitó del choice de Relationship Type: importarlo crearía un valor inexistente.
+                if (rel.RelationshipType != (int)RelationshipType.OneToMany)
+                    throw new TemplateFormatException(
+                        $"Relationship '{rel.Name}' is ManyToMany, which is not supported; only OneToMany is.");
                 if (!refs.Contains(rel.ParentRef))
                     throw new TemplateFormatException(
                         $"Relationship references unknown parentRef '{rel.ParentRef}'.");

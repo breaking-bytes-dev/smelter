@@ -11,6 +11,12 @@
 //   (default)        despliega: package + espera plugintypes + upsert de las 4 APIs.
 //   --package-only   solo (re)sube el package (sin tocar APIs).
 //   --interactive    login interactivo (browser) en vez del Service Principal.
+//   --allow-destructive  habilita los pasos que borran schema/metadata/datos (4c: recrear key y
+//                    dedupe de filas, 4d: SchemaCleanup — atributos y opciones de choices —, 8: Custom API legacy). También por
+//                    SMELTER_ALLOW_DESTRUCTIVE=true. Sin esto se omiten (o fallan explícito, ver 4c).
+//
+// Guarda de entorno: exige SMELTER_ENV=dev. Esto es una herramienta de DEV; Test/Prod reciben la
+//   solución managed por el workflow solution-import.
 //
 // Autenticación: si PP_CLIENT_ID/PP_CLIENT_SECRET están en el entorno → Service Principal
 //   (sin browser, ideal para CI); si no (o con --interactive) → login interactivo.
@@ -22,6 +28,15 @@ using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using Smelter.Deploy;
+
+var envError = DeployGuards.CheckEnvironment(Environment.GetEnvironmentVariable(DeployGuards.EnvVarName));
+if (envError is not null)
+{
+    Console.Error.WriteLine($"[FATAL] {envError}");
+    return 2;
+}
+DeployOptions.AllowDestructive = DeployGuards.IsDestructiveAllowed(
+    args, Environment.GetEnvironmentVariable(DeployGuards.AllowDestructiveEnvVarName));
 
 string? nupkgArg = args.FirstOrDefault(a => !a.StartsWith("--"));
 bool packageOnly = args.Contains("--package-only");
@@ -95,7 +110,45 @@ StepProvisioner.Run(client, typePorNombre);
 KeyProvisioner.Run(client);
 
 // ── 4d. Limpieza de atributos muertos (SchemaCleanupSpec.cs, audit 1.3.0.0) ─
-SchemaCleanupProvisioner.Run(client);
+if (DeployOptions.AllowDestructive)
+    SchemaCleanupProvisioner.Run(client);
+else
+    Console.WriteLine("[4d] SchemaCleanup OMITIDO (destructivo; usar --allow-destructive o SMELTER_ALLOW_DESTRUCTIVE=true).");
+
+// ── 4e. Tabla de keys HMAC (HmacKeyTableSpec.cs): componente de la solución, fuera de todos los roles; el valor se carga a mano por ambiente ──
+HmacKeyTableProvisioner.Run(client);
+
+// ── 4f. Columnas nuevas (SchemaAdditionsSpec.cs): byte cursor del Import Job + "Solo inserción" del Table Mapping ──
+SchemaAdditionsProvisioner.Run(client);
+
+// ── 4f2. Vistas dedicadas de lookup (FormPolishSpec.cs): "Active templates", que usa el lookup de template del Import Job.
+//        Antes del [4g] (la pinea en la MDA) y del [4j] (el form la referencia) ──
+LookupViewsProvisioner.Run(client);
+
+// ── 4g. Pin de forms y vistas Smelter en la MDA (MdaComponentsSpec.cs): sin esto ValidateApp avisa "all forms and views" ──
+MdaComponentsProvisioner.Run(client);
+
+// ── 4h. Ajustes de columnas/forms existentes (SchemaTuningSpec.cs): sourcetype opcional/oculto, UpdateIfExists default Sí ──
+SchemaTuningProvisioner.Run(client);
+
+// ── 4i. Description de TODAS las columnas custom (ColumnDescriptionsSpec.cs): tooltips en la MDA ──
+ColumnDescriptionsProvisioner.Run(client);
+
+// ── 4j. Forms y vistas (FormPolishSpec.cs): job read-only + logs, log form, filtro de lookups del RM, errorcategory en la vista ──
+FormPolishProvisioner.Run(client);
+
+// ── 4k. Etiquetas e íconos de la MDA (SiteMapSpec.cs): títulos 1033 (inglés) + 3082 (español) y VectorIcon del sitemap + nombre de la app ──
+SiteMapProvisioner.Run(client);
+
+// ── 4l. Friendly name de la solución (SolutionNameSpec.cs): "SMLT | Core | Smelter" ──
+SolutionNameProvisioner.Run(client);
+
+// ── 4m. Íconos (IconsSpec.cs): web resources SVG en la solución + IconVectorName de las tablas + ícono de la app.
+//        (El VectorIcon del sitemap, 4k, es solo un atributo del XML: los web resources se publican acá y en el [5].) ──
+IconsProvisioner.Run(client);
+
+// ── 4n. Nombres en español (3082) de tablas, columnas y opciones locales (TableLabelsSpec.cs); el 1033 no se toca ──
+TableLabelsProvisioner.Run(client);
 
 // ── 5. Publicar: refresca la metadata OData del Web API ────────────────────
 Console.WriteLine("[5] Publicando customizations (refresca la metadata OData del Web API) ...");
@@ -105,12 +158,19 @@ Console.WriteLine("[5]   PublishAllXml OK.");
 // ── 6. Seguridad + UX (roles, cascade, ExecutePrivilegeName, MDA, vistas, ribbon, dashboard) ──
 SecurityProvisioner.Run(client);
 
+// ── 6b. Dashboard clásico (DashboardSpec.cs): reemplaza al interaction-centric que la MDA no renderiza; va ANTES del 6a, que le pone el 3082 por nombre ──
+DashboardProvisioner.Run(client);
+
+// ── 6a. Nombres 1033 + 3082 de las vistas custom del Import Job y del dashboard (ViewLabelsSpec.cs): van DESPUÉS del [6],
+//        que es quien crea/renombra las vistas y enlaza el dashboard ──
+ViewLabelsProvisioner.Run(client);
+
 // ── 7. Cloud Flow: rename aditivo de processchunk (Fase 6) — anic_... → sanic_..., sin ventana rota ──
 CloudFlowUpdater.UpdateProcessChunkReference(client);
 
 // ── 8. Cleanup Fase 9 (Release N+1, gate: backend-verify verde run 30364284364): borrar la Custom
 //       API legacy "anic_..." de Dev. Idempotente: si ya no existe, no hay nada que borrar. ──
-var legacyApi = client.RetrieveMultiple(new QueryExpression("customapi")
+var legacyApi = !DeployOptions.AllowDestructive ? null : client.RetrieveMultiple(new QueryExpression("customapi")
 {
     ColumnSet = new ColumnSet("customapiid"),
     Criteria = { Conditions = { new ConditionExpression("uniquename", ConditionOperator.Equal, ClientDataProcessChunkRenamer.OldActionUniqueName) } },
@@ -120,6 +180,10 @@ if (legacyApi is not null)
 {
     client.Delete("customapi", legacyApi.Id);
     Console.WriteLine($"[8] Custom API legacy '{ClientDataProcessChunkRenamer.OldActionUniqueName}' eliminada de Dev ({legacyApi.Id}).");
+}
+else if (!DeployOptions.AllowDestructive)
+{
+    Console.WriteLine("[8] Borrado de Custom API legacy OMITIDO (destructivo; usar --allow-destructive o SMELTER_ALLOW_DESTRUCTIVE=true).");
 }
 else
 {

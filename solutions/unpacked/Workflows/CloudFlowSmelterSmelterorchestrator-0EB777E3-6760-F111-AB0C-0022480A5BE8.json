@@ -44,7 +44,8 @@
               "subscriptionRequest/message": 4,
               "subscriptionRequest/entityname": "sanic_tbl_smlt_importjob",
               "subscriptionRequest/scope": 4,
-              "subscriptionRequest/filterexpression": "sanic_smlt_ij_status eq 0"
+              "subscriptionRequest/filterexpression": "sanic_smlt_ij_status eq 0",
+              "subscriptionRequest/filteringattributes": "sanic_smlt_ij_status"
             },
             "host": {
               "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
@@ -77,72 +78,6 @@
             }
           }
         },
-        "Scope": {
-          "actions": {
-            "Do_until": {
-              "actions": {
-                "Perform_an_unbound_action": {
-                  "limit": {
-                    "timeout": "PT24H"
-                  },
-                  "metadata": {
-                    "operationMetadataId": "c632f614-4e90-495d-a22c-5dbe66ee4052"
-                  },
-                  "type": "OpenApiConnection",
-                  "inputs": {
-                    "parameters": {
-                      "actionName": "sanic_capi_smelter_processchunk",
-                      "item/JobId": "@triggerOutputs()?['body/sanic_tbl_smlt_importjobid']"
-                    },
-                    "host": {
-                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
-                      "operationId": "PerformUnboundAction",
-                      "connectionName": "shared_commondataserviceforapps"
-                    },
-                    "retryPolicy": {
-                      "type": "exponential",
-                      "count": 4,
-                      "interval": "PT5M"
-                    }
-                  }
-                },
-                "Set_variable": {
-                  "runAfter": {
-                    "Perform_an_unbound_action": [
-                      "Succeeded"
-                    ]
-                  },
-                  "metadata": {
-                    "operationMetadataId": "b2354097-7855-42a9-ac33-33828582c7ef"
-                  },
-                  "type": "SetVariable",
-                  "inputs": {
-                    "name": "varHasMore",
-                    "value": "@outputs('Perform_an_unbound_action')?['body/HasMore']"
-                  }
-                }
-              },
-              "expression": "@equals(variables('varHasMore'), false)",
-              "limit": {
-                "count": 5000,
-                "timeout": "PT24H"
-              },
-              "metadata": {
-                "operationMetadataId": "f5ebf3d1-0abe-49ce-99de-88e1177723c1"
-              },
-              "type": "Until"
-            }
-          },
-          "runAfter": {
-            "Perform_an_unbound_action_2": [
-              "Succeeded"
-            ]
-          },
-          "metadata": {
-            "operationMetadataId": "8dd4672b-6196-462e-9932-553d87bd75b8"
-          },
-          "type": "Scope"
-        },
         "Initialize_variable": {
           "runAfter": {},
           "metadata": {
@@ -161,8 +96,10 @@
         },
         "Update_a_row": {
           "runAfter": {
-            "Scope": [
-              "Failed"
+            "Condition_claimed": [
+              "Failed",
+              "Skipped",
+              "TimedOut"
             ]
           },
           "metadata": {
@@ -173,13 +110,93 @@
             "parameters": {
               "entityName": "sanic_tbl_smlt_importjobs",
               "recordId": "@triggerOutputs()?['body/sanic_tbl_smlt_importjobid']",
-              "item/sanic_smlt_ij_status": 4
+              "item/sanic_smlt_ij_status": 4,
+        "item/sanic_smlt_ij_failurereason": "@take(if(equals(actions('Perform_an_unbound_action_2')?['status'], 'Failed'), coalesce(actions('Perform_an_unbound_action_2')?['outputs']?['body']?['error']?['message'], actions('Perform_an_unbound_action_2')?['error']?['message'], 'Falló la preparación del import. Revisá el historial de ejecuciones del flujo.'), coalesce(actions('Perform_an_unbound_action')?['outputs']?['body']?['error']?['message'], actions('Perform_an_unbound_action')?['error']?['message'], 'Falló el procesamiento del import o excedió el tiempo límite. Revisá el historial de ejecuciones del flujo.')), 4000)"
             },
             "host": {
               "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
               "operationId": "UpdateOnlyRecord",
               "connectionName": "shared_commondataserviceforapps"
             }
+          }
+        },
+        "Condition_claimed": {
+          "runAfter": {
+            "Perform_an_unbound_action_2": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "6f1d2a40-3b7c-4e58-9a21-5c8d0e7b4f13"
+          },
+          "type": "If",
+          "expression": "@equals(outputs('Perform_an_unbound_action_2')?['body/Claimed'], true)",
+          "actions": {
+            "Scope": {
+              "actions": {
+                "Do_until": {
+                  "actions": {
+                    "Perform_an_unbound_action": {
+                      "limit": {
+                        "timeout": "PT24H"
+                      },
+                      "metadata": {
+                        "operationMetadataId": "c632f614-4e90-495d-a22c-5dbe66ee4052"
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "actionName": "sanic_capi_smelter_processchunk",
+                          "item/JobId": "@triggerOutputs()?['body/sanic_tbl_smlt_importjobid']"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                          "operationId": "PerformUnboundAction",
+                          "connectionName": "shared_commondataserviceforapps"
+                        },
+                        "retryPolicy": {
+                          "type": "exponential",
+                          "count": 4,
+                          "interval": "PT5M"
+                        }
+                      }
+                    },
+                    "Set_variable": {
+                      "runAfter": {
+                        "Perform_an_unbound_action": [
+                          "Succeeded"
+                        ]
+                      },
+                      "metadata": {
+                        "operationMetadataId": "b2354097-7855-42a9-ac33-33828582c7ef"
+                      },
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "varHasMore",
+                        "value": "@outputs('Perform_an_unbound_action')?['body/HasMore']"
+                      }
+                    }
+                  },
+                  "expression": "@equals(variables('varHasMore'), false)",
+                  "limit": {
+                    "count": 5000,
+                    "timeout": "PT24H"
+                  },
+                  "metadata": {
+                    "operationMetadataId": "f5ebf3d1-0abe-49ce-99de-88e1177723c1"
+                  },
+                  "type": "Until"
+                }
+              },
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "8dd4672b-6196-462e-9932-553d87bd75b8"
+              },
+              "type": "Scope"
+            }
+          },
+          "else": {
+            "actions": {}
           }
         }
       }

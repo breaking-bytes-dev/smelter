@@ -1,0 +1,65 @@
+// Especificación DECLARATIVA de ajustes sobre columnas y forms EXISTENTES (auditoría de campos 1.0.10). Misma
+// filosofía que SchemaAdditionsSpec/SchemaCleanupSpec: la consumen SchemaTuningProvisioner (deploy, paso 4h, NO
+// destructivo) y TuningAssertions (verify). Un ajuste que ya está aplicado se saltea (idempotente).
+//
+// NO se tocan display names de tablas ni columnas: otras canvas apps los referencian en Power Fx.
+//
+//  - sanic_smlt_it_sourcetype: el choice solo tiene CSV y el motor nunca lo lee. Default CSV y oculto del main form
+//    del template (la columna se conserva: viaja en el export/import). El required level NO se toca: el cambio a None
+//    por UpdateAttributeRequest se ignora en silencio (verificado en Dev), y ApplicationRequired solo rige en
+//    formularios, donde el campo está oculto y nace con CSV.
+//  - sanic_smlt_tm_updateifexists: el default del schema era No mientras los docs y el fallback del Loader decían Sí.
+//    Se alinea a Sí. Solo cambia el default de registros NUEVOS; los existentes conservan su valor.
+//  - sanic_smlt_it_chunksize: el motor acota a 100..10000 (0 = default 1000) pero la columna admitía hasta 100000.
+//    Se limita a 0..10000 para que el formulario lo rechace en vez de acotar en silencio. Los valores ya guardados no
+//    se tocan.
+
+using Microsoft.Xrm.Sdk.Metadata;
+
+namespace Smelter.Deploy;
+
+internal sealed record AttributeTuningSpec(
+    string Entity,
+    string Attribute,
+    AttributeRequiredLevel? RequiredLevel,
+    int? PicklistDefault,
+    bool? BooleanDefault,
+    string Reason,
+    int? IntMin = null,
+    int? IntMax = null);
+
+internal sealed record FormFieldVisibilitySpec(string Entity, string Field, bool Visible, string Reason);
+
+internal static class SchemaTuningCatalogo
+{
+    /// <summary>Valor de la única opción de Source Type (CSV).</summary>
+    internal const int SourceTypeCsv = 0;
+
+    internal const bool UpdateIfExistsDefault = true;
+
+    /// <summary>
+    /// Chunk Size: entre 100 y 10000 (los límites del motor). Vacío = default del sistema (1000). La columna RECHAZA lo que
+    /// quede fuera (antes admitía desde 0 y el motor acotaba en silencio: un 50 se aceptaba y corría con 100).
+    /// </summary>
+    internal const int ChunkSizeMin = 100, ChunkSizeMax = 10000;
+
+    internal static readonly AttributeTuningSpec[] Attributes =
+    [
+        new(SecuritySpec.Tables.ImportTemplate, "sanic_smlt_it_sourcetype",
+            null, SourceTypeCsv, null,
+            "inerte: una sola opción que el motor nunca lee"),
+        new(SecuritySpec.Tables.TableMapping, "sanic_smlt_tm_updateifexists",
+            null, null, UpdateIfExistsDefault,
+            "default alineado con los docs y con el fallback del Loader (antes No)"),
+        new(SecuritySpec.Tables.ImportTemplate, "sanic_smlt_it_chunksize",
+            null, null, null,
+            "el motor acota a 100..10000 (vacío = default): la columna rechaza lo que quede fuera en vez de acotar en silencio",
+            IntMin: ChunkSizeMin, IntMax: ChunkSizeMax),
+    ];
+
+    internal static readonly FormFieldVisibilitySpec[] HiddenFields =
+    [
+        new(SecuritySpec.Tables.ImportTemplate, "sanic_smlt_it_sourcetype", false,
+            "el Configurador no debe elegir algo sin efecto"),
+    ];
+}
