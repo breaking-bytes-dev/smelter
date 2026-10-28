@@ -8,18 +8,20 @@ namespace Smelter.Contract.Tests;
 /// <summary>
 /// CONTRATO de <see cref="SiteMapCatalogo"/>: etiquetas BILINGÜES (inglés 1033 + español 3082) sin prefijos técnicos
 /// (TBL | / SMLT |) en el sitemap de la MDA, VectorIcon por SubArea y nombre de la app sin typos. Se aplica en memoria
-/// sobre el sitemap REAL de solutions/unpacked.
+/// sobre el sitemap PRE-apply congelado (<see cref="PreApplyFixtures"/>: unpacked ya es post-deploy);
+/// que el sitemap de Dev ya cumple la spec lo prueba <c>PostSyncSolutionTests</c>.
 /// Los display names de TABLAS no se tocan (canvas apps): un SubArea sin Title muestra el de la tabla, por eso cada
 /// SubArea lleva Title explícito.
 /// </summary>
 public class SiteMapSpecContractTests
 {
+    private static string PreApplySiteMapXml() => PreApplyFixtures.SiteMapXml();
+
     private static string RealSiteMapXml()
     {
         var dir = Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "AppModuleSiteMaps");
         var file = Directory.GetFiles(dir, "AppModuleSiteMap.xml", SearchOption.AllDirectories).Single();
-        var root = XDocument.Load(file).Descendants("SiteMap").Single();
-        return root.ToString();
+        return XDocument.Load(file).Descendants("SiteMap").Single().ToString();
     }
 
     private static string? TitleOf(XElement e, string lcid = "1033") =>
@@ -28,15 +30,15 @@ public class SiteMapSpecContractTests
     private static string? EsTitleOf(XElement e) => TitleOf(e, "3082");
 
     [Fact]
-    public void RealSiteMap_BeforeApply_HasTechnicalOrMissingTitles()
+    public void PreApplySiteMap_HasTechnicalOrMissingTitles()
     {
-        SiteMapCatalogo.Violations(RealSiteMapXml()).Should().NotBeEmpty("precondición: el sitemap versionado tiene Area1 y subareas sin título");
+        SiteMapCatalogo.Violations(PreApplySiteMapXml()).Should().NotBeEmpty("precondición: el sitemap PRE-apply congelado tiene Area1 y subareas sin título");
     }
 
     [Fact]
     public void Apply_SetsEnglishUnder1033AndSpanishUnder3082_AndLeavesNoViolations()
     {
-        var (xml, changed) = SiteMapCatalogo.Apply(RealSiteMapXml());
+        var (xml, changed) = SiteMapCatalogo.Apply(PreApplySiteMapXml());
 
         changed.Should().BeTrue();
         SiteMapCatalogo.Violations(xml).Should().BeEmpty();
@@ -60,7 +62,7 @@ public class SiteMapSpecContractTests
     [Fact]
     public void Apply_WritesExactlyOneTitlePerLanguage()
     {
-        var (xml, _) = SiteMapCatalogo.Apply(RealSiteMapXml());
+        var (xml, _) = SiteMapCatalogo.Apply(PreApplySiteMapXml());
 
         foreach (var titles in XDocument.Parse(xml).Descendants("Titles"))
             titles.Elements("Title").Select(t => (string?)t.Attribute("LCID")).Should().BeEquivalentTo(["1033", "3082"]);
@@ -69,7 +71,7 @@ public class SiteMapSpecContractTests
     [Fact]
     public void Apply_GivesEverySubAreaItsVectorIcon_AndDropsTheTransparentSpacer()
     {
-        var (xml, _) = SiteMapCatalogo.Apply(RealSiteMapXml());
+        var (xml, _) = SiteMapCatalogo.Apply(PreApplySiteMapXml());
 
         var subs = XDocument.Parse(xml).Descendants("SubArea").ToDictionary(s => (string)s.Attribute("Id")!);
         subs["subarea_a5465f8e"].Attribute("VectorIcon")!.Value.Should().Be("$webresource:sanic_/smelter/icons/template.svg");
@@ -83,10 +85,10 @@ public class SiteMapSpecContractTests
     [Fact]
     public void IconViolations_FlagsTheSubAreasThatStillLackTheirIcon()
     {
-        var problems = SiteMapCatalogo.IconViolations(RealSiteMapXml());
+        var problems = SiteMapCatalogo.IconViolations(PreApplySiteMapXml());
 
         foreach (var icon in IconsCatalogo.SubAreaIcons)
-            problems.Should().Contain(p => p.StartsWith(icon.SubAreaId + ":"), "el sitemap versionado no trae VectorIcon");
+            problems.Should().Contain(p => p.StartsWith(icon.SubAreaId + ":"), "el sitemap PRE-apply congelado no trae VectorIcon");
     }
 
     [Fact]
@@ -111,7 +113,7 @@ public class SiteMapSpecContractTests
     [Fact]
     public void Apply_PutsTitlesBeforeAnyOtherChild_AsTheSitemapXsdRequires()
     {
-        var (xml, _) = SiteMapCatalogo.Apply(RealSiteMapXml());
+        var (xml, _) = SiteMapCatalogo.Apply(PreApplySiteMapXml());
 
         foreach (var sub in XDocument.Parse(xml).Descendants("SubArea"))
             sub.Elements().First().Name.LocalName.Should().Be("Titles");
@@ -120,7 +122,7 @@ public class SiteMapSpecContractTests
     [Fact]
     public void Apply_IsIdempotent()
     {
-        var (first, _) = SiteMapCatalogo.Apply(RealSiteMapXml());
+        var (first, _) = SiteMapCatalogo.Apply(PreApplySiteMapXml());
 
         var (second, changed) = SiteMapCatalogo.Apply(first);
 
@@ -131,8 +133,8 @@ public class SiteMapSpecContractTests
     [Fact]
     public void Apply_KeepsEverySubAreaAttribute_OnlyTitlesAndIconsChange()
     {
-        var before = XDocument.Parse(RealSiteMapXml());
-        var (xml, _) = SiteMapCatalogo.Apply(RealSiteMapXml());
+        var before = XDocument.Parse(PreApplySiteMapXml());
+        var (xml, _) = SiteMapCatalogo.Apply(PreApplySiteMapXml());
         var after = XDocument.Parse(xml);
 
         // Icon/VectorIcon los cambia Apply a propósito (IconsSpec); sus tests son los de IconViolations.

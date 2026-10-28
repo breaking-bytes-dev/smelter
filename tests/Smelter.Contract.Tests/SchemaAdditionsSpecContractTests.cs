@@ -8,7 +8,7 @@ namespace Smelter.Contract.Tests;
 /// <summary>
 /// CONTRATO de las columnas nuevas provisionadas por SDK (<see cref="SchemaAdditionsCatalogo"/>):
 /// el cursor de bytes del Import Job y el flag "Solo inserción" del Table Mapping. Datos puros +
-/// el editor de formxml (<see cref="FormXmlEditor"/>) probado contra el form REAL de solutions/unpacked.
+/// el editor de formxml (<see cref="FormXmlEditor"/>) probado contra el form PRE-apply congelado (Fixtures/pre-apply-sol-1.3.0.0); que Dev == spec lo prueba PostSyncSolutionTests.
 /// </summary>
 public class SchemaAdditionsSpecContractTests
 {
@@ -86,20 +86,14 @@ public class SchemaAdditionsSpecContractTests
         SchemaAdditionsCatalogo.Columns.Select(c => c.SchemaName).Should().OnlyHaveUniqueItems();
     }
 
-    // ── FormXmlEditor, contra el main form real del Table Mapping ─────────────────────────────
+    // ── FormXmlEditor, contra el main form PRE-apply del Table Mapping ─────────────────────────────
 
-    private static XDocument RealTableMappingForm()
-    {
-        var dir = Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities",
-            "sanic_tbl_smlt_tablemapping", "FormXml", "main");
-        var file = Directory.GetFiles(dir, "*.xml").Single();
-        return XDocument.Parse(XDocument.Load(file).Descendants("form").First().ToString());
-    }
+    private static XDocument PreApplyTableMappingForm() => PreApplyFixtures.MainForm("sanic_tbl_smlt_tablemapping");
 
     [Fact]
     public void TryAddCellAfter_InsertsANewRowRightAfterTheAnchorRow_CloningItsControlClass()
     {
-        var doc = RealTableMappingForm();
+        var doc = PreApplyTableMappingForm();
 
         var changed = FormXmlEditor.TryAddCellAfter(doc, "sanic_smlt_tm_updateifexists",
             "sanic_smlt_tm_insertonly", "[TM] Solo inserción (permite duplicados)");
@@ -121,7 +115,7 @@ public class SchemaAdditionsSpecContractTests
     [Fact]
     public void TryAddCellAfter_IsIdempotent()
     {
-        var doc = RealTableMappingForm();
+        var doc = PreApplyTableMappingForm();
         FormXmlEditor.TryAddCellAfter(doc, "sanic_smlt_tm_updateifexists", "sanic_smlt_tm_insertonly", "x").Should().BeTrue();
 
         FormXmlEditor.TryAddCellAfter(doc, "sanic_smlt_tm_updateifexists", "sanic_smlt_tm_insertonly", "x").Should().BeFalse();

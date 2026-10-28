@@ -13,11 +13,21 @@ public class MdaComponentsSpecTests
 {
     private static readonly string Entities = Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities");
 
-    private sealed record UnpackedView(string Table, Guid Id, int QueryType, bool IsDefault, string Name);
+    private sealed record UnpackedView(string Table, Guid Id, int QueryType, bool IsDefault, IReadOnlyList<string> Names)
+    {
+        /// <summary>El nombre base (primer LocalizedName: 1033).</summary>
+        public string Name => Names.FirstOrDefault() ?? "";
+    }
+
+    // La solución trae además sanic_tbl_smlt_hmackey (keys HMAC, 1.4.0.0): tabla de sistema que NO va en la app a propósito
+    // (HmacKeyTableSpec: no está en SecuritySpec.Tables ni en el sitemap). Los helpers miran solo las tablas de la MDA;
+    // que la tabla HMAC siga fuera de la app lo cubre HmacKeyTable_IsNotPartOfTheApp.
+    private static bool InApp(string table) => SecuritySpec.Tables.All.Contains(table);
 
     private static IEnumerable<UnpackedView> UnpackedViews() =>
         Directory.GetFiles(Entities, "*.xml", SearchOption.AllDirectories)
             .Where(f => Path.GetFileName(Path.GetDirectoryName(f)) == "SavedQueries")
+            .Where(f => InApp(Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(f))!)!))
             .Select(f =>
             {
                 var q = XDocument.Load(f).Descendants("savedquery").Single();
@@ -26,13 +36,13 @@ public class MdaComponentsSpecTests
                     Guid.Parse((string)q.Element("savedqueryid")!),
                     int.Parse((string)q.Element("querytype")!),
                     (string?)q.Element("isdefault") == "1",
-                    (string?)q.Descendants("LocalizedName").First().Attribute("description") ?? "");
+                    q.Descendants("LocalizedName").Select(n => (string?)n.Attribute("description") ?? "").ToList());
             });
 
     private static IEnumerable<(string Table, Guid Id, int FormActivationState)> UnpackedMainForms() =>
         from dir in Directory.GetDirectories(Entities)
         let main = Path.Combine(dir, "FormXml", "main")
-        where Directory.Exists(main)
+        where Directory.Exists(main) && InApp(Path.GetFileName(dir))
         from file in Directory.GetFiles(main, "*.xml")
         let f = XDocument.Load(file).Descendants("systemform").Single()
         select (Path.GetFileName(dir), Guid.Parse((string)f.Element("formid")!), int.Parse((string?)f.Element("FormActivationState") ?? "1"));
@@ -100,9 +110,34 @@ public class MdaComponentsSpecTests
     [Fact]
     public void Names_MatchTheUnpackedLocalizedNames()
     {
-        var names = UnpackedViews().ToDictionary(v => v.Id, v => v.Name);
+        // Desde 1.4.0.0 las vistas son bilingües (1033 + 3082). El Name de la spec es una descripción interna (log del deploy):
+        // tiene que ser el nombre de la vista en alguno de sus idiomas, o -en las 3 custom del Import Job, que nacieron en
+        // español bajo 1033- el nombre legado que declara ViewLabelsSpec (ver docs/tecnica/06-app-de-configuracion.md).
+        var names = UnpackedViews().ToDictionary(v => v.Id, v => v.Names);
+        var legacyNames = ViewLabelsCatalogo.Views.Select(v => v.LegacyName).ToList();
         foreach (var c in MdaComponentsCatalogo.All.Where(c => c.ComponentType == MdaSpec.ComponentView))
-            names[c.Id].Should().Be(c.Name);
+        {
+            var accepted = names[c.Id].ToList();
+            if (c.Kind == MdaComponentKind.CustomView) accepted.AddRange(legacyNames);
+            accepted.Should().Contain(c.Name, $"la vista {c.Id} de {c.Table}");
+        }
+    }
+
+    [Fact]
+    public void HmacKeyTable_IsNotPartOfTheApp_SoItsFormAndViewsAreNeverPinned()
+    {
+        var hmacDir = Path.Combine(Entities, HmacKeyTableSpec.Table);
+        Directory.Exists(hmacDir).Should().BeTrue("la tabla HMAC está en la solución");
+        var hmacIds = Directory.GetFiles(hmacDir, "*.xml", SearchOption.AllDirectories)
+            .Where(f => Path.GetFileName(Path.GetDirectoryName(f)) is "SavedQueries" or "main")
+            .Select(f => Path.GetFileNameWithoutExtension(f).Trim('{', '}'))
+            .Select(Guid.Parse).ToHashSet();
+        hmacIds.Should().NotBeEmpty();
+
+        MdaComponentsCatalogo.All.Select(c => c.Id).Should().NotIntersectWith(hmacIds);
+        var appXml = File.ReadAllText(Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "AppModules", MdaSpec.AppUniqueName, "AppModule.xml"));
+        appXml.Should().NotContain(HmacKeyTableSpec.Table, "la tabla de keys HMAC no es parte de la app (no se muestra en el sitemap)");
+        foreach (var id in hmacIds) appXml.ToLowerInvariant().Should().NotContain(id.ToString("D"));
     }
 
     [Fact]

@@ -7,16 +7,12 @@ namespace Smelter.Contract.Tests;
 
 /// <summary>
 /// CONTRATO de <see cref="FormPolishCatalogo"/> (#10/#11/#12/#20): ediciones declarativas de los main forms y de la
-/// vista default del log. Se aplican (en memoria) sobre los forms/vistas REALES de solutions/unpacked.
+/// vista default del log. Se aplican (en memoria) sobre los forms/vistas PRE-apply congelados (<see cref="PreApplyFixtures"/>:
+/// unpacked ya es post-deploy); que Dev == spec lo prueba <c>PostSyncSolutionTests</c>.
 /// </summary>
 public class FormPolishSpecContractTests
 {
-    private static XDocument MainForm(string table)
-    {
-        var dir = Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities", table, "FormXml", "main");
-        var file = Directory.GetFiles(dir, "*.xml").Single();
-        return XDocument.Parse(XDocument.Load(file).Descendants("form").First().ToString());
-    }
+    private static XDocument MainForm(string table) => PreApplyFixtures.MainForm(table);
 
     private static XElement? Control(XDocument doc, string field) =>
         doc.Descendants("control").FirstOrDefault(c => (string?)c.Attribute("datafieldname") == field);
@@ -208,18 +204,13 @@ public class FormPolishSpecContractTests
 
     // ── Vista default del log: errorcategory ──────────────────────────────────────────────
 
-    private static (string Layout, string Fetch) RealLogView()
-    {
-        var path = Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities", SecuritySpec.Tables.ImportJobLog,
-            "SavedQueries", "{6752f00a-34e0-43fd-ba73-9a9cbec00991}.xml");
-        var sq = XDocument.Load(path).Descendants("savedquery").Single();
-        return (sq.Element("layoutxml")!.Elements().Single().ToString(), sq.Element("fetchxml")!.Elements().Single().ToString());
-    }
+    private static (string Layout, string Fetch) PreApplyLogView() =>
+        PreApplyFixtures.View(SecuritySpec.Tables.ImportJobLog, Guid.Parse(FormPolishCatalogo.LogDefaultViewId));
 
     [Fact]
     public void LogDefaultView_GetsErrorCategoryRightAfterStatus_InLayoutAndFetch_Idempotently()
     {
-        var (layout, fetch) = RealLogView();
+        var (layout, fetch) = PreApplyLogView();
         var spec = FormPolishCatalogo.ViewColumns.Single(v => v.Column == "sanic_smlt_ijl_errorcategory");
 
         var (l1, f1, changed) = ViewXmlEditor.TryAddColumn(layout, fetch, spec.AfterColumn, spec.Column, spec.Width);
@@ -250,12 +241,7 @@ public class FormPolishSpecContractTests
 
     // ── Vistas: Estado en las vistas del Import Job y orden "más nuevo primero" en las del log ───────────────
 
-    private static (string Layout, string Fetch) RealView(string table, Guid id)
-    {
-        var path = Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities", table, "SavedQueries", $"{{{id:D}}}.xml");
-        var sq = XDocument.Load(path).Descendants("savedquery").Single();
-        return (sq.Element("layoutxml")!.Elements().Single().ToString(), sq.Element("fetchxml")!.Elements().Single().ToString());
-    }
+    private static (string Layout, string Fetch) PreApplyView(string table, Guid id) => PreApplyFixtures.View(table, id);
 
     [Fact]
     public void JobViews_AllCarryTheStatusColumn_AfterTheName()
@@ -269,7 +255,7 @@ public class FormPolishSpecContractTests
         });
         foreach (var spec in specs)
         {
-            var (layout, fetch) = RealView(spec.Entity, spec.ViewId);
+            var (layout, fetch) = PreApplyView(spec.Entity, spec.ViewId);
             var (l1, f1, _) = ViewXmlEditor.TryAddColumn(layout, fetch, spec.AfterColumn, spec.Column, spec.Width);
             XDocument.Parse(l1).Descendants("cell").Select(c => (string?)c.Attribute("name")).Should().Contain(spec.Column);
             XDocument.Parse(f1).Descendants("entity").Single().Elements("attribute").Select(a => (string?)a.Attribute("name")).Should().Contain(spec.Column);
@@ -281,7 +267,7 @@ public class FormPolishSpecContractTests
     public void JobDefaultView_GetsStatusRightAfterTheName()
     {
         var spec = FormPolishCatalogo.ViewColumns.Single(v => v.ViewId == Guid.Parse("27b8d129-9055-4ca5-a051-961ff5d054ca"));
-        var (layout, fetch) = RealView(spec.Entity, spec.ViewId);
+        var (layout, fetch) = PreApplyView(spec.Entity, spec.ViewId);
 
         var (l1, _, changed) = ViewXmlEditor.TryAddColumn(layout, fetch, spec.AfterColumn, spec.Column, spec.Width);
 
@@ -303,7 +289,7 @@ public class FormPolishSpecContractTests
 
         foreach (var o in FormPolishCatalogo.ViewOrders)
         {
-            var (_, fetch) = RealView(o.Entity, o.ViewId);
+            var (_, fetch) = PreApplyView(o.Entity, o.ViewId);
             var (f1, changed) = ViewXmlEditor.TrySetOrder(fetch, o.Attribute, o.Descending);
             changed.Should().BeTrue();
             var orders = XDocument.Parse(f1).Descendants("entity").Single().Elements("order").ToList();

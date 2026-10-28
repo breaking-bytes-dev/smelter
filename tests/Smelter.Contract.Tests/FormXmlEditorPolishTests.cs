@@ -7,19 +7,14 @@ namespace Smelter.Contract.Tests;
 
 /// <summary>
 /// <see cref="FormXmlEditor"/> tanda 2 de la auditoría de campos: read-only, campos nuevos con control propio,
-/// pestaña con subgrid y related-records filtering, contra los main forms REALES de solutions/unpacked.
+/// pestaña con subgrid y related-records filtering, contra los main forms PRE-apply congelados (<see cref="PreApplyFixtures"/>; unpacked ya es post-deploy).
 /// </summary>
 public class FormXmlEditorPolishTests
 {
     private const string Text = "{4273EDBD-AC1D-40d3-9FB2-095C621B552D}";
     private const string WholeNumber = "{C6D124CA-7EDA-4A60-AEA9-7FB8D318B68F}";
 
-    private static XDocument MainForm(string table)
-    {
-        var dir = Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities", table, "FormXml", "main");
-        var file = Directory.GetFiles(dir, "*.xml").Single();
-        return XDocument.Parse(XDocument.Load(file).Descendants("form").First().ToString());
-    }
+    private static XDocument MainForm(string table) => PreApplyFixtures.MainForm(table);
 
     private static XElement Control(XDocument doc, string field) =>
         doc.Descendants("control").Single(c => (string?)c.Attribute("datafieldname") == field);
