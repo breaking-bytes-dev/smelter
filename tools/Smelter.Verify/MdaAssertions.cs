@@ -129,8 +129,32 @@ internal static class MdaAssertions
         foreach (var e in entities.Where(existing.ContainsKey).Except(appTables))
             errors.Add($"subarea '{e}' @ sitemap: la tabla no es componente de la app");
 
-        var dashboards = subAreas.Where(s => s.Url is not null).Select(s => MdaXml.DashboardId(s.Url!)).Where(g => g.HasValue).Select(g => g!.Value);
+        var dashboards = subAreas.Where(s => s.Url is not null).Select(s => MdaXml.DashboardId(s.Url!)).Where(g => g.HasValue).Select(g => g!.Value).ToList();
         ExistAll(client, "systemform", "formid", dashboards, id => errors.Add($"dashboard {id} @ sitemap: no existe"));
+
+        // El dashboard del sitemap debe ser CLÁSICO (type 0): el interaction-centric (type 10) no se renderiza en la MDA
+        // (muestra el overview genérico "Dynamics 365 Social"). Además tiene que ser componente de la app y traer los charts/listado de la spec.
+        foreach (var id in dashboards)
+        {
+            var d = client.RetrieveMultiple(new QueryExpression("systemform")
+            {
+                ColumnSet = new ColumnSet("type", "formxml"),
+                Criteria = { Conditions = { new ConditionExpression("formid", ConditionOperator.Equal, id) } },
+            }).Entities.SingleOrDefault();
+            if (d is null) continue; // ya reportado arriba
+            var type = d.GetAttributeValue<OptionSetValue>("type")?.Value;
+            if (type != 0) errors.Add($"dashboard {id} @ sitemap: type {type}, debe ser 0 (clásico)");
+            if (!components.Contains((MdaSpec.ComponentForm, id))) errors.Add($"dashboard {id} @ sitemap: no es componente de la app");
+            foreach (var v in DashboardCatalogo.Violations(d.GetAttributeValue<string>("formxml")))
+                errors.Add($"dashboard {id} @ formxml: {v}");
+        }
+        if (!dashboards.Contains(DashboardCatalogo.FormId)) errors.Add($"el sitemap no apunta al dashboard clásico {DashboardCatalogo.FormId}");
+        if (client.RetrieveMultiple(new QueryExpression("systemform")
+            {
+                ColumnSet = new ColumnSet(false),
+                Criteria = { Conditions = { new ConditionExpression("formid", ConditionOperator.Equal, DashboardCatalogo.LegacyInteractionCentricId) } },
+            }).Entities.Count > 0)
+            errors.Add($"el dashboard interaction-centric {DashboardCatalogo.LegacyInteractionCentricId} sigue existiendo (¿deploy sin --allow-destructive?)");
         return errors;
     }
 

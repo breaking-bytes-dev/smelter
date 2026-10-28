@@ -154,6 +154,9 @@ Console.WriteLine("[5]   PublishAllXml OK.");
 // ── 6. Seguridad + UX (roles, cascade, ExecutePrivilegeName, MDA, vistas, ribbon, dashboard) ──
 SecurityProvisioner.Run(client);
 
+// ── 6b. Dashboard clásico (DashboardSpec.cs): reemplaza al interaction-centric que la MDA no renderiza; va ANTES del 6a, que le pone el 3082 por nombre ──
+DashboardProvisioner.Run(client);
+
 // ── 6a. Nombres 1033 + 3082 de las vistas custom del Import Job y del dashboard (ViewLabelsSpec.cs): van DESPUÉS del [6],
 //        que es quien crea/renombra las vistas y enlaza el dashboard ──
 ViewLabelsProvisioner.Run(client);

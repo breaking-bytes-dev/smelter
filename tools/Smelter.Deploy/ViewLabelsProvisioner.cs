@@ -43,7 +43,7 @@ internal static class ViewLabelsProvisioner
                 Conditions =
                 {
                     new ConditionExpression("name", ConditionOperator.Equal, ViewLabelsCatalogo.Dashboard.En),
-                    new ConditionExpression("type", ConditionOperator.In, 0, 10),
+                    new ConditionExpression("type", ConditionOperator.Equal, 0),
                 },
             },
         }).Entities.FirstOrDefault();

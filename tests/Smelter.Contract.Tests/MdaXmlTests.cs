@@ -106,7 +106,7 @@ public class MdaXmlTests
                 "sanic_tbl_smlt_importtemplate", "sanic_tbl_smlt_importjob", "sanic_tbl_smlt_importjoblog");
         subAreas.Should().NotContain(s => s.Entity == HmacKeyTableSpec.Table);
         var dashboard = subAreas.Single(s => s.Url is not null);
-        MdaXml.DashboardId(dashboard.Url!).Should().Be(Guid.Parse("590df35c-1b64-f111-ab0c-0022480a5be8"));
+        MdaXml.DashboardId(dashboard.Url!).Should().Be(DashboardCatalogo.FormId);
     }
 
     [Fact]

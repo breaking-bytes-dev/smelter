@@ -21,7 +21,7 @@
           <Title LCID="1033" Title="Ejecución y Monitoreo" />
         </Titles>
         <SubArea Id="subarea_6569ce1a" Icon="/_imgs/imagestrips/transparent_spacer.gif" Entity="sanic_tbl_smlt_importjob" Client="All,Outlook,OutlookLaptopClient,OutlookWorkstationClient,Web" AvailableOffline="true" PassParams="false" Sku="All,OnPremise,Live,SPLA" />
-        <SubArea Id="subarea_smlt_dashboard" Url="/main.aspx?pagetype=dashboard&amp;id=%7b590df35c-1b64-f111-ab0c-0022480a5be8%7d" AvailableOffline="false">
+        <SubArea Id="subarea_smlt_dashboard" Url="/main.aspx?pagetype=dashboard&amp;id=%7b0aaf3a0c-c3a8-4f67-a7b8-a1cfd5a5dfbd%7d" AvailableOffline="false">
           <Titles>
             <Title LCID="1033" Title="Smelter Dashboard" />
           </Titles>

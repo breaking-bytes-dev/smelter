@@ -27,6 +27,8 @@ internal static class SiteMapAssertions
         var xml = sitemap.GetAttributeValue<string>("sitemapxml") ?? "";
         var (_, pending) = SiteMapCatalogo.Apply(xml);
         Assert(!pending, "el sitemap no está al día con SiteMapSpec (títulos 1033/3082 o íconos): re-corré Smelter.Deploy");
+        var (_, dashPending) = DashboardCatalogo.PointSiteMapAtDashboard(xml);
+        Assert(!dashPending, $"el SubArea '{DashboardCatalogo.SubAreaId}' no apunta al dashboard clásico {DashboardCatalogo.FormId}: re-corré Smelter.Deploy");
         var iconProblems = SiteMapCatalogo.IconViolations(xml);
         Assert(iconProblems.Count == 0, "sitemap con íconos incorrectos: " + string.Join("; ", iconProblems));
 

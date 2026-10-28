@@ -47,7 +47,6 @@ internal static class SecurityProvisioner
         SetExecutePrivileges(client);
         UpsertViews(client);
         UpsertRibbon(client);
-        UpsertDashboardSubArea(client);
 
         Console.WriteLine("[6] Publicando customizations (roles/vistas/ribbon/dashboard) ...");
         client.Execute(new PublishAllXmlRequest());
@@ -412,39 +411,10 @@ internal static class SecurityProvisioner
         Console.WriteLine($"[6]   webresource '{name}' creado: {creado}.");
     }
 
-    // ── 4.5 Dashboard + entrada de sitemap ─────────────────────────────────────────────────────
-    // El "Smelter Dashboard" YA viaja con la solución (InteractionCentricDashboards/ en la
-    // exportada) — acá NO se crea ningún dashboard: se busca el existente por nombre entre los
-    // tipos dashboard (0=clásico, 10=interaction-centric) y solo se lo enlaza en el sitemap.
-    // Crear un formxml de dashboard por código fue descartado: Dev rechazó el schema best-effort
-    // (run 30360739680, "The element 'form' has invalid child element 'dashboard'").
-    private static void UpsertDashboardSubArea(ServiceClient client)
-    {
-        var dashboards = client.RetrieveMultiple(new QueryExpression("systemform")
-        {
-            ColumnSet = new ColumnSet("formid", "type"),
-            Criteria =
-            {
-                Conditions =
-                {
-                    new ConditionExpression("name", ConditionOperator.Equal, SecuritySpec.DashboardName),
-                    new ConditionExpression("type", ConditionOperator.In, 0, 10),
-                },
-            },
-        }).Entities;
-
-        if (dashboards.Count == 0)
-        {
-            Console.Error.WriteLine(
-                $"[6]   WARN: dashboard '{SecuritySpec.DashboardName}' no existe en el ambiente — se omite la entrada del sitemap.");
-            return;
-        }
-
-        Console.WriteLine($"[6]   dashboard '{SecuritySpec.DashboardName}' encontrado: {dashboards[0].Id}.");
-        UpsertSiteMapEntry(client, dashboards[0].Id);
-    }
-
-    private static void UpsertSiteMapEntry(ServiceClient client, Guid dashboardId)
+    // ── 4.5 Entrada de sitemap del dashboard ───────────────────────────────────────────────────
+    // El dashboard (clásico, type 0) lo crea DashboardProvisioner ([6b], DashboardSpec.cs); acá solo queda el helper que
+    // crea/apunta el SubArea del sitemap. El interaction-centric original (590df35c-..., type 10) no se renderiza en la MDA.
+    internal static void UpsertSiteMapEntry(ServiceClient client, Guid dashboardId)
     {
         var sitemap = client.RetrieveMultiple(new QueryExpression("sitemap")
         {
@@ -462,7 +432,12 @@ internal static class SecurityProvisioner
         var subAreaId = "subarea_smlt_dashboard";
         if (sitemapXml.Contains(subAreaId))
         {
-            Console.WriteLine($"[6]   sitemap: entrada del '{SecuritySpec.DashboardName}' ya existe.");
+            // Ya existe: solo se re-apunta el Url (p.ej. del interaction-centric viejo al clásico).
+            var (pointed, changed) = DashboardCatalogo.PointSiteMapAtDashboard(sitemapXml);
+            if (changed) client.Update(new Entity("sitemap", sitemap.Id) { ["sitemapxml"] = pointed });
+            Console.WriteLine(changed
+                ? $"[6]   sitemap: entrada del '{SecuritySpec.DashboardName}' re-apuntada al dashboard {dashboardId}."
+                : $"[6]   sitemap: entrada del '{SecuritySpec.DashboardName}' ya existe y apunta al dashboard.");
             return;
         }
 
@@ -483,7 +458,7 @@ internal static class SecurityProvisioner
         // Sin <Titles> ni VectorIcon: los completa SiteMapCatalogo.Apply (títulos 1033 + 3082 e ícono) justo abajo.
         var subArea = new System.Xml.Linq.XElement("SubArea",
             new System.Xml.Linq.XAttribute("Id", subAreaId),
-            new System.Xml.Linq.XAttribute("Url", $"/main.aspx?pagetype=dashboard&id=%7b{dashboardId:D}%7d"),
+            new System.Xml.Linq.XAttribute("Url", DashboardCatalogo.Url),
             new System.Xml.Linq.XAttribute("AvailableOffline", "false"));
 
         // Append al FINAL del Group: el XSD del sitemap exige <Titles> del grupo primero y
