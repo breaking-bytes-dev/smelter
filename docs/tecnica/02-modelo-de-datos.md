@@ -279,7 +279,6 @@ Es una tabla de la organización (no de usuario), con auditoría de tabla activa
 - **Borrar un template no borra sus mappings.** Según el espejo, las relaciones Template → Table Mapping, Template → Relationship Mapping y Table Mapping → Column Mapping usan `RemoveLink` al borrar: los hijos quedan huérfanos con el lookup vacío. La importación de templates sí los borra explícitamente al reemplazar un template existente (relaciones primero, luego columnas, luego tablas).
 - **Borrar un job borra sus logs** (cascada total en Import Job → Import Job Log).
 - **Los valores por defecto cambian solo registros nuevos.** `Update If Exists = Sí` nació como default en 1.0.10; los mappings anteriores conservan lo que tenían.
-- **El espejo `solutions/unpacked/` va por detrás.** Aún muestra columnas ya eliminadas (por ejemplo `isjunctiontable`), la opción `ManyToMany`, un `chunksize` de 0 a 100000 y no trae la tabla `hmackey` ni las columnas `bytecursor`, `claimlock`, `failurereason` e `insertonly`. Lo actualiza el workflow `solution-sync` al publicar un Release. Ver [ALM](08-alm-y-despliegue.md#versionado-y-releases).
 
 ## Preguntas abiertas
 
