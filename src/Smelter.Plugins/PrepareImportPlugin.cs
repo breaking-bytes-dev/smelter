@@ -333,7 +333,9 @@ namespace Smelter.Plugins
                 ["sanic_smlt_ij_skippedcount"] = 0,
                 ["sanic_smlt_ij_starttime"] = DateTime.UtcNow,
                 // Un Reintentar no debe arrastrar el fin de la corrida anterior.
-                ["sanic_smlt_ij_endtime"] = null
+                ["sanic_smlt_ij_endtime"] = null,
+                // Idem el motivo de la falla anterior: lo escribe solo el handler Failed del flow; un Reintentar que termina bien no debe mostrarlo.
+                ["sanic_smlt_ij_failurereason"] = null
             });
         }
     }

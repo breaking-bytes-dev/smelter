@@ -129,6 +129,25 @@ namespace Smelter.Plugins.Tests.Plugins
         }
 
         [Fact]
+        public void Run_ResetsJob_ClearsStaleFailureReason()
+        {
+            // Un Reintentar tras un Failed no debe seguir mostrando el motivo de la corrida anterior.
+            var m = new Mocks();
+            var jobId = Guid.NewGuid();
+            var bytes = new byte[] { 1 };
+
+            m.Loader.LoadContext(jobId).Returns(ContextWith(true, "name"));
+            m.Downloader.Download(Arg.Any<EntityReference>(), Arg.Any<string>()).Returns(bytes);
+            m.Csv.ReadHeaders(bytes, true, ",").Returns(new List<string> { "name" });
+            m.Csv.CountRows(bytes, true, ",").Returns(1);
+
+            m.Build().Run(jobId, Guid.NewGuid());
+
+            m.Resets.Should().ContainSingle(e =>
+                e.Contains("sanic_smlt_ij_failurereason") && e["sanic_smlt_ij_failurereason"] == null);
+        }
+
+        [Fact]
         public void Run_MissingMappedHeader_ThrowsAndDoesNotStart()
         {
             var m = new Mocks();

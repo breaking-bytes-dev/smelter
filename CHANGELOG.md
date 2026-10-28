@@ -6,6 +6,11 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
 
 ## [Unreleased]
 
+### Fixed (motivo de falla obsoleto tras Reintentar, Plugins 1.0.15)
+- **`PrepareImport` limpia `sanic_smlt_ij_failurereason` al resetear el job.** Un job `Failed` que se reintentaba y terminaba
+  `Completed` seguía mostrando el motivo viejo. El reset (mismo `Update` que limpia `endtime`) ahora lo pone en null; solo el
+  handler Failed del flow lo escribe. Test de plugin + aserción en E2E-7d (job con motivo viejo, Prepare, motivo vacío).
+
 ### Added (UI bilingüe 1033/3082, íconos y nombre de la solución; solo DEV, `Smelter.Deploy` 4k-4n y 6a)
 - **Etiquetas bilingües: inglés bajo LCID 1033 (idioma base de la org, el que leen las canvas apps) y español bajo 3082.**
   Antes la MDA tenía el español escrito bajo 1033. Cada usuario ve el idioma de su interfaz (si no tiene 3082, el 1033). Nuevo

@@ -124,10 +124,15 @@ internal static partial class E2eRunner
         var templateId = ImportTemplate(env, E2eSpec.Simple.Dto("requeue", ImportTemplateStatus.Active));
         var jobId = CreateJob(env, templateId, "requeue", E2eSpec.Simple.Csv("requeue", E2eSpec.Simple.Rows));
 
+        // Simula el job de un Reintentar: quedó con el motivo de una falla anterior. Prepare (reset) debe limpiarlo (1.0.15).
+        env.Client.Update(new Entity(JobTable, jobId) { ["sanic_smlt_ij_failurereason"] = "stale reason from a previous failed run" });
+
         try
         {
             var prep = ExecuteRetryingBlob(env.Client, new OrganizationRequest(env.Apis.Prepare) { ["JobId"] = jobId });
             Ensure((bool)prep["Claimed"], "PrepareImport debía reclamar el job (Claimed=true) y no lo hizo");
+            var staleReason = env.Client.Retrieve(JobTable, jobId, new ColumnSet("sanic_smlt_ij_failurereason")).GetAttributeValue<string>("sanic_smlt_ij_failurereason");
+            Ensure(string.IsNullOrEmpty(staleReason), $"Prepare debía limpiar el motivo de la falla anterior y quedó: {staleReason} (¿plugin 1.0.15 sin desplegar?)");
 
             var before = env.Client.Retrieve(JobTable, jobId, new ColumnSet(StatusAttr)).GetAttributeValue<OptionSetValue>(StatusAttr)?.Value;
             Ensure(before == (int)ImportJobStatus.Processing, $"tras Prepare el job debía estar Processing, está {StatusName(before)}");
@@ -135,7 +140,7 @@ internal static partial class E2eRunner
             string? rejection = null;
             try { Queue(env, jobId); }
             catch (Exception ex) { rejection = ex.Message; }
-            Ensure(rejection is not null, "poner Queued sobre un job Processing debía ser rechazado y fue aceptado (¿plugin 1.0.14 sin desplegar?)");
+            Ensure(rejection is not null, "poner Queued sobre un job Processing debía ser rechazado y fue aceptado (¿plugin 1.0.15 sin desplegar?)");
             Ensure(rejection!.Contains(RequeueBlockedMessage, StringComparison.Ordinal), $"el rechazo debía traer el mensaje del guard, trajo: {rejection}");
 
             var after = env.Client.Retrieve(JobTable, jobId, new ColumnSet(StatusAttr)).GetAttributeValue<OptionSetValue>(StatusAttr)?.Value;
