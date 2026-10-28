@@ -83,20 +83,6 @@ internal static class TableLabelsProvisioner
         var attributeChanged = TableLabelsCatalogo.ApplyToAttribute(attribute, column.Es);
         var options = TableLabelsCatalogo.Options.Where(o => o.Table == column.Table && o.Column == column.Column).ToList();
 
-        // Opciones Sí/No: viven en la columna, se escriben con ella.
-        if (attribute is BooleanAttributeMetadata boolean && boolean.OptionSet is { } set)
-        {
-            foreach (var o in options)
-            {
-                var option = o.Value == 1 ? set.TrueOption : set.FalseOption;
-                if (option is not null && TableLabelsCatalogo.ApplyToOption(option, o.Es))
-                {
-                    attributeChanged = true;
-                    Console.WriteLine($"[4n]   {column.Table}.{column.Column}: opción {o.Value} = '{o.Es}' (3082).");
-                }
-            }
-        }
-
         if (attributeChanged)
         {
             client.Execute(new UpdateAttributeRequest { EntityName = column.Table, Attribute = attribute, MergeLabels = true });
@@ -104,11 +90,18 @@ internal static class TableLabelsProvisioner
             touched++;
         }
 
-        if (attribute is EnumAttributeMetadata picklist)
+        // Opciones (picklist y también Sí/No): UpdateAttribute IGNORA los cambios de opciones aunque la columna sea
+        // booleana (verificado en Dev y en el sample de metadata de Microsoft Learn); van por UpdateOptionValue.
+        if (attribute is EnumAttributeMetadata or BooleanAttributeMetadata)
         {
             foreach (var o in options)
             {
-                var option = picklist.OptionSet?.Options.FirstOrDefault(x => x.Value == o.Value);
+                var option = attribute switch
+                {
+                    BooleanAttributeMetadata { OptionSet: { } set } => o.Value == 1 ? set.TrueOption : set.FalseOption,
+                    EnumAttributeMetadata picklist => picklist.OptionSet?.Options.FirstOrDefault(x => x.Value == o.Value),
+                    _ => null,
+                };
                 if (option is null)
                 {
                     Console.WriteLine($"[4n]   {column.Table}.{column.Column}: opción {o.Value} no existe — se omite.");
