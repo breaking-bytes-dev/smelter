@@ -244,7 +244,9 @@ El flujo típico para recuperar un job **Fallido**:
 
 ![Import Job en cola tras Reintentar: franja verde de «Import en cola», Estado En cola y archivo contactos-corregido.csv](img/24-job-reintento-en-cola.png)
 
-*Tras **Reintentar** con el archivo corregido (`contactos-corregido.csv`), el job se procesa de nuevo y **Motivo de la falla** queda vacío: el motivo se limpia cuando el servidor empieza a procesar el job.*
+*Tras **Reintentar** con el archivo corregido (`contactos-corregido.csv`) el job queda **En cola**. Mientras está en cola todavía se ve el **Motivo de la falla** anterior: se limpia cuando el servidor empieza a procesar el job. Pulsa **Actualizar** para ver el estado al día.*
+
+Al empezar a procesar, el servidor también **borra los logs de la corrida anterior**: al terminar, la pestaña **Logs de importación** muestra solo los errores de la corrida nueva, y su cantidad coincide con **Filas fallidas**. En un job con muchísimos logs (decenas de miles), la limpieza puede completarse durante los primeros bloques.
 
 > **Importante:** reintentar es seguro para los mappings con **Columnas de deduplicación**: las filas que ya se cargaron se **actualizan** con los mismos valores en vez de duplicarse. En cambio, un mapping con **Solo inserción (permite duplicados)** en **Sí** **crea de nuevo** los registros: reintentar un job con esos mappings duplica los datos.
 
@@ -309,6 +311,7 @@ Los problemas que lista `has configuration errors` son:
 | Categoría | Mensaje | Qué significa | Qué hacer |
 |---|---|---|---|
 | **Error de validación** | `Required field '...' is empty (Source: '...').` | La columna destino es **Es obligatoria**, la celda venía vacía y no hay **Valor por defecto** | Completa el dato en el CSV o define un valor por defecto |
+| **Error de validación** | `Dedup key '...' is empty (Source: '...').` | La columna es una **Columna de deduplicación** del mapping y la celda venía vacía (después del valor por defecto y la transformación). Sin clave no se puede saber si el registro ya existe, así que la fila **no se carga** para no crear un duplicado | Completa el dato en el CSV, define un **Valor por defecto**, o pon **Solo inserción** en **Sí** si se aceptan duplicados |
 | **Error de tipo** | `Column '...' (source '...'): Cannot convert value (N chars) to Integer.` | El valor no se pudo convertir al tipo del mapping. El mensaje nombra la columna y el tipo (`Integer`, `Decimal`, `DateTime`, `Boolean`, `Money`, `GUID`, `OptionSet`) y la **cantidad de caracteres**, no el valor | Revisa el dato de esa fila y el **Tipo de dato** del mapping |
 | **Error de tipo** | `... to Boolean. Expected: true/false, 1/0, yes/no.` | El valor no es un booleano válido | Usa `true`/`false`, `1`/`0` o `yes`/`no`, o transforma el valor |
 | **Error de tipo** | `... to OptionSet. Use MAP transform if mapping is required.` | El valor no es un número y no está en el **Mapeo de opciones** | Agrega el valor al **Mapeo de opciones** o usa `MAP` |

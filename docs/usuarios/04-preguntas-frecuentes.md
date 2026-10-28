@@ -154,7 +154,15 @@ Más detalle: [El «Número de fila» de un log](02-ejecucion-y-monitoreo.md#el-
 
 ### ¿Qué pasa con el Motivo de la falla cuando reintento?
 
-Se limpia cuando el servidor empieza a procesar el job de nuevo. Si el job vuelve a fallar, mostrará el motivo nuevo.
+Se limpia cuando el servidor empieza a procesar el job de nuevo (mientras está **En cola** todavía se ve el anterior). Si el job vuelve a fallar, mostrará el motivo nuevo.
+
+### ¿Y los logs de la corrida anterior?
+
+También se borran cuando el servidor empieza a procesar el reintento. Al terminar, la pestaña **Logs de importación** muestra solo los errores de la corrida nueva.
+
+### El log dice «Dedup key '...' is empty»
+
+La celda de una **Columna de deduplicación** venía vacía, así que Smelter no puede saber si el registro ya existe y **no carga la fila** para no duplicarla. Completa el dato, define un **Valor por defecto** o, si aceptas duplicados, pon **Solo inserción** en **Sí**.
 
 ### El job está «Completado» pero no se creó ningún registro
 
