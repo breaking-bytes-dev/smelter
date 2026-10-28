@@ -56,6 +56,13 @@ internal static class AdditionsAssertions
                     Assert(memo!.MaxLength >= SchemaAdditionsCatalogo.FailureReasonMaxLength,
                         $"{spec.SchemaName}: MaxLength {memo.MaxLength} < {SchemaAdditionsCatalogo.FailureReasonMaxLength}");
                     break;
+                case SchemaColumnKind.DateTime:
+                    var dt = attribute as DateTimeAttributeMetadata;
+                    Assert(dt is not null, $"{spec.SchemaName} debía ser DateTime, es {attribute.AttributeType}");
+                    Assert(dt!.DateTimeBehavior == DateTimeBehavior.TimeZoneIndependent,
+                        $"{spec.SchemaName}: behavior {dt.DateTimeBehavior?.Value}, esperado TimeZoneIndependent");
+                    Assert(dt.Format == DateTimeFormat.DateAndTime, $"{spec.SchemaName}: formato {dt.Format}, esperado DateAndTime");
+                    break;
             }
 
             var inSolution = client.RetrieveMultiple(new QueryExpression("solutioncomponent")

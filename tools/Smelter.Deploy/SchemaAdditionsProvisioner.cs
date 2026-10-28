@@ -75,6 +75,12 @@ internal static class SchemaAdditionsProvisioner
                 Format = StringFormat.TextArea,
                 ImeMode = ImeMode.Auto,
             },
+            // UTC / TimeZoneIndependent: es un timestamp técnico, no se convierte a la zona del usuario.
+            SchemaColumnKind.DateTime => new DateTimeAttributeMetadata(DateTimeFormat.DateAndTime)
+            {
+                DateTimeBehavior = DateTimeBehavior.TimeZoneIndependent,
+                ImeMode = ImeMode.Inactive,
+            },
             _ => throw new InvalidOperationException($"Kind no soportado: {spec.Kind}"),
         };
 

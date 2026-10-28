@@ -13,12 +13,16 @@
 //    "Failed" del Cloud Flow (ClientDataFailureReasonWriter) con el mensaje PII-free de la acción que falló. Va al
 //    main form del job en solo lectura, justo después de Status.
 //
+//  - sanic_smlt_ij_claimlock (Import Job, 1.0.14): columna TÉCNICA DateTime que PrepareImport escribe SOLO para tomar el
+//    lock exclusivo de la fila hasta el commit del Custom API (serializa las corridas concurrentes del mismo job, sin
+//    atrapar faults de OrganizationService, que doomean la transacción). Nadie la lee. No va a ningún form.
+//
 // Las columnas nacen DENTRO de smlt_core_smelter (SolutionUniqueName): viajan a Test/Prod con el managed.
 // Un atributo que ya existe NO se reconfigura (idempotente).
 
 namespace Smelter.Deploy;
 
-internal enum SchemaColumnKind { Decimal, Boolean, Memo }
+internal enum SchemaColumnKind { Decimal, Boolean, Memo, DateTime }
 
 /// <summary>Ubicación en el main form: se clona la fila del campo ancla y se inserta justo después.</summary>
 /// <param name="ClassId">classid del control si no es el del ancla (p.ej. multilínea); null = el del ancla.</param>
@@ -77,5 +81,13 @@ internal static class SchemaAdditionsCatalogo
             Description: "Motivo por el que el job quedo en Failed (mensaje del paso que fallo: preparacion o procesamiento). " +
                          "Lo escribe el Cloud Flow; vacio si el job no fallo. El detalle por fila esta en los Import Job Logs.",
             Form: new FormPlacement("sanic_smlt_ij_status", "[IJ] Failure Reason", SchemaAdditionsCatalogo.MemoControlClassId, ReadOnly: true)),
+        new(
+            EntityLogicalName: SecuritySpec.Tables.ImportJob,
+            SchemaName: "sanic_smlt_ij_claimlock",
+            Kind: SchemaColumnKind.DateTime,
+            DisplayName: "[IJ] Claim Lock",
+            Description: "Columna tecnica: PrepareImport la escribe solo para tomar el lock de fila del job y serializar " +
+                         "corridas concurrentes del flow. Nadie la lee ni la edita.",
+            Form: null),
     ];
 }

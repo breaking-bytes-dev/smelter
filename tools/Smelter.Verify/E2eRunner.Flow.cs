@@ -135,7 +135,7 @@ internal static partial class E2eRunner
             string? rejection = null;
             try { Queue(env, jobId); }
             catch (Exception ex) { rejection = ex.Message; }
-            Ensure(rejection is not null, "poner Queued sobre un job Processing debía ser rechazado y fue aceptado (¿plugin 1.0.13 sin desplegar?)");
+            Ensure(rejection is not null, "poner Queued sobre un job Processing debía ser rechazado y fue aceptado (¿plugin 1.0.14 sin desplegar?)");
             Ensure(rejection!.Contains(RequeueBlockedMessage, StringComparison.Ordinal), $"el rechazo debía traer el mensaje del guard, trajo: {rejection}");
 
             var after = env.Client.Retrieve(JobTable, jobId, new ColumnSet(StatusAttr)).GetAttributeValue<OptionSetValue>(StatusAttr)?.Value;

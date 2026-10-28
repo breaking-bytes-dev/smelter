@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.ServiceModel;
 using Microsoft.Xrm.Sdk;
-using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using Smelter.Plugins.Models;
 using Smelter.Plugins.Services;
@@ -98,8 +96,11 @@ namespace Smelter.Plugins
         /// </summary>
         public const string ByteCursorAttribute = "sanic_smlt_ij_bytecursor";
 
-        /// <summary>Dataverse ErrorCode 0x80060882 ConcurrencyVersionMismatch (UpdateRequest con IfRowVersionMatches).</summary>
-        public const int ConcurrencyVersionMismatch = unchecked((int)0x80060882);
+        /// <summary>
+        /// Import Job column (DateTime, técnica) que Prepare escribe SOLO para tomar el lock exclusivo de la fila hasta el
+        /// commit del Custom API (serializa las corridas concurrentes del mismo job). Ningún otro código la lee.
+        /// </summary>
+        public const string ClaimLockAttribute = "sanic_smlt_ij_claimlock";
 
         private const string StatusAttribute = "sanic_smlt_ij_status";
 
@@ -153,14 +154,17 @@ namespace Smelter.Plugins
         public int Run(Guid importJobId, Guid initiatingUserId) => Prepare(importJobId, initiatingUserId).TotalRows;
 
         /// <summary>
-        /// Igual que <see cref="Run"/> pero informa si se reclamó el job. CLAIM ATÓMICO (1.0.12): un job encolado puede
-        /// disparar varias corridas del Cloud Flow orquestador (triggers de Dataverse at-least-once, re-disparos por
-        /// updates de la fila); si cada una reseteara y procesara, los upserts competirían (DuplicateRecordEntityKey).
-        /// Después de TODAS las validaciones (que siguen lanzando → el flow marca Failed) se lee el job:
+        /// Igual que <see cref="Run"/> pero informa si se reclamó el job. CLAIM SERIALIZADO POR LOCK DE FILA (1.0.14): un job
+        /// encolado puede disparar varias corridas del Cloud Flow orquestador (triggers de Dataverse at-least-once); si cada
+        /// una reseteara y procesara, los upserts competirían (DuplicateRecordEntityKey). Después de TODAS las validaciones
+        /// (que siguen lanzando → el flow marca Failed) se hace un Update de <see cref="ClaimLockAttribute"/>: toma el lock
+        /// exclusivo de la fila hasta el commit del Custom API, así que la segunda corrida espera ahí y recién después lee
+        /// el status ya reseteado por la primera. NO se usa concurrencia optimista (RowVersion + catch del fault): dentro de
+        /// la transacción del Custom API, atrapar una excepción de OrganizationService y seguir doomea la transacción
+        /// ("ISV code reduced the open transaction count"). Con el lock tomado se lee el job:
         /// <list type="bullet">
         /// <item>status Queued, o null/vacío (llamadas directas a la API sobre jobs sin status, p.ej. Smelter.Verify) →
-        /// reclamable; el reset (que pasa el job a Processing) va con <c>IfRowVersionMatches</c> y el RowVersion leído:
-        /// si otra corrida lo tocó en el medio (0x80060882) → no reclamado, sin lanzar.</item>
+        /// reclamable; el reset (que pasa el job a Processing) es un Update plano.</item>
         /// <item>cualquier otro status (Processing, Completed, ...) → no reclamado: no se resetea ni se procesa nada.</item>
         /// </list>
         /// </summary>
@@ -186,7 +190,11 @@ namespace Smelter.Plugins
             ValidateConfiguration(context);
             _tracing?.Trace("Run: template configuration is coherent OK.");
 
-            // Claim: se lee el job ANTES del trabajo pesado (descarga + conteo) para no gastarlo si otra corrida ya lo tomó.
+            // Lock exclusivo de la fila hasta el commit: serializa las corridas concurrentes. Va ANTES de leer el status
+            // (el Retrieve no bloquea) y del trabajo pesado (descarga + conteo). Un fault acá se propaga: no se atrapa.
+            _service.Update(new Entity(ImportJobTable, importJobId) { [ClaimLockAttribute] = DateTime.UtcNow });
+
+            // Claim: con el lock tomado, el status leído es el vigente; si otra corrida ya lo tomó se evita el trabajo pesado.
             var job = _service.Retrieve(ImportJobTable, importJobId, new ColumnSet(StatusAttribute));
             var currentStatus = job?.GetAttributeValue<OptionSetValue>(StatusAttribute)?.Value;
             if (currentStatus.HasValue && currentStatus.Value != (int)ImportJobStatus.Queued)
@@ -194,7 +202,6 @@ namespace Smelter.Plugins
                 _tracing?.Trace($"Run: job NOT claimed (status={currentStatus.Value} is not Queued): another run owns it.");
                 return new PrepareResult(false, 0);
             }
-            var rowVersion = job?.RowVersion;
 
             var bytes = _downloader.Download(new EntityReference(ImportJobTable, importJobId), SourceFileAttribute);
             _tracing?.Trace($"Run: downloaded file, {bytes?.Length ?? 0} bytes.");
@@ -213,11 +220,7 @@ namespace Smelter.Plugins
                 ? $"Run: byte cursor starts at {byteCursor.Value}."
                 : "Run: file not walkable by bytes; ProcessChunk will use the legacy full-download path.");
 
-            if (!TryClaimAndReset(importJobId, rowVersion, totalRows, byteCursor))
-            {
-                _tracing?.Trace("Run: job NOT claimed (RowVersion mismatch): another run claimed it first.");
-                return new PrepareResult(false, 0);
-            }
+            Reset(importJobId, totalRows, byteCursor);
             return new PrepareResult(true, totalRows);
         }
 
@@ -309,13 +312,15 @@ namespace Smelter.Plugins
         }
 
         /// <summary>
-        /// Claims the job and writes its initial state back to Dataverse: sets status to
-        /// <see cref="ImportJobStatus.Processing"/>, stores the row count, and zeros all counters
+        /// Writes the job's initial state back to Dataverse: sets status to
+        /// <see cref="ImportJobStatus.Processing"/> (the claim), stores the row count, and zeros all counters
         /// so the Cloud Flow can loop <see cref="ProcessChunkPlugin"/> from offset 0 (and from the first data byte).
+        /// Update plano: la exclusión ya la da el lock de fila de <see cref="Prepare"/>; sin try/catch a propósito
+        /// (atrapar un fault de OrganizationService dentro de la transacción la doomea).
         /// </summary>
-        private bool TryClaimAndReset(Guid jobId, string rowVersion, int totalRows, long? byteCursor)
+        private void Reset(Guid jobId, int totalRows, long? byteCursor)
         {
-            var target = new Entity(ImportJobTable, jobId)
+            _service.Update(new Entity(ImportJobTable, jobId)
             {
                 // decimal (Decimal precision 0); null limpia un cursor de una corrida anterior.
                 [ByteCursorAttribute] = byteCursor.HasValue ? (object)(decimal)byteCursor.Value : null,
@@ -329,22 +334,7 @@ namespace Smelter.Plugins
                 ["sanic_smlt_ij_starttime"] = DateTime.UtcNow,
                 // Un Reintentar no debe arrastrar el fin de la corrida anterior.
                 ["sanic_smlt_ij_endtime"] = null
-            };
-            target.RowVersion = rowVersion;
-
-            try
-            {
-                _service.Execute(new UpdateRequest
-                {
-                    Target = target,
-                    ConcurrencyBehavior = ConcurrencyBehavior.IfRowVersionMatches
-                });
-                return true;
-            }
-            catch (FaultException<OrganizationServiceFault> ex) when (ex.Detail != null && ex.Detail.ErrorCode == ConcurrencyVersionMismatch)
-            {
-                return false;
-            }
+            });
         }
     }
 }

@@ -62,6 +62,18 @@ public class SchemaAdditionsSpecContractTests
     }
 
     [Fact]
+    public void ClaimLock_IsATechnicalDateTimeOnTheJob_NotOnAnyForm()
+    {
+        var c = Column("sanic_smlt_ij_claimlock");
+
+        c.EntityLogicalName.Should().Be(SecuritySpec.Tables.ImportJob);
+        c.Kind.Should().Be(SchemaColumnKind.DateTime);
+        c.DisplayName.Should().Be("[IJ] Claim Lock");
+        c.Description.Should().NotBeNullOrWhiteSpace();
+        c.Form.Should().BeNull("columna técnica: solo se escribe para tomar el lock de fila, el usuario no la ve");
+    }
+
+    [Fact]
     public void Columns_FollowTheNamingConventionAndLiveInTheSmelterTables()
     {
         foreach (var c in SchemaAdditionsCatalogo.Columns)

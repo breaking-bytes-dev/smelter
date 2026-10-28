@@ -41,6 +41,21 @@ Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadm
   vacíos; toda columna/opción viva tiene su 3082), `MiscLabelSpecsContractTests`; ampliados los de sitemap, formularios y
   descripciones.
 
+### Fixed (claim de PrepareImport con lock de fila, Plugins 1.0.14)
+- **Dos corridas del flow sobre el mismo job ya no hacen fallar a la perdedora** (E2E-7c). El claim de 1.0.12 usaba
+  `UpdateRequest` con `IfRowVersionMatches` y atrapaba el fault `ConcurrencyVersionMismatch` (0x80060882) para devolver
+  `Claimed=false`; pero `PrepareImport` corre dentro de la transacción del Custom API, y atrapar una excepción de
+  `OrganizationService` y seguir la doomea: Dataverse abortaba con "ISV code reduced the open transaction count" y el flow
+  marcaba el job `Failed` mientras la otra corrida lo procesaba. Ahora, después de las validaciones, `Prepare` hace un
+  `Update` de la columna técnica nueva `sanic_smlt_ij_claimlock` (toma el lock exclusivo de la fila hasta el commit), recién
+  entonces lee el status y, si está `Queued`/vacío, resetea con un `Update` plano; cualquier otro status devuelve
+  `Claimed=false` sin lanzar. La segunda corrida espera en el lock y ve el job ya `Processing`. Sin RowVersion, sin
+  `try/catch` de faults del servicio (se eliminó la constante `ConcurrencyVersionMismatch`).
+- Columna `sanic_smlt_ij_claimlock` (Import Job, DateTime, TimeZoneIndependent, solo técnica, fuera de los forms) creada por
+  `SchemaAdditionsSpec` (paso 4f) dentro de `smlt_core_smelter`, con Description 1033/3082 y nombre 3082 "Bloqueo de claim".
+  Escribirla no dispara nada: `ValidateQueueAccess` (Update filtrado por `status`) y el trigger del flow (`status`) no se
+  activan. Requiere correr `Smelter.Deploy` antes de desplegar el plugin 1.0.14.
+
 ### Fixed (guarda de re-encolado, Plugins 1.0.13)
 - **Poner `Queued` sobre un job que está `Processing` ya no se permite** (`ValidateQueueAccess`, Pre-op Update): un
   Update por API durante la corrida disparaba otra corrida del flow cuyo claim veía `Queued` y reseteaba el job a

@@ -163,6 +163,9 @@ internal static class ColumnDescriptionsCatalogo
         D(IJ, "sanic_smlt_ij_failurereason",
             "Motivo por el que el job quedó en Failed (mensaje del paso que falló: preparación o procesamiento). Lo escribe el Cloud Flow; vacío si el job no falló. El detalle por fila está en los Import Job Logs.",
             "Reason the job ended in Failed (message of the step that failed: preparation or processing). Written by the Cloud Flow; empty if the job did not fail. The per-row detail is in the Import Job Logs."),
+        D(IJ, "sanic_smlt_ij_claimlock",
+            "Columna técnica: PrepareImport la escribe solo para tomar el lock de fila del job y serializar corridas concurrentes del flow. Nadie la lee ni la edita.",
+            "Technical column: PrepareImport writes it only to take the job's row lock and serialize concurrent flow runs. Nobody reads or edits it."),
     ];
 
     /// <summary>Todas las Description que provisiona el paso 4i: las de las columnas existentes + las de las columnas nuevas.</summary>

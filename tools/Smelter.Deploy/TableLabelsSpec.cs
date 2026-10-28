@@ -104,6 +104,7 @@ internal static class TableLabelsCatalogo
         C(IJ, "sanic_smlt_ij_endtime", "Hora de fin"),
         C(IJ, "sanic_smlt_ij_bytecursor", "Cursor de bytes"),
         C(IJ, "sanic_smlt_ij_failurereason", "Motivo de la falla"),
+        C(IJ, "sanic_smlt_ij_claimlock", "Bloqueo de claim"),
 
         // ── Import Job Log ────────────────────────────────────────────────────────────────────
         C(IJL, "sanic_smlt_ijl_id", "Identificador"),
