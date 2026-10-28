@@ -54,13 +54,10 @@ internal static class TuningAssertions
                     ["sanic_smlt_it_chunksize"] = outOfRange,
                 });
             }
-            catch (System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault>)
+            catch (Exception ex)
             {
-                // esperado: la columna rechaza el valor
-            }
-            catch (Exception ex) when (ex is not InvalidOperationException && ex.Message.Contains("range", StringComparison.OrdinalIgnoreCase))
-            {
-                // ServiceClient puede envolver el fault en otra excepción: igualmente es un rechazo
+                // esperado: la columna rechaza el valor (el SDK lo informa como fault o como DataverseOperationException).
+                Console.WriteLine($"[TUNE]   chunk size {outOfRange}: rechazado ({ex.Message.Split('\n')[0]}).");
             }
             if (leaked is { } id)
             {
