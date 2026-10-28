@@ -4,6 +4,7 @@
 // un privilegio necesario, este paso es el que falla.
 
 using System.Text;
+using Microsoft.Crm.Sdk.Messages;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;

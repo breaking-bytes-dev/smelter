@@ -171,7 +171,7 @@ Abre el registro (haz clic en el **Identificador**) para leer el mensaje complet
 
 Los logs **los escribe el sistema** al procesar: no se crean, y no se editan a mano. Todos los campos del log son de solo lectura.
 
-> **Nota:** si ves un botón **Nuevo Log de importación** (la plataforma lo muestra a usuarios con permisos amplios), no lo uses: los logs solo los crea el motor. El rol Configurador no incluye el permiso de crearlos.
+> **Nota:** el rol Configurador no puede crear logs: no hay botón **Nuevo Log de importación** en la subgrilla. Los logs solo los crea el motor.
 
 También puedes ver los errores de **todos los jobs** juntos en **Diagnóstico → Logs de importación**. Los más recientes aparecen primero.
 
@@ -244,7 +244,7 @@ El flujo típico para recuperar un job **Fallido**:
 
 ![Import Job en cola tras Reintentar: franja verde de «Import en cola», Estado En cola y archivo contactos-corregido.csv](img/24-job-reintento-en-cola.png)
 
-*Tras **Reintentar** con el archivo corregido (`contactos-corregido.csv`), el job vuelve a **En cola**. Fíjate que **Motivo de la falla** todavía muestra el mensaje anterior: se limpia cuando el servidor empieza a procesar el job de nuevo, es decir, al pasar a **Procesando**.*
+*Tras **Reintentar** con el archivo corregido (`contactos-corregido.csv`), el job se procesa de nuevo y **Motivo de la falla** queda vacío: el motivo se limpia cuando el servidor empieza a procesar el job.*
 
 > **Importante:** reintentar es seguro para los mappings con **Columnas de deduplicación**: las filas que ya se cargaron se **actualizan** con los mismos valores en vez de duplicarse. En cambio, un mapping con **Solo inserción (permite duplicados)** en **Sí** **crea de nuevo** los registros: reintentar un job con esos mappings duplica los datos.
 

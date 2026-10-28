@@ -30,9 +30,9 @@ Más detalle: [Mensajes frecuentes](02-ejecucion-y-monitoreo.md#mensajes-frecuen
 
 Son los avisos de los botones **Ejecutar** y **Reintentar** y de algunos motivos de falla. Están escritos así en la aplicación y se muestran tal cual en estas guías. No cambian lo que debes hacer.
 
-### Veo un botón «Nuevo Log de importación». ¿Lo uso?
+### ¿Puedo crear un log de importación a mano?
 
-No. Los logs los escribe solo el motor de Smelter al procesar. El rol Configurador no incluye el permiso de crearlos; si lo ves, puede deberse a que tu usuario tiene permisos amplios en la plataforma.
+No. Los logs los escribe solo el motor de Smelter al procesar, y el rol Configurador no puede crearlos: la subgrilla de logs no muestra el botón **Nuevo Log de importación**.
 
 ### El Panel de Smelter no muestra nada
 
@@ -152,9 +152,9 @@ El **Número de fila** es el número de fila **del archivo, contando el encabeza
 
 Más detalle: [El «Número de fila» de un log](02-ejecucion-y-monitoreo.md#el-número-de-fila-de-un-log).
 
-### El Motivo de la falla sigue mostrando el mensaje viejo después de Reintentar
+### ¿Qué pasa con el Motivo de la falla cuando reintento?
 
-Mientras el job está **En cola**, el motivo anterior todavía se ve. Se limpia cuando el servidor empieza a procesar el job de nuevo y pasa a **Procesando**. Si el job vuelve a fallar, mostrará el motivo nuevo.
+Se limpia cuando el servidor empieza a procesar el job de nuevo. Si el job vuelve a fallar, mostrará el motivo nuevo.
 
 ### El job está «Completado» pero no se creó ningún registro
 
