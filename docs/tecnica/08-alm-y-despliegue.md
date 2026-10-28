@@ -8,7 +8,7 @@ Este documento explica cómo viaja un cambio de Smelter desde un commit hasta Pr
 
 | Ambiente | Para qué | Cómo recibe los cambios |
 |---|---|---|
-| **Dev** (`https://org36e60d9d.crm.dynamics.com`) | Donde se desarrolla. La solución `smlt_core_smelter` está **sin administrar** | `Smelter.Deploy` por SDK (workflow `backend-deploy`) |
+| **Dev** (URL en el secret `DATAVERSE_URL`) | Donde se desarrolla. La solución `smlt_core_smelter` está **sin administrar** | `Smelter.Deploy` por SDK (workflow `backend-deploy`) |
 | **Test** | Validación | La solución **administrada** de un Release (workflow `solution-import`) |
 | **Prod** | Producción | El **mismo zip** que pasó por Test, con aprobación del environment |
 
