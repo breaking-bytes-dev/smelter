@@ -168,6 +168,9 @@ Smelter tiene dos roles, ambos importados con la solución:
 | `Smelter Configurador` | CRUD a nivel Organización en las 6 tablas (sin crear logs): crea y edita templates y mappings, exporta e importa templates, ve todo. Es el único rol que ve la app |
 | `Smelter Operador` | No configura. Lee templates de sus teams (Read nivel Usuario), crea Import Jobs, lee y edita jobs de sus teams y lee los logs. **Ningún rol puede crear logs**: los escribe el motor |
 
+> [!IMPORTANT]
+> Los roles de Smelter tienen **solo** los privilegios sobre las tablas de Smelter, sin ningún privilegio de plataforma. Toda persona que use Smelter necesita además el rol estándar **Basic User** (asignado a la persona o a uno de sus teams). Es el que aporta los privilegios básicos de plataforma (ajustes de usuario y similares) que los roles de Smelter, a propósito, no traen. Smelter solo está probado con esa combinación.
+
 La visibilidad del operador sale de que el **team sea dueño del template**: los jobs nuevos nacen a nombre del team del template (`AssignJobOwnerPlugin`) y todos los miembros los ven.
 
 ### 6.1. Configuradores
@@ -285,6 +288,7 @@ Equivale a lo que hace `Smelter.Verify` contra Dev (que usa un service principal
 - [ ] Idioma 3082 habilitado.
 - [ ] Teams creados con el rol `Smelter Operador` y con sus miembros.
 - [ ] Configuradores con el rol `Smelter Configurador`.
+- [ ] Configuradores y operadores con **Basic User** además del rol de Smelter.
 - [ ] Tablas destino con alternate keys `Active`.
 - [ ] Templates `Active` y asignados a su team.
 - [ ] Smoke test completo, con la limpieza hecha.
