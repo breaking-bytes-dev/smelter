@@ -2,6 +2,7 @@
 // componentes de smlt_core_smelter; cada tabla de Smelter tiene su IconVectorName; la app usa el web resource del ícono de
 // app. (Los VectorIcon del sitemap los verifica SiteMapAssertions.) Solo lee.
 
+using Microsoft.Crm.Sdk.Messages;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
