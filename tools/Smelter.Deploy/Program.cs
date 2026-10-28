@@ -121,6 +121,10 @@ HmacKeyTableProvisioner.Run(client);
 // ── 4f. Columnas nuevas (SchemaAdditionsSpec.cs): byte cursor del Import Job + "Solo inserción" del Table Mapping ──
 SchemaAdditionsProvisioner.Run(client);
 
+// ── 4f2. Vistas dedicadas de lookup (FormPolishSpec.cs): "Active templates", que usa el lookup de template del Import Job.
+//        Antes del [4g] (la pinea en la MDA) y del [4j] (el form la referencia) ──
+LookupViewsProvisioner.Run(client);
+
 // ── 4g. Pin de forms y vistas Smelter en la MDA (MdaComponentsSpec.cs): sin esto ValidateApp avisa "all forms and views" ──
 MdaComponentsProvisioner.Run(client);
 

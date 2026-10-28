@@ -242,7 +242,33 @@ internal static class FormXmlEditor
         return changed;
     }
 
-    private static bool SetParameter(XElement parameters, string name, string value)
+    /// <summary>
+    /// Limita un lookup a UNA vista: DefaultViewId + ViewIds = la vista, DisableViewPicker (no se puede cambiar a otra) y
+    /// DisableMru (los recientes no se saltean el filtro). Conserva el resto de &lt;parameters&gt;. <c>false</c> si el campo
+    /// no está o ya está así.
+    /// </summary>
+    internal static bool TrySetLookupView(XDocument doc, string field, Guid viewId)
+    {
+        var control = doc.Descendants("control").FirstOrDefault(c => Is(c, field));
+        if (control is null)
+            return false;
+
+        var parameters = control.Element("parameters");
+        if (parameters is null)
+        {
+            parameters = new XElement("parameters");
+            control.Add(parameters);
+        }
+
+        var id = $"{{{viewId:D}}}";
+        var changed = SetParameter(parameters, "DefaultViewId", id, ignoreCase: true);
+        changed |= SetParameter(parameters, "ViewIds", id, ignoreCase: true);
+        changed |= SetParameter(parameters, "DisableViewPicker", "true");
+        changed |= SetParameter(parameters, "DisableMru", "true");
+        return changed;
+    }
+
+    private static bool SetParameter(XElement parameters, string name, string value, bool ignoreCase = false)
     {
         var existing = parameters.Element(name);
         if (existing is null)
@@ -250,7 +276,7 @@ internal static class FormXmlEditor
             parameters.Add(new XElement(name, value));
             return true;
         }
-        if (existing.Value == value)
+        if (string.Equals(existing.Value, value, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
             return false;
         existing.Value = value;
         return true;

@@ -48,6 +48,21 @@ internal static class FormPolishAssertions
             Console.WriteLine($"[POLISH]   vista '{view.GetAttributeValue<string>("name")}': {spec.Column} OK.");
         }
 
+        foreach (var spec in FormPolishCatalogo.LookupViews)
+        {
+            var view = client.RetrieveMultiple(new QueryExpression("savedquery")
+            {
+                ColumnSet = new ColumnSet("fetchxml", "querytype", "name"),
+                Criteria = { Conditions = { new ConditionExpression("savedqueryid", ConditionOperator.Equal, spec.ViewId) } },
+            }).Entities.SingleOrDefault();
+            Assert(view is not null, $"no existe la vista de lookup '{spec.Name.En}' ({spec.ViewId})");
+            Assert(DashboardProvisioner.XmlEquivalent(view!.GetAttributeValue<string>("fetchxml"), spec.FetchXml),
+                $"la vista '{spec.Name.En}' no filtra como la spec (solo templates Active)");
+            var names = LocLabels.Get(client, "savedquery", spec.ViewId, "name");
+            Assert(LocLabels.Matches(names, spec.Name), $"la vista '{spec.Name.En}' no tiene nombre 1033 + 3082 ('{names.GetValueOrDefault(Lcids.Spanish)}')");
+            Console.WriteLine($"[POLISH]   vista de lookup '{spec.Name.En}' OK (el control {spec.Field} la usa: form al día).");
+        }
+
         foreach (var spec in FormPolishCatalogo.ViewOrders)
         {
             var view = client.Retrieve("savedquery", spec.ViewId, new ColumnSet("fetchxml", "name"));

@@ -4,7 +4,8 @@
 // Se pinean (AddAppComponentsRequest, componenttype 60 = systemform, 26 = savedquery) SOLO las que Smelter diseñó:
 //   - MainForm        la main form "Information" (type 2, activa) de cada tabla.
 //   - DefaultView     la vista pública por defecto ("Active ...", querytype 0, isdefault).
-//   - CustomView      vistas públicas diseñadas para Smelter (Import Job: Jobs Activos, Completados con Errores, Todos los Jobs).
+//   - CustomView      vistas públicas diseñadas para Smelter (Import Job: Jobs Activos, Completados con Errores, Todos los Jobs;
+//                     Import Template: "Active templates", la que usa el lookup de template del Import Job).
 //   - LookupView      querytype 64: sin ella los lookups (job -> template, mapping -> template ...) pierden la vista del selector.
 //   - AssociatedView  querytype 2: subgrids / pestañas relacionadas (p.ej. mappings dentro del template).
 //   - QuickFindView   querytype 4: la caja de búsqueda de las grillas.
@@ -63,6 +64,7 @@ internal static class MdaComponentsCatalogo
         New(SecuritySpec.Tables.ImportJobLog, View, MdaComponentKind.QuickFindView, "f35f567a-fd58-4f3e-856d-efd8b975c097", "Quick Find Active TBL | SMLT | Import Job Logs"),
         New(SecuritySpec.Tables.ImportTemplate, Form, MdaComponentKind.MainForm, "fe11c991-7d4f-4613-b003-f5bc133ef932", "Information"),
         New(SecuritySpec.Tables.ImportTemplate, View, MdaComponentKind.DefaultView, "6372b15d-f053-4b18-967a-3a28309ffb08", "Active TBL | SMLT | Import Templates"),
+        New(SecuritySpec.Tables.ImportTemplate, View, MdaComponentKind.CustomView, "661531bd-0e53-48d8-8d44-c3f9fecc423a", "Active templates"),
         New(SecuritySpec.Tables.ImportTemplate, View, MdaComponentKind.LookupView, "d84ffa28-70d6-4e28-b784-02fea7ad2de9", "TBL | SMLT | Import Template Lookup View"),
         New(SecuritySpec.Tables.ImportTemplate, View, MdaComponentKind.AssociatedView, "5ef056f3-b445-403a-bc26-8caf23ab5a22", "TBL | SMLT | Import Template Associated View"),
         New(SecuritySpec.Tables.ImportTemplate, View, MdaComponentKind.QuickFindView, "5d83844b-e7a7-4f2a-9ac9-fb4257ab21d2", "Quick Find Active TBL | SMLT | Import Templates"),

@@ -45,7 +45,7 @@ public class MiscLabelSpecsContractTests
     public void CustomViews_AreStillThePinnedOnesOfTheMda()
     {
         // Los GUID de las vistas custom viven en MdaComponentsSpec; sus 3 nombres (descriptivos) no cambian de identidad.
-        MdaComponentsCatalogo.All.Count(c => c.Kind == MdaComponentKind.CustomView).Should().Be(ViewLabelsCatalogo.Views.Length);
+        MdaComponentsCatalogo.All.Count(c => c.Kind == MdaComponentKind.CustomView && c.Table == SecuritySpec.Tables.ImportJob).Should().Be(ViewLabelsCatalogo.Views.Length);
     }
 
     [Fact]

@@ -34,6 +34,12 @@ internal sealed record FormLookupFilterSpec(string Entity, string Field, string 
 
 internal sealed record ViewColumnSpec(string Entity, Guid ViewId, string AfterColumn, string Column, int Width);
 
+/// <summary>
+/// Lookup de un main form que ofrece SOLO los registros de una vista dedicada: la vista se crea (ViewId fijo, en la solución,
+/// pineada en la MDA) y el control recibe DefaultViewId/ViewIds = esa vista, sin selector de vistas ni recientes.
+/// </summary>
+internal sealed record LookupViewSpec(string Entity, string Field, string TargetTable, Guid ViewId, Bilingual Name, string FetchXml, string LayoutXml);
+
 /// <summary>Orden de una vista (fetchxml &lt;order&gt;): reemplaza cualquier orden previo por este.</summary>
 internal sealed record ViewOrderSpec(string Entity, Guid ViewId, string Attribute, bool Descending);
 
@@ -113,6 +119,40 @@ internal static class FormPolishCatalogo
         new(Job, Guid.Parse("cd51cf90-818a-f111-8076-70a8a59c703e"), "sanic_smlt_ij_name", "sanic_smlt_ij_status", 150),
     ];
 
+    // Import Job: el lookup de template ofrece SOLO templates Active (único estado ejecutable: PrepareImport rechaza Draft/Archived,
+    // ese camino server-side NO cambia). No se toca la vista de lookup global (querytype 64) del template porque la comparten
+    // los lookups de los mappings, que sí deben poder apuntar a un template Draft mientras se configura.
+    // Active = 1 (ImportTemplateStatus.Active; un test lo corrobora contra Smelter.Core).
+    internal static readonly LookupViewSpec[] LookupViews =
+    [
+        new(Job, "sanic_smlt_ij_importtemplateid", SecuritySpec.Tables.ImportTemplate,
+            Guid.Parse("661531bd-0e53-48d8-8d44-c3f9fecc423a"), new("Active templates", "Templates activos"),
+            FetchXml: $"""
+                <fetch version="1.0" mapping="logical">
+                  <entity name="{SecuritySpec.Tables.ImportTemplate}">
+                    <attribute name="sanic_tbl_smlt_importtemplateid" />
+                    <attribute name="sanic_smlt_it_name" />
+                    <attribute name="sanic_smlt_it_status" />
+                    <attribute name="createdon" />
+                    <order attribute="sanic_smlt_it_name" descending="false" />
+                    <filter type="and">
+                      <condition attribute="statecode" operator="eq" value="0" />
+                      <condition attribute="sanic_smlt_it_status" operator="eq" value="1" />
+                    </filter>
+                  </entity>
+                </fetch>
+                """,
+            LayoutXml: $"""
+                <grid name="resultset" object="{SecuritySpec.ObjectTypeCodePlaceholder}" jump="sanic_smlt_it_name" select="1" icon="1" preview="1">
+                  <row name="result" id="sanic_tbl_smlt_importtemplateid">
+                    <cell name="sanic_smlt_it_name" width="300" />
+                    <cell name="sanic_smlt_it_status" width="120" />
+                    <cell name="createdon" width="125" />
+                  </row>
+                </grid>
+                """),
+    ];
+
     // Import Job Log: más nuevo primero. Las vistas nacieron ordenadas por el autonumérico ascendente (el más viejo arriba,
     // y como es texto "LOG-9" > "LOG-10"): se ordena por createdon descendente. La default es la que abre el subgrid de logs
     // del job (Subgrids) y la lista de la MDA; también la asociada y el quick find, para que busquen igual.
@@ -147,6 +187,7 @@ internal static class FormPolishCatalogo
             .Concat(AddedFields.Select(f => f.Entity))
             .Concat(Subgrids.Select(f => f.Entity))
             .Concat(LookupFilters.Select(f => f.Entity))
+            .Concat(LookupViews.Select(f => f.Entity))
             .Concat(Labels.Select(f => f.Entity))
             .Distinct();
 
@@ -169,6 +210,10 @@ internal static class FormPolishCatalogo
         foreach (var f in LookupFilters.Where(l => l.Entity == entity))
             if (FormXmlEditor.TrySetLookupFilter(doc, f.Field, f.FilterRelationship, f.DependentAttribute))
                 applied.Add($"{f.Field} filtrado por {f.DependentAttribute}");
+
+        foreach (var l in LookupViews.Where(l => l.Entity == entity))
+            if (FormXmlEditor.TrySetLookupView(doc, l.Field, l.ViewId))
+                applied.Add($"{l.Field} solo ofrece la vista '{l.Name.En}'");
 
         foreach (var s in Subgrids.Where(g => g.Entity == entity))
             if (FormXmlEditor.TryAddSubgridTab(doc, s.TabLabel.En, s.SubgridId, s.Relationship, s.TargetEntity, s.ViewId, s.TabLabel.Es))

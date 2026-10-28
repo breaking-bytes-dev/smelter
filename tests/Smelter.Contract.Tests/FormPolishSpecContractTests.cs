@@ -328,4 +328,60 @@ public class FormPolishSpecContractTests
         entity.Element("filter").Should().NotBeNull();
         entity.Elements("attribute").Should().ContainSingle();
     }
+
+    // ── Lookup del template en el Import Job: solo templates Active ──────────────────────────────────────
+
+    [Fact]
+    public void JobTemplateLookup_OffersOnlyActiveTemplates_ViaADedicatedViewAndNoViewPicker()
+    {
+        var spec = FormPolishCatalogo.LookupViews.Single();
+        spec.Entity.Should().Be(SecuritySpec.Tables.ImportJob);
+        spec.Field.Should().Be("sanic_smlt_ij_importtemplateid");
+        spec.TargetTable.Should().Be(SecuritySpec.Tables.ImportTemplate);
+        spec.Name.En.Should().Be("Active templates");
+        spec.Name.Es.Should().Be("Templates activos");
+
+        // El filtro usa el valor REAL del choice (contrato con Smelter.Core), más statecode activo.
+        var fetch = XDocument.Parse(spec.FetchXml);
+        fetch.Descendants("condition").Should().Contain(c => (string?)c.Attribute("attribute") == "sanic_smlt_it_status"
+            && (string?)c.Attribute("operator") == "eq" && (string?)c.Attribute("value") == ((int)Smelter.Plugins.Models.ImportTemplateStatus.Active).ToString());
+        fetch.Descendants("condition").Should().Contain(c => (string?)c.Attribute("attribute") == "statecode" && (string?)c.Attribute("value") == "0");
+
+        var doc = MainForm(SecuritySpec.Tables.ImportJob);
+        FormPolishCatalogo.Apply(doc, SecuritySpec.Tables.ImportJob);
+
+        var parameters = Control(doc, spec.Field)!.Element("parameters")!;
+        parameters.Element("DefaultViewId")!.Value.Should().BeEquivalentTo($"{{{spec.ViewId:D}}}");
+        parameters.Element("ViewIds")!.Value.Should().BeEquivalentTo($"{{{spec.ViewId:D}}}");
+        parameters.Element("DisableViewPicker")!.Value.Should().Be("true", "sin selector de vistas no se puede volver a 'todos los templates'");
+        parameters.Element("DisableMru")!.Value.Should().Be("true", "los recientes podrían traer un Draft ya elegido");
+        Control(doc, spec.Field)!.Attribute("classid")!.Value.Should().Be("{270BD3DB-D9AF-4782-9025-509E298DEC0A}");
+    }
+
+    [Fact]
+    public void JobTemplateLookupView_ColumnsExist_IsPinnedAndShippedInTheSolution()
+    {
+        var spec = FormPolishCatalogo.LookupViews.Single();
+        var entityXml = File.ReadAllText(Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities", spec.TargetTable, "Entity.xml"));
+        foreach (var a in XDocument.Parse(spec.FetchXml).Descendants("entity").Single().Elements("attribute").Select(a => (string)a.Attribute("name")!)
+                     .Concat(XDocument.Parse(spec.LayoutXml.Replace(SecuritySpec.ObjectTypeCodePlaceholder, "1")).Descendants("cell").Select(c => (string)c.Attribute("name")!)))
+            (a is "createdon" || entityXml.Contains($"<LogicalName>{a}</LogicalName>") || a == $"{spec.TargetTable}id").Should().BeTrue(a);
+
+        MdaComponentsCatalogo.All.Should().Contain(c => c.Id == spec.ViewId && c.Kind == MdaComponentKind.CustomView && c.Table == spec.TargetTable);
+        File.Exists(Path.Combine(SolutionMetadata.RepoRoot, "solutions", "unpacked", "Entities", spec.TargetTable, "SavedQueries", $"{{{spec.ViewId:D}}}.xml"))
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void TrySetLookupView_IsIdempotent_AndMissingFieldIsNoop()
+    {
+        var doc = XDocument.Parse("<form><control datafieldname=\"f\" classid=\"x\" /></form>");
+        var id = Guid.NewGuid();
+
+        FormXmlEditor.TrySetLookupView(doc, "f", id).Should().BeTrue();
+        var snapshot = doc.ToString();
+        FormXmlEditor.TrySetLookupView(doc, "f", id).Should().BeFalse();
+        doc.ToString().Should().Be(snapshot);
+        FormXmlEditor.TrySetLookupView(doc, "nope", id).Should().BeFalse();
+    }
 }

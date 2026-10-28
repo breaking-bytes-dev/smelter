@@ -93,7 +93,7 @@ public class MdaComponentsSpecTests
     [Fact]
     public void ImportJob_PinsItsThreeCustomViews_IncludingCompletadosConErrores()
     {
-        var custom = MdaComponentsCatalogo.All.Where(c => c.Kind == MdaComponentKind.CustomView).Select(c => c.Name).ToList();
+        var custom = MdaComponentsCatalogo.All.Where(c => c.Kind == MdaComponentKind.CustomView && c.Table == SecuritySpec.Tables.ImportJob).Select(c => c.Name).ToList();
         custom.Should().BeEquivalentTo("Jobs Activos", "Completados con Errores", "Todos los Jobs");
     }
 
