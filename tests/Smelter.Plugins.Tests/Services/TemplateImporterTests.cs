@@ -69,6 +69,33 @@ namespace Smelter.Plugins.Tests.Services
             created.First(e => e.LogicalName == table && (pred == null || pred(e)));
 
         [Fact]
+        public void Import_ChunkSizeZero_IsStoredAsEmpty_BecauseTheColumnRejectsValuesBelow100()
+        {
+            // 0 significa "default del sistema" en el JSON; la columna tiene MinValue=100, así que se guarda vacío (null).
+            var service = Service(out var created);
+            var dto = Dto();
+            dto.Template.ChunkSize = 0;
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            var template = Created(created, TemplateTable);
+            template.Contains("sanic_smlt_it_chunksize").Should().BeTrue("en un update tiene que limpiar el valor anterior");
+            template["sanic_smlt_it_chunksize"].Should().BeNull();
+        }
+
+        [Fact]
+        public void Import_ChunkSizeInRange_IsStoredAsIs()
+        {
+            var service = Service(out var created);
+            var dto = Dto();
+            dto.Template.ChunkSize = 250;
+
+            new TemplateImporter(service, _ => true).Import(dto);
+
+            Created(created, TemplateTable)["sanic_smlt_it_chunksize"].Should().Be(250);
+        }
+
+        [Fact]
         public void Import_LegacySourceType_IsAlwaysWrittenAsCsv_BecauseTheChoiceOnlyHasCsv()
         {
             // JSON viejo con SourceType=1 (Excel, que nunca existió en el choice): crearía un OptionSetValue inválido.

@@ -37,8 +37,11 @@ internal static class SchemaTuningCatalogo
 
     internal const bool UpdateIfExistsDefault = true;
 
-    /// <summary>Chunk Size admite 0 (= default del sistema) y como máximo 10000 (tope del motor).</summary>
-    internal const int ChunkSizeMin = 0, ChunkSizeMax = 10000;
+    /// <summary>
+    /// Chunk Size: entre 100 y 10000 (los límites del motor). Vacío = default del sistema (1000). La columna RECHAZA lo que
+    /// quede fuera (antes admitía desde 0 y el motor acotaba en silencio: un 50 se aceptaba y corría con 100).
+    /// </summary>
+    internal const int ChunkSizeMin = 100, ChunkSizeMax = 10000;
 
     internal static readonly AttributeTuningSpec[] Attributes =
     [
@@ -50,7 +53,7 @@ internal static class SchemaTuningCatalogo
             "default alineado con los docs y con el fallback del Loader (antes No)"),
         new(SecuritySpec.Tables.ImportTemplate, "sanic_smlt_it_chunksize",
             null, null, null,
-            "el motor acota a 100..10000 (0 = default): el form lo valida en vez de acotar en silencio",
+            "el motor acota a 100..10000 (vacío = default): la columna rechaza lo que quede fuera en vez de acotar en silencio",
             IntMin: ChunkSizeMin, IntMax: ChunkSizeMax),
     ];
 

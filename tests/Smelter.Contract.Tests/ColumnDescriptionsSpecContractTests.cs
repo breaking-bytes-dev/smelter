@@ -112,13 +112,18 @@ public class ColumnDescriptionsSpecContractTests
     }
 
     [Fact]
-    public void ChunkSize_IsBoundedTo0Through10000_BySchemaTuning()
+    public void ChunkSize_IsBoundedTo100Through10000_BySchemaTuning_AndTheDescriptionSaysItIsRejectedNotClamped()
     {
         var tune = SchemaTuningCatalogo.Attributes.Single(a => a.Attribute == "sanic_smlt_it_chunksize");
 
         tune.Entity.Should().Be(SecuritySpec.Tables.ImportTemplate);
-        tune.IntMin.Should().Be(0, "0 = usar el default del sistema (1000)");
+        tune.IntMin.Should().Be(100, "la columna rechaza valores menores (el motor además acota, como defensa)");
         tune.IntMax.Should().Be(10000);
+
+        var d = ColumnDescriptionsCatalogo.Descriptions.Single(c => c.Column == "sanic_smlt_it_chunksize").Text;
+        d.En.Should().Contain("between 100 and 10000").And.NotContainEquivalentOf("clamp");
+        d.Es.Should().Contain("entre 100 y 10000").And.NotContainEquivalentOf("acota");
+        d.En.Should().Contain("empty").And.Contain("1000");
     }
 
     [Fact]

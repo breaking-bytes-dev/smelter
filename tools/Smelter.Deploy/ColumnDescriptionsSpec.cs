@@ -40,8 +40,8 @@ internal static class ColumnDescriptionsCatalogo
             "Yes = the first CSV row holds the headers and Source Column values are resolved by name. No = there are no headers and columns are named Column0, Column1, ..."),
         D(IT, "sanic_smlt_it_delimiter", "Separador de columnas del CSV (por defecto coma). Para tabulador escribí TAB o \\t (sin distinguir mayúsculas); cualquier otro texto se usa literal.",
             "CSV column separator (comma by default). For tab, type TAB or \\t (case-insensitive); any other text is used literally."),
-        D(IT, "sanic_smlt_it_chunksize", "Filas que procesa cada invocación de ProcessChunk. 0 usa el default del sistema (1000); el valor se acota al rango 100 a 10000.",
-            "Rows processed by each ProcessChunk call. 0 uses the system default (1000); the value is clamped to the range 100 to 10000."),
+        D(IT, "sanic_smlt_it_chunksize", "Filas que procesa cada invocación de ProcessChunk. Debe estar entre 100 y 10000; vacío usa el default del sistema (1000). Un valor fuera de rango se rechaza al guardar.",
+            "Rows processed by each ProcessChunk call. Must be between 100 and 10000; empty uses the system default (1000). A value outside that range is rejected on save."),
         D(IT, "sanic_smlt_it_status", "Draft = en configuración, Active = listo, Archived = retirado. Solo un template Active puede correr imports: PrepareImport rechaza los demás.",
             "Draft = being configured, Active = ready, Archived = retired. Only an Active template can run imports: PrepareImport rejects the others."),
 

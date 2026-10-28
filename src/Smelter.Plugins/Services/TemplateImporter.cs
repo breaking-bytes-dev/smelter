@@ -80,7 +80,9 @@ namespace Smelter.Plugins.Services
                 ["sanic_smlt_it_sourcetype"] = new OptionSetValue(0),
                 ["sanic_smlt_it_hasheaderrow"] = dto.Template.HasHeaderRow,
                 ["sanic_smlt_it_delimiter"] = dto.Template.Delimiter,
-                ["sanic_smlt_it_chunksize"] = dto.Template.ChunkSize
+                // 0 = "default del sistema" en el JSON; la columna tiene MinValue=100 y rechazaría el 0, así que se guarda vacío
+                // (el Loader lo lee como 0 y el motor usa 1000). En un update el null limpia el valor anterior.
+                ["sanic_smlt_it_chunksize"] = dto.Template.ChunkSize > 0 ? (int?)dto.Template.ChunkSize : null
             };
 
             var isCreate = templateId == Guid.Empty;

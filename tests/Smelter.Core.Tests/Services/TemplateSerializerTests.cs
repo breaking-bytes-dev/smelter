@@ -197,5 +197,35 @@ namespace Smelter.Plugins.Tests.Services
 
             act.Should().NotThrow();
         }
-    }
+    
+        [Theory]
+        [InlineData(50)]
+        [InlineData(1)]
+        [InlineData(99)]
+        [InlineData(10001)]
+        [InlineData(-5)]
+        public void Deserialize_ChunkSizeOutsideTheValidRange_IsRejected(int chunkSize)
+        {
+            // Rango válido de la columna: 100..10000 (o 0 = "usar el default del sistema"). Valores fuera de rango se RECHAZAN (no se acotan).
+            var dto = SampleDto();
+            dto.Template.ChunkSize = chunkSize;
+
+            Action act = () => _sut.Deserialize(_sut.Serialize(dto));
+
+            act.Should().Throw<TemplateFormatException>().WithMessage("*chunk*100*10000*");
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(100)]
+        [InlineData(1000)]
+        [InlineData(10000)]
+        public void Deserialize_ChunkSizeInRangeOrZeroDefault_IsAccepted(int chunkSize)
+        {
+            var dto = SampleDto();
+            dto.Template.ChunkSize = chunkSize;
+
+            _sut.Deserialize(_sut.Serialize(dto)).Template.ChunkSize.Should().Be(chunkSize);
+        }
+}
 }
