@@ -129,14 +129,17 @@ public class SiteMapSpecContractTests
     }
 
     [Fact]
-    public void Apply_KeepsEverySubAreaAttribute_OnlyTitlesChange()
+    public void Apply_KeepsEverySubAreaAttribute_OnlyTitlesAndIconsChange()
     {
         var before = XDocument.Parse(RealSiteMapXml());
         var (xml, _) = SiteMapCatalogo.Apply(RealSiteMapXml());
         var after = XDocument.Parse(xml);
 
+        // Icon/VectorIcon los cambia Apply a propósito (IconsSpec); sus tests son los de IconViolations.
         string Attrs(XDocument d) => string.Join("|", d.Descendants().Where(e => e.Name.LocalName is "Area" or "Group" or "SubArea")
-            .Select(e => e.Name.LocalName + ":" + string.Join(",", e.Attributes().OrderBy(a => a.Name.LocalName).Select(a => a.Name.LocalName + "=" + a.Value))));
+            .Select(e => e.Name.LocalName + ":" + string.Join(",", e.Attributes()
+                .Where(a => a.Name.LocalName is not ("Icon" or "VectorIcon"))
+                .OrderBy(a => a.Name.LocalName).Select(a => a.Name.LocalName + "=" + a.Value))));
         Attrs(after).Should().Be(Attrs(before));
     }
 
