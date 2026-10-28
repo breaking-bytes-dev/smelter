@@ -2,12 +2,14 @@
 
 Todos los cambios notables de Smelter se documentan acá. El formato se basa en
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Las versiones de la solución de Power
-Platform se publicarán como GitHub Releases (roadmap: `docs/repo-maturity-roadmap.md`, Fase 2).
+Platform se publicarán como GitHub Releases (roadmap: `docs/historico/repo-maturity-roadmap.md`, Fase 2).
 
 ## [Unreleased]
 
+## [[1.4.0.0](https://github.com/breaking-bytes-dev/smelter/releases/tag/sol-v1.4.0.0)] — 2026-10-28
+
 ### Changed / Fixed (Plugins 1.0.16; `Smelter.Deploy` [6] y `Smelter.Verify` [SEC], E2E 3b, 7e y 7f)
-- **Clave de dedup vacía**: una fila cuya Dedup Column queda vacía falla con `ValidationError` (`Dedup key '<destino>' (Source: '<origen>') is empty.`)
+- **Clave de dedup vacía**: una fila cuya Dedup Column queda vacía falla con `ValidationError` (`Dedup key '<destino>' is empty (Source: '<origen>').`)
   en lugar de upsertear sin clave y crear un duplicado en cada corrida. «Solo inserción» no cambia. E2E-3b.
 - **Reintentar borra los logs de la corrida anterior**: `PrepareImport` borra (SYSTEM, lotes de 500, 40 s de presupuesto) los logs con
   `modifiedon` anterior al `starttime` de la corrida nueva; `ProcessChunk` continúa con 20 s por llamada. E2E-7e.

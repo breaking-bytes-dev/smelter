@@ -136,7 +136,7 @@ Las decisiones están agrupadas por área:
 
 ### D-33. Una fila con la clave de dedup vacía falla en lugar de escribirse
 
-- **Decisión:** en un Table Mapping que no es «Solo inserción», una fila cuya Dedup Column queda vacía (tras valor por defecto y transformaciones) falla con `ValidationError` y `Dedup key '<destino>' (Source: '<origen>') is empty.`
+- **Decisión:** en un Table Mapping que no es «Solo inserción», una fila cuya Dedup Column queda vacía (tras valor por defecto y transformaciones) falla con `ValidationError` y `Dedup key '<destino>' is empty (Source: '<origen>').`
 - **Por qué:** el upsert por alternate key con la clave vacía no puede coincidir con nadie y crea un registro nuevo en cada corrida: un duplicado silencioso que el gate de dedup (que solo mira la configuración) no ve.
 - **Qué se rompe si se cambia:** quien dependía de cargar filas sin clave (que se duplicaban al reprocesar) debe pasar el mapping a «Solo inserción», con su advertencia de duplicados.
 

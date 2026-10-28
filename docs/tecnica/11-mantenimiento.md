@@ -93,7 +93,7 @@ Los errores de configuración (`has configuration errors`) listan, separados, ca
 | Categoría | Mensaje típico | Causa y solución |
 |---|---|---|
 | `ValidationError` | `Required field '<destino>' (Source: '<origen>') is empty.` | Celda vacía en una columna obligatoria, sin valor por defecto. Corregir el archivo o definir `Default Value` |
-| `ValidationError` | `Dedup key '<destino>' (Source: '<origen>') is empty.` | La celda de una Dedup Column llegó vacía: sin clave no se puede hacer upsert (crearía un duplicado). Corregir el archivo, definir `Default Value`, o marcar «Solo inserción» si de verdad se permiten duplicados |
+| `ValidationError` | `Dedup key '<destino>' is empty (Source: '<origen>').` | La celda de una Dedup Column llegó vacía: sin clave no se puede hacer upsert (crearía un duplicado). Corregir el archivo, definir `Default Value`, o marcar «Solo inserción» si de verdad se permiten duplicados |
 | `TypeError` | `Column '<destino>' (source '<origen>'): Cannot convert value (<n> chars) to <tipo>.` | La celda no tiene el formato del tipo. Para `Boolean` agrega ` Expected: true/false, 1/0, yes/no.`; para `OptionSet`, ` Use MAP transform if mapping is required.` |
 | `LookupUnresolved` | `Lookup '<destino>' value is not a GUID and no LookupMatchColumn is configured.` | El valor no es GUID y falta la columna de coincidencia |
 | `TransformError` | `Unknown function: <NOMBRE>`, `Expected EOF`, `HMAC: ...` | Error de sintaxis del DSL o de clave HMAC. Ver [Motor y DSL](05-motor-y-dsl.md#errores-y-categorías) |
