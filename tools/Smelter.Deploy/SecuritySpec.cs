@@ -27,7 +27,11 @@ internal sealed record PrivilegeSpec(string Table, PrivilegeType Type, Privilege
     internal string PrivilegeName => SecuritySpec.PrivilegeName(Type, Table);
 }
 
-internal sealed record RoleSpec(string Name, PrivilegeSpec[] Privileges);
+internal sealed record RoleSpec(string Name, PrivilegeSpec[] Privileges, PrivilegeSpec[]? DeniedPrivileges = null)
+{
+    /// <summary>Privilegios que el rol NO debe tener: el deploy los quita si están (AddPrivilegesRole es aditivo) y Verify los exige ausentes.</summary>
+    internal PrivilegeSpec[] Denied => DeniedPrivileges ?? [];
+}
 
 /// <summary>Vista pública (SavedQuery) de Import Job provisionada vía SDK.</summary>
 internal sealed record ViewSpec(string Name, string Description, string FetchXml, string LayoutXml);
@@ -65,11 +69,19 @@ internal static class SecuritySpec
 
     // Requirement "Rol Smelter Configurador": CRUD Org (Create/Read/Write/Delete/Append/AppendTo)
     // en las 6 tablas, sin importar el owner (PrivilegeDepth.Global).
+    // EXCEPTO Create sobre el Import Job Log: los logs los escribe SOLO el motor (ProcessChunkPlugin crea con un
+    // IOrganizationService de SYSTEM, que ignora los privilegios del usuario), así que ningún rol necesita crearlos. Sin el
+    // privilegio Create la plataforma esconde los botones "Nuevo Log de importación" (subgrid del job, lista, form) sin
+    // tocar el ribbon. Read/Write/Delete/Append/AppendTo siguen (consultar y limpiar logs).
+    private static readonly PrivilegeSpec LogCreateDenied = new(Tables.ImportJobLog, PrivilegeType.Create, PrivilegeDepth.Global);
+
     internal static readonly RoleSpec Configurador = new(
         ConfiguradorRoleName,
         Tables.All
             .SelectMany(table => CrudCompleto.Select(type => new PrivilegeSpec(table, type, PrivilegeDepth.Global)))
-            .ToArray());
+            .Where(p => !(p.Table == Tables.ImportJobLog && p.Type == PrivilegeType.Create))
+            .ToArray(),
+        [LogCreateDenied]);
 
     // Requirement "Rol Smelter Operador": Template Read User+AppendTo (visibilidad vía cascade del
     // team, no BU — decisión cerrada, ver header de tasks.md); Mappings Read Org sin Create/
@@ -89,7 +101,8 @@ internal static class SecuritySpec
             new PrivilegeSpec(Tables.ImportJob, PrivilegeType.Write, PrivilegeDepth.Basic),
 
             new PrivilegeSpec(Tables.ImportJobLog, PrivilegeType.Read, PrivilegeDepth.Basic),
-        ]);
+        ],
+        [LogCreateDenied]);
 
     internal static readonly RoleSpec[] Roles = [Configurador, Operador];
 

@@ -59,7 +59,10 @@ internal static class SecurityAssertions
                 Assert(actualDepth == expected.Depth,
                     $"rol '{role.Name}': '{expected.PrivilegeName}' tiene depth {actualDepth}, esperado {expected.Depth}");
             }
-            Console.WriteLine($"[SEC]   rol '{role.Name}': {role.Privileges.Length} privilegios de SecuritySpec, OK.");
+            foreach (var denied in role.Denied)
+                Assert(!actualByName.ContainsKey(denied.PrivilegeName),
+                    $"rol '{role.Name}': NO debe tener '{denied.PrivilegeName}' (los logs los escribe el motor; con Create la MDA muestra \"Nuevo Log de importación\")");
+            Console.WriteLine($"[SEC]   rol '{role.Name}': {role.Privileges.Length} privilegios de SecuritySpec, {role.Denied.Length} prohibido(s) ausente(s), OK.");
         }
 
         // Requirement "Operador bloqueado en write, habilitado en lectura y jobs" — proxy estático
