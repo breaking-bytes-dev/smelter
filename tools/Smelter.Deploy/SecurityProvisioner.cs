@@ -383,19 +383,19 @@ internal static class SecurityProvisioner
         }
     }
 
-    // ── 4.2/4.3 Botones Ejecutar/Reintentar (webresource + RibbonDiffXml vía mini-solución) ─────
+    // ── 4.2/4.3 Botones Ejecutar/Reintentar + Export/Import Template (webresource + RibbonDiffXml vía mini-solución, RibbonSpec.cs) ─────
     private static void UpsertRibbon(ServiceClient client)
     {
+        // Los JS de Export/Import Template ya son web resources de la solución (solutions/unpacked); acá solo viaja su ribbon.
         var js = AssetLoader.ReadText("sanic_smlt_importjob_actions.js");
         UpsertWebResource(client, "sanic_smlt_importjob_actions.js", "WebResource | SMLT | Import Job Actions", js);
 
-        var ribbonDiffXml = AssetLoader.ReadText("sanic_tbl_smlt_importjob.RibbonDiffXml.xml");
         var solutionZip = SolutionZipBuilder.BuildRibbonSolution(
             solutionUniqueName: Catalogo.SolutionName,
             publisherUniqueName: "Sistemas_Abiertos_Nicaragua",
             publisherPrefix: "sanic",
             version: "1.0.0.0",
-            ribbonDiffXmlByEntity: new Dictionary<string, string> { [SecuritySpec.Tables.ImportJob] = ribbonDiffXml });
+            ribbonDiffXmlByEntity: RibbonCatalogo.XmlByEntity());
 
         client.Execute(new ImportSolutionRequest
         {
@@ -403,7 +403,7 @@ internal static class SecurityProvisioner
             PublishWorkflows = true,
             OverwriteUnmanagedCustomizations = true,
         });
-        Console.WriteLine("[6]   RibbonDiffXml de Import Job (Ejecutar/Reintentar) importado.");
+        Console.WriteLine("[6]   RibbonDiffXml de Import Job (Ejecutar/Reintentar) e Import Template (Export/Import), bilingüe 1033+3082 con ModernImage, importado.");
     }
 
     private static void UpsertWebResource(ServiceClient client, string name, string displayName, string content)

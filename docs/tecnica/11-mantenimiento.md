@@ -134,7 +134,7 @@ Un job queda así si el flow se apaga o se cancela a mitad de camino. **Reintent
 
 **Agregar una columna al archivo.** Agrega el Column Mapping al Table Mapping correspondiente. Si la columna forma parte de una clave, revisa también las Dedup Columns y las Parent Dedup Columns de las relaciones. Exporta el template antes de un cambio grande.
 
-**Mover un template a otro ambiente.** **Exportar Smelter Template** en la grilla, y **Importar Smelter Template** en el otro. El import hace *upsert por nombre*: reemplaza el árbol de mappings del template con el mismo nombre. Después, asigna el team dueño.
+**Mover un template a otro ambiente.** **Exportar template** en la grilla, y **Importar template** en el otro. El import hace *upsert por nombre*: reemplaza el árbol de mappings del template con el mismo nombre. Después, asigna el team dueño.
 
 **Dar de alta a un operador.** Agrégalo como miembro del team que es dueño del template. No necesita rol propio si el team lo tiene.
 

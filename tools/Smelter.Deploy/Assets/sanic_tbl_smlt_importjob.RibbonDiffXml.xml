@@ -19,12 +19,12 @@
   <CustomActions>
     <CustomAction Id="sanic.smlt.EjecutarImportJob.Button.CustomAction" Location="Mscrm.Form.sanic_tbl_smlt_importjob.MainTab.Actions.Controls._children" Sequence="50">
       <CommandUIDefinition>
-        <Button Command="sanic.smlt.EjecutarImportJob.Command" Id="sanic.smlt.EjecutarImportJob.Button" LabelText="$LocLabels:sanic.smlt.EjecutarImportJob.Button.LabelText" Sequence="50" TemplateAlias="o1" ToolTipTitle="$LocLabels:sanic.smlt.EjecutarImportJob.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.EjecutarImportJob.Button.ToolTipDescription" />
+        <Button Command="sanic.smlt.EjecutarImportJob.Command" Id="sanic.smlt.EjecutarImportJob.Button" ModernImage="$webresource:sanic_/smelter/icons/run.svg" LabelText="$LocLabels:sanic.smlt.EjecutarImportJob.Button.LabelText" Sequence="50" TemplateAlias="o1" ToolTipTitle="$LocLabels:sanic.smlt.EjecutarImportJob.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.EjecutarImportJob.Button.ToolTipDescription" />
       </CommandUIDefinition>
     </CustomAction>
     <CustomAction Id="sanic.smlt.ReintentarImportJob.Button.CustomAction" Location="Mscrm.Form.sanic_tbl_smlt_importjob.MainTab.Actions.Controls._children" Sequence="55">
       <CommandUIDefinition>
-        <Button Command="sanic.smlt.ReintentarImportJob.Command" Id="sanic.smlt.ReintentarImportJob.Button" LabelText="$LocLabels:sanic.smlt.ReintentarImportJob.Button.LabelText" Sequence="55" TemplateAlias="o2" ToolTipTitle="$LocLabels:sanic.smlt.ReintentarImportJob.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.ReintentarImportJob.Button.ToolTipDescription" />
+        <Button Command="sanic.smlt.ReintentarImportJob.Command" Id="sanic.smlt.ReintentarImportJob.Button" ModernImage="$webresource:sanic_/smelter/icons/retry.svg" LabelText="$LocLabels:sanic.smlt.ReintentarImportJob.Button.LabelText" Sequence="55" TemplateAlias="o2" ToolTipTitle="$LocLabels:sanic.smlt.ReintentarImportJob.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.ReintentarImportJob.Button.ToolTipDescription" />
       </CommandUIDefinition>
     </CustomAction>
   </CustomActions>
@@ -77,32 +77,38 @@
   <LocLabels>
     <LocLabel Id="sanic.smlt.EjecutarImportJob.Button.LabelText">
       <Titles>
-        <Title description="Ejecutar" languagecode="1033" />
+        <Title description="Run" languagecode="1033" />
+        <Title description="Ejecutar" languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.EjecutarImportJob.Button.ToolTipTitle">
       <Titles>
-        <Title description="Ejecutar" languagecode="1033" />
+        <Title description="Run" languagecode="1033" />
+        <Title description="Ejecutar" languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.EjecutarImportJob.Button.ToolTipDescription">
       <Titles>
-        <Title description="Pone el job en cola: el procesamiento corre en el servidor (Cloud Flow)." languagecode="1033" />
+        <Title description="Queues the job: processing runs on the server." languagecode="1033" />
+        <Title description="Pone el job en cola: el procesamiento corre en el servidor." languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.ReintentarImportJob.Button.LabelText">
       <Titles>
-        <Title description="Reintentar" languagecode="1033" />
+        <Title description="Retry" languagecode="1033" />
+        <Title description="Reintentar" languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.ReintentarImportJob.Button.ToolTipTitle">
       <Titles>
-        <Title description="Reintentar" languagecode="1033" />
+        <Title description="Retry" languagecode="1033" />
+        <Title description="Reintentar" languagecode="3082" />
       </Titles>
     </LocLabel>
     <LocLabel Id="sanic.smlt.ReintentarImportJob.Button.ToolTipDescription">
       <Titles>
-        <Title description="Vuelve a encolar un job terminado (Completed, CompletedWithErrors o Failed); se re-procesa desde cero." languagecode="1033" />
+        <Title description="Queues a finished job again (Completed, Completed with errors or Failed); it is reprocessed from scratch." languagecode="1033" />
+        <Title description="Vuelve a poner en cola un job terminado (Completado, Completado con errores o Fallido); se reprocesa desde cero." languagecode="3082" />
       </Titles>
     </LocLabel>
   </LocLabels>

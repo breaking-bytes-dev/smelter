@@ -15,8 +15,8 @@ Los dos botones están en la barra de comandos de la lista **Templates de import
 
 | Botón | Qué hace | Cuándo está disponible |
 |---|---|---|
-| **Exportar Smelter Template** | Descarga el template seleccionado | Solo con una fila seleccionada (si no hay ninguna, no se muestra) |
-| **Importar Smelter Template** | Carga un template desde un archivo `.json` | Siempre, sin seleccionar nada |
+| **Exportar template** | Descarga el template seleccionado | Solo con una fila seleccionada (si no hay ninguna, no se muestra) |
+| **Importar template** | Carga un template desde un archivo `.json` | Siempre, sin seleccionar nada |
 
 ## Cómo exportar un template
 
@@ -24,15 +24,15 @@ Los dos botones están en la barra de comandos de la lista **Templates de import
 
 1. En el menú, abre **Templates de importación**.
 2. Marca la casilla de la fila del template que quieres exportar.
-3. En la barra de comandos, pulsa **Exportar Smelter Template**.
+3. En la barra de comandos, pulsa **Exportar template**.
 
-![Lista de Templates de importación con la fila Demo · Contactos seleccionada y la barra de comandos con Editar, Activar, Desactivar, Eliminar y Exportar Smelter Template](img/27-exportar-template-seleccion.png)
+![Lista de Templates de importación con la fila Demo · Contactos seleccionada y la barra de comandos con Editar, Activar, Desactivar, Eliminar y Exportar template](img/27-exportar-template-seleccion.png)
 
-*Con una fila seleccionada, la barra de comandos suma **Exportar Smelter Template**. Abajo se lee **Seleccionados: 1**.*
+*Con una fila seleccionada, la barra de comandos suma **Exportar template**. Abajo se lee **Seleccionados: 1**.*
 
 4. Tu navegador descarga el archivo **`smelter-template.json`**. Búscalo en tu carpeta de descargas.
 
-> **Importante:** selecciona **un solo** template a la vez. Si marcas varios, Smelter exporta únicamente el primero de la selección. Sin ninguna fila seleccionada, el botón **Exportar Smelter Template** no se muestra en la barra de comandos.
+> **Importante:** selecciona **un solo** template a la vez. Si marcas varios, Smelter exporta únicamente el primero de la selección. Sin ninguna fila seleccionada, el botón **Exportar template** no se muestra en la barra de comandos.
 
 > **Consejo:** al descargar varios templates en seguida, el navegador les pone el mismo nombre. Renombra cada archivo (por ejemplo `contactos.json`) para no mezclarlos.
 
@@ -41,7 +41,7 @@ Los dos botones están en la barra de comandos de la lista **Templates de import
 **Para qué:** crear en este entorno un template a partir de un archivo exportado antes.
 
 1. En el menú, abre **Templates de importación**.
-2. En la barra de comandos, pulsa **Importar Smelter Template**.
+2. En la barra de comandos, pulsa **Importar template**.
 3. Se abre el selector de archivos de tu equipo, que acepta archivos `.json`. Elige el archivo exportado.
 4. Smelter importa el template. Cuando termina, aparece un cuadro con el mensaje **Template importado correctamente.** Pulsa **Aceptar**.
 

@@ -101,6 +101,15 @@ public class IconsSpecContractTests
     }
 
     [Fact]
+    public void RibbonButtonIcons_ExportImportRunRetry_AreInTheSpec()
+    {
+        IconsCatalogo.All.Select(i => i.FileName).Should().Contain(["export.svg", "import.svg", "run.svg", "retry.svg"]);
+        IconsCatalogo.All.Should().HaveCount(13);
+        IconsCatalogo.Export.WebResourceName.Should().Be("sanic_/smelter/icons/export.svg");
+        IconsCatalogo.Retry.WebResourceName.Should().Be("sanic_/smelter/icons/retry.svg");
+    }
+
+    [Fact]
     public void VectorIconRef_UsesTheWebResourceSyntax()
     {
         IconsCatalogo.VectorIconRef(IconsCatalogo.Template.WebResourceName).Should().Be("$webresource:sanic_/smelter/icons/template.svg");

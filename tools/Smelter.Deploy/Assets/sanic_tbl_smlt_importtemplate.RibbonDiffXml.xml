@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RibbonDiffXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <CustomActions>
+    <CustomAction Id="sanic.smlt.ExportTemplate.Button.CustomAction" Location="Mscrm.HomepageGrid.sanic_tbl_smlt_importtemplate.MainTab.Management.Controls._children" Sequence="65">
+      <CommandUIDefinition>
+        <Button Command="sanic.smlt.ExportTemplate.Command" Id="sanic.smlt.ExportTemplate.Button" ModernImage="$webresource:sanic_/smelter/icons/export.svg" LabelText="$LocLabels:sanic.smlt.ExportTemplate.Button.LabelText" Sequence="65" TemplateAlias="o3" ToolTipTitle="$LocLabels:sanic.smlt.ExportTemplate.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.ExportTemplate.Button.ToolTipDescription" />
+      </CommandUIDefinition>
+    </CustomAction>
+    <CustomAction Id="sanic.smlt.ImportTemplate.Button.CustomAction" Location="Mscrm.HomepageGrid.sanic_tbl_smlt_importtemplate.MainTab.Management.Controls._children" Sequence="70">
+      <CommandUIDefinition>
+        <Button Command="sanic.smlt.ImportTemplate.Command" Id="sanic.smlt.ImportTemplate.Button" ModernImage="$webresource:sanic_/smelter/icons/import.svg" LabelText="$LocLabels:sanic.smlt.ImportTemplate.Button.LabelText" Sequence="70" TemplateAlias="o4" ToolTipTitle="$LocLabels:sanic.smlt.ImportTemplate.Button.ToolTipTitle" ToolTipDescription="$LocLabels:sanic.smlt.ImportTemplate.Button.ToolTipDescription" />
+      </CommandUIDefinition>
+    </CustomAction>
+  </CustomActions>
+  <Templates>
+    <RibbonTemplates Id="Mscrm.Templates"></RibbonTemplates>
+  </Templates>
+  <CommandDefinitions>
+    <CommandDefinition Id="sanic.smlt.ExportTemplate.Command">
+      <EnableRules>
+        <EnableRule Id="sanic.sanic_tbl_smlt_importtemplate.EnableRule0.EnableRule" />
+      </EnableRules>
+      <DisplayRules />
+      <Actions>
+        <JavaScriptFunction FunctionName="Sanic.Smelter.exportTemplate" Library="$webresource:sanic_smlt_exporttemplate.js">
+          <CrmParameter Value="FirstSelectedItemId" />
+        </JavaScriptFunction>
+      </Actions>
+    </CommandDefinition>
+    <CommandDefinition Id="sanic.smlt.ImportTemplate.Command">
+      <EnableRules />
+      <DisplayRules />
+      <Actions>
+        <JavaScriptFunction FunctionName="Sanic.Smelter.importTemplate" Library="$webresource:sanic_smlt_importtemplate.js">
+          <CrmParameter Value="PrimaryControl" />
+        </JavaScriptFunction>
+      </Actions>
+    </CommandDefinition>
+  </CommandDefinitions>
+  <RuleDefinitions>
+    <TabDisplayRules />
+    <DisplayRules />
+    <EnableRules>
+      <EnableRule Id="sanic.sanic_tbl_smlt_importtemplate.EnableRule0.EnableRule">
+        <SelectionCountRule AppliesTo="SelectedEntity" Minimum="1" />
+      </EnableRule>
+    </EnableRules>
+  </RuleDefinitions>
+  <LocLabels>
+    <LocLabel Id="sanic.smlt.ExportTemplate.Button.LabelText">
+      <Titles>
+        <Title description="Export template" languagecode="1033" />
+        <Title description="Exportar template" languagecode="3082" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.ExportTemplate.Button.ToolTipDescription">
+      <Titles>
+        <Title description="Downloads the selected template as JSON." languagecode="1033" />
+        <Title description="Descarga el template seleccionado como JSON." languagecode="3082" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.ExportTemplate.Button.ToolTipTitle">
+      <Titles>
+        <Title description="Export template" languagecode="1033" />
+        <Title description="Exportar template" languagecode="3082" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.ImportTemplate.Button.LabelText">
+      <Titles>
+        <Title description="Import template" languagecode="1033" />
+        <Title description="Importar template" languagecode="3082" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.ImportTemplate.Button.ToolTipDescription">
+      <Titles>
+        <Title description="Creates or updates a template from a JSON file." languagecode="1033" />
+        <Title description="Crea o actualiza un template desde un archivo JSON." languagecode="3082" />
+      </Titles>
+    </LocLabel>
+    <LocLabel Id="sanic.smlt.ImportTemplate.Button.ToolTipTitle">
+      <Titles>
+        <Title description="Import template" languagecode="1033" />
+        <Title description="Importar template" languagecode="3082" />
+      </Titles>
+    </LocLabel>
+  </LocLabels>
+</RibbonDiffXml>
