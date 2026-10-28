@@ -291,13 +291,12 @@ public class FormPolishSpecContractTests
     }
 
     [Fact]
-    public void LogViews_AreOrderedNewestFirst_ByCreatedOn_DefaultAssociatedAndQuickFind()
+    public void LogViews_AreOrderedNewestFirst_ByCreatedOn_DefaultAndAssociated()
     {
         FormPolishCatalogo.ViewOrders.Select(o => o.ViewId).Should().BeEquivalentTo(new[]
         {
             Guid.Parse("6752f00a-34e0-43fd-ba73-9a9cbec00991"), // default: la usa el subgrid del job y la lista de logs
             Guid.Parse("383a7a42-ed26-473a-8394-b7c7441fe58b"), // asociada
-            Guid.Parse("f35f567a-fd58-4f3e-856d-efd8b975c097"), // quick find
         });
         FormPolishCatalogo.ViewOrders.Should().OnlyContain(o => o.Entity == SecuritySpec.Tables.ImportJobLog && o.Attribute == "createdon" && o.Descending);
         FormPolishCatalogo.Subgrids.Single().ViewId.Should().BeEquivalentTo(FormPolishCatalogo.LogDefaultViewId, "el subgrid del job usa la vista default del log");

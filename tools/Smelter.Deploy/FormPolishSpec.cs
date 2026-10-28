@@ -155,12 +155,12 @@ internal static class FormPolishCatalogo
 
     // Import Job Log: más nuevo primero. Las vistas nacieron ordenadas por el autonumérico ascendente (el más viejo arriba,
     // y como es texto "LOG-9" > "LOG-10"): se ordena por createdon descendente. La default es la que abre el subgrid de logs
-    // del job (Subgrids) y la lista de la MDA; también la asociada y el quick find, para que busquen igual.
+    // del job (Subgrids) y la lista de la MDA; también la asociada. El quick find NO se toca: Dataverse falla con un
+    // NullReferenceException al actualizar su fetchxml (backend-deploy 40635090447) y sus resultados se ven en la vista default.
     internal static readonly ViewOrderSpec[] ViewOrders =
     [
         new(Log, Guid.Parse("6752f00a-34e0-43fd-ba73-9a9cbec00991"), "createdon", true),
         new(Log, Guid.Parse("383a7a42-ed26-473a-8394-b7c7441fe58b"), "createdon", true),
-        new(Log, Guid.Parse("f35f567a-fd58-4f3e-856d-efd8b975c097"), "createdon", true),
     ];
 
     // Etiquetas de pestañas y secciones en los dos idiomas (1033 inglés, 3082 español). Las pestañas/secciones que trae el
